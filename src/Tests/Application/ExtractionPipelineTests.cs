@@ -178,8 +178,9 @@ public class ExtractionPipelineTests
         ResultSchema.AssertValid(ContractJson.Serialize(result));
     }
 
-    [Fact(Skip = "Écart EGR-11/EGR-12 : RoomExtractionService trie les identifiants avant lecture mais ne retrie pas report.Rooms ; "
-        + "un IQualityCheckService qui réordonne casserait le tri par elementId (section 2). À trancher : retri dans l'orchestration ou dans l'export.")]
+    // Décision du chef de projet : le tri par elementId numérique relève de l'orchestration ; l'export écrit dans l'ordre reçu.
+    [Fact(Skip = "Écart RoomExtractionService : le tri est fait avant la lecture, mais report.Rooms n'est pas retrié après le contrôle qualité ; "
+        + "un IQualityCheckService qui réordonne casserait le tri (section 2). Correction attendue dans l'orchestration (hors EGR-17).")]
     public void Rooms_StaySorted_EvenIfQualityCheckReordersThem()
     {
         var pipeline = new TestPipeline

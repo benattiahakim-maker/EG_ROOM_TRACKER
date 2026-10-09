@@ -47,7 +47,8 @@ public sealed class InputConfigurationServiceSpecTests : IDisposable
     {
         var settings = Load("""{ "schemaVersion": "1.0" }""");
 
-        Assert.Null(settings.MainModelPath);
+        // Décision du chef de projet : mainModelPath est toujours résolu (RVT unique détecté automatiquement).
+        Assert.Equal("Projet/EG_Batiment_A.rvt", settings.MainModelPath);
         Assert.Null(settings.PhaseIds);
         Assert.Equal(VolumeMode.Preserve, settings.VolumeMode);
         Assert.Empty(settings.SharedParameters);

@@ -29,7 +29,7 @@ public class ResultContractSerializationTests
         var reserialized = JsonNode.Parse(ContractJson.Serialize(result))!;
 
         Assert.True(
-            JsonNode.DeepEquals(NormalizeDates(example), NormalizeDates(reserialized)),
+            JsonNode.DeepEquals(example, reserialized),
             "Écart entre l'exemple et sa sérialisation via les DTO :\n" + reserialized.ToJsonString());
     }
 
@@ -45,7 +45,7 @@ public class ResultContractSerializationTests
         ResultSchema.AssertValid(json);
         Assert.Equal("succeeded", json["summary"]!["status"]!.GetValue<string>());
         Assert.Empty(json["summary"]!["errors"]!.AsArray());
-        Assert.Equal("2026-10-09T12:00:03+00:00", json["summary"]!["startedAtUtc"]!.GetValue<string>());
+        Assert.Equal("2026-10-09T12:00:03Z", json["summary"]!["startedAtUtc"]!.GetValue<string>());
     }
 
     [Fact]
@@ -246,6 +246,9 @@ public class ResultContractSerializationTests
         var bytes = ContractJson.SerializeToUtf8Bytes(Wrap(room));
 
         Assert.False(bytes.AsSpan().StartsWith(Encoding.UTF8.GetPreamble()), "BOM UTF-8 inattendu.");
+        var text = new UTF8Encoding(false, true).GetString(bytes);
+        Assert.Contains("\"Réserve\"", text);
+        Assert.DoesNotContain("\\u00E9", text);
         var parsed = ContractJson.Deserialize(new UTF8Encoding(false, true).GetString(bytes));
         Assert.Equal("Réserve", parsed.Rooms[0].Name);
         Assert.Equal("Bureau d'études — 2ᵉ étage", parsed.Rooms[0].Occupancy);
@@ -303,17 +306,5 @@ public class ResultContractSerializationTests
     {
         var pipeline = new TestPipeline { RoomIds = [long.Parse(room.ElementId, CultureInfo.InvariantCulture)], ReadRoom = _ => new RoomReadResult(room, []) };
         return pipeline.Run();
-    }
-
-    private static JsonNode NormalizeDates(JsonNode result)
-    {
-        var copy = result.DeepClone();
-        foreach (var name in new[] { "startedAtUtc", "completedAtUtc" })
-        {
-            var value = DateTimeOffset.Parse(copy["summary"]![name]!.GetValue<string>(), CultureInfo.InvariantCulture);
-            copy["summary"]![name] = value.UtcDateTime.ToString("O", CultureInfo.InvariantCulture);
-        }
-
-        return copy;
     }
 }

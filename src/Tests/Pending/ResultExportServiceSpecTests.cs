@@ -51,6 +51,32 @@ public sealed class ResultExportServiceSpecTests : IDisposable
     }
 
     [Fact(Skip = Skip)]
+    public void Dates_AreUtcIso8601WithZ_AndAccentsAreWrittenAsIs()
+    {
+        _service.Write(Result("succeededWithWarnings"), OutputPath);
+
+        var json = ReadUtf8WithoutBom(OutputPath);
+        var summary = JsonNode.Parse(json)!["summary"]!;
+        Assert.Matches(@"^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(\.\d+)?Z$", summary["startedAtUtc"]!.GetValue<string>());
+        Assert.Matches(@"^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(\.\d+)?Z$", summary["completedAtUtc"]!.GetValue<string>());
+        Assert.Contains("\"Réserve\"", json);
+        Assert.DoesNotContain("\\u00E9", json);
+    }
+
+    [Fact(Skip = Skip)]
+    public void Write_KeepsRoomOrderAsReceived()
+    {
+        // Décision du chef de projet : le tri relève de l'orchestration ; l'export n'en change pas l'ordre.
+        var result = Result("succeeded");
+        var reversed = result with { Rooms = [.. result.Rooms.Reverse()] };
+
+        _service.Write(reversed, OutputPath);
+
+        var ids = JsonNode.Parse(ReadUtf8WithoutBom(OutputPath))!["rooms"]!.AsArray().Select(r => r!["elementId"]!.GetValue<string>());
+        Assert.Equal(reversed.Rooms.Select(r => r.ElementId), ids);
+    }
+
+    [Fact(Skip = Skip)]
     public void Write_IsDeterministic()
     {
         var result = Result("succeededWithWarnings");

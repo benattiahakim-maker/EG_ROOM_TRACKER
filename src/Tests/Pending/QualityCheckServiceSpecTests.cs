@@ -101,6 +101,21 @@ public class QualityCheckServiceSpecTests
         Assert.All(report.Rooms, r => Assert.Empty(r.QualityFlags));
     }
 
+    [Theory(Skip = Skip)]
+    [InlineData("")]
+    [InlineData(null)]
+    public void EmptyOrAbsentNumbers_AreNeverDuplicates(string? number)
+    {
+        // Décision du chef de projet : numéro vide -> "", absent -> null ; DUPLICATE_NUMBER ignore les numéros vides.
+        var rooms = new[] { Rooms.Complete(1) with { Number = number }, Rooms.Complete(2) with { Number = number } };
+
+        var report = _service.Evaluate(rooms, [], Computed);
+
+        Assert.All(report.Rooms, r => Assert.DoesNotContain(QualityFlagCodes.DuplicateNumber, r.QualityFlags));
+        Assert.Equal([number, number], report.Rooms.Select(r => r.Number));
+        Assert.Equal(ExtractionStatus.Succeeded, report.Status);
+    }
+
     [Fact(Skip = Skip)]
     public void ZeroArea_OnPlacedRoom_IsFlagged()
     {
