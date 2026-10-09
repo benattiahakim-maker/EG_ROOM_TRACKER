@@ -24,7 +24,7 @@ Les 20 cartes sont suivies dans les issues GitHub et sur le [tableau Trello](htt
 | EGR-16 | [#16 — Ajouter le recalcul facultatif des volumes](https://github.com/benattiahakim-maker/EG_ROOM_TRACKER/issues/16) | P2 | fermée | Terminé | #40 (refus provisoire #31, retiré par #40) | Volumes vérifiés sur trois moteurs (EGR-14) |
 | EGR-17 | [#17 — Tester unitairement le cœur indépendant de Revit](https://github.com/benattiahakim-maker/EG_ROOM_TRACKER/issues/17) | P1 | ouverte | Code livré, tests lancés par la CI | #25, #39 | Clôture de l'issue à décider par le propriétaire |
 | EGR-18 | [#18 — Constituer les maquettes de référence](https://github.com/benattiahakim-maker/EG_ROOM_TRACKER/issues/18) | P0 | ouverte | En attente | — | Revit, EGR-01 ; D5 |
-| EGR-19 | [#35 — Outil WPF de gestion de l'application APS (bundles, activities, alias)](https://github.com/benattiahakim-maker/EG_ROOM_TRACKER/issues/35) | P1 | ouverte | À faire | — | Dépend d'EGR-13 |
+| EGR-19 | [#35 — Outil WPF de gestion de l'application APS (bundles, activities, alias)](https://github.com/benattiahakim-maker/EG_ROOM_TRACKER/issues/35) | P1 | ouverte | En cours | — (PR #41 ouverte : bibliothèque `tools/EgRoomTracker.Aps`) | Application WPF à suivre ; dépend d'EGR-13 |
 | EGR-20 | [#36 — Outil WPF de lancement des WorkItems et lecture des résultats](https://github.com/benattiahakim-maker/EG_ROOM_TRACKER/issues/36) | P1 | ouverte | À faire | — | Dépend d'EGR-19 et d'EGR-13 |
 
 Autres PR fusionnées : #19 (spécifications v0.2).

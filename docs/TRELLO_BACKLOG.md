@@ -184,7 +184,7 @@ Dépendances : EGR-01.
 
 ## EGR-19 — Outil WPF de gestion de l'application APS (bundles, activities, alias)
 Liste : À faire | Priorité : P1 | Labels : APS, Packaging | Issue : #35
-État : À faire — issue #35 ouverte ; aucune PR. Dépend d'EGR-13.
+État : En cours — issue #35 ouverte ; PR #41 ouverte (bibliothèque `tools/EgRoomTracker.Aps`), non fusionnée. Dépend d'EGR-13.
 
 Outil développeur C# (.NET, WPF, MVVM) pour gérer l'application EG_ROOM_TRACKER sur l'Automation API, en remplacement de l'usage manuel du script de publication : connexion OAuth 2-legged (`code:all`) par `APS_CLIENT_ID` / `APS_CLIENT_SECRET` lus dans l'environnement (`APS_TOKEN` en secours, `APS_NICKNAME`) ; vérification des moteurs ; liste des AppBundles, Activities, versions et alias 2025/2026/2027 ; publication d'un bundle produit par `build-appbundle.sh` ; création/mise à jour des Activities depuis `src/Packaging/definitions` ; alias test/prod, promotion et retour arrière ; journal des opérations. Architecture : bibliothèque `tools/EgRoomTracker.Aps` (client APS testable, sans WPF, réutilisée par EGR-20) et application `tools/EgRoomTracker.DaManager`.
 

@@ -26,7 +26,7 @@ Extraction des pièces d’une maquette RVT reçue dans un ZIP : identité, nom,
 | [EGR-18](https://github.com/benattiahakim-maker/EG_ROOM_TRACKER/issues/18) | Maquettes de référence et résultats attendus, D5 (tolérances) | Revit, EGR-01 |
 | [EGR-01](https://github.com/benattiahakim-maker/EG_ROOM_TRACKER/issues/1) | Approbation du contrat et des choix métier, D3 et D7 | Propriétaire |
 
-Outils développeur à venir (P1) : [EGR-19](https://github.com/benattiahakim-maker/EG_ROOM_TRACKER/issues/35) (gestion de l’application APS, WPF) et [EGR-20](https://github.com/benattiahakim-maker/EG_ROOM_TRACKER/issues/36) (lancement des WorkItems et lecture des résultats, WPF).
+Outils développeur à venir (P1) : [EGR-19](https://github.com/benattiahakim-maker/EG_ROOM_TRACKER/issues/35) (gestion de l’application APS, WPF ; bibliothèque APS en cours, PR #41) et [EGR-20](https://github.com/benattiahakim-maker/EG_ROOM_TRACKER/issues/36) (lancement des WorkItems et lecture des résultats, WPF).
 
 ## Build et tests
 
