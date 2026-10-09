@@ -19,7 +19,7 @@ internal static class CompositionRoot
             new InputConfigurationService(),
             new RevitDocumentService(context, log),
             new VolumeCalculationService(context),
-            new RoomCollectionService(context),
+            new RoomCollectionService(context, log),
             new RoomParameterReader(context, new RevitUnitConversionService()),
             new QualityCheckService(),
             new ResultExportService(),

@@ -50,7 +50,10 @@ Exemple :
 (compteur agrégé par code), `EXPORT_COMPLETED`, `EXTRACTION_FAILED` (avec `data.errorCode`), `EXTRACTION_SUMMARY`
 (statut au format de `result.json`, par exemple `succeededWithWarnings`, compteurs, erreurs, durée).
 `ROOM_EXTRACTION_FAILED` (niveau `Warning`, avec `roomElementId` et l'exception) signale une pièce exportée avec
-l'indicateur `EXTRACTION_ERROR`. En échec, `EXTRACTION_FAILED` puis `EXTRACTION_SUMMARY` restent écrits et le
+l'indicateur `EXTRACTION_ERROR`.
+
+Événements de collecte (EGR-07) : `ROOM_COLLECTION_DETAILS` (nombre de pièces, non placées, en variante, exclues
+par le filtre de phase, filtre appliqué) et `PHASE_NOT_FOUND` (Warning, phases demandées absentes du document). En échec, `EXTRACTION_FAILED` puis `EXTRACTION_SUMMARY` restent écrits et le
 journal est vidé : le rapport APS reste exploitable.
 
 ## Volume
