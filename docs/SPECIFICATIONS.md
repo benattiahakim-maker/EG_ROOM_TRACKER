@@ -323,8 +323,8 @@ Chaque décision est tranchée et documentée dans la carte indiquée, puis repo
 
 | ID | Décision à prendre | Carte |
 | --- | --- | --- |
-| D1 | Stratégie d'ouverture du RVT (`DesignAutomationData.RevitDoc` ou ouverture explicite), propriétaire de fermeture, traitement des maquettes collaboratives (détachement, worksets) | EGR-06 |
-| D2 | Politique des avertissements et erreurs Revit à l'ouverture : avertissements tolérés, journalisés en `REVIT_WARNING_ON_OPEN`, ou bloquants | EGR-06 |
+| D1 | Stratégie d'ouverture du RVT (`DesignAutomationData.RevitDoc` ou ouverture explicite), propriétaire de fermeture, traitement des maquettes collaboratives (détachement, worksets) — **Proposition EGR-06, à valider** : ouverture explicite du RVT principal (Activity sans `/i`), détachement avec conservation des worksets et ouverture de tous les worksets, fermeture sans sauvegarde par l'application ; détail dans [`docs/DOCUMENT.md`](DOCUMENT.md) | EGR-06 |
+| D2 | Politique des avertissements et erreurs Revit à l'ouverture : avertissements tolérés, journalisés en `REVIT_WARNING_ON_OPEN`, ou bloquants — **Proposition EGR-06, à valider** : avertissements tolérés et agrégés en `REVIT_WARNING_ON_OPEN` ; erreurs et corruptions bloquantes, annulation et `DOCUMENT_CORRUPTED` ; détail dans [`docs/DOCUMENT.md`](DOCUMENT.md) | EGR-06 |
 | D3 | Choix métier par défaut de la section 12 (document principal, phases, hauteur non bornée, occupation et finitions textuelles, mode de volume) | EGR-01 |
 | D4 | Arborescence des liens dans le ZIP et résolution de leurs chemins | EGR-05 |
 | D5 | Tolérances de comparaison des quantités, confirmées sur le jeu de référence | EGR-18 |

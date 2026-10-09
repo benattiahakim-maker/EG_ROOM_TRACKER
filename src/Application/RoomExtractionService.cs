@@ -133,6 +133,9 @@ public sealed class RoomExtractionService
             result = BuildResult(request, settings, document, startedAt, ExtractionStatus.Failed, [], [], roomsCollected, [error]);
         }
 
+        // Fermeture du document par son propriétaire (D1) dès la fin de la lecture, avant l'export.
+        CloseDocument();
+
         try
         {
             result = Export(request, result);
@@ -169,6 +172,22 @@ public sealed class RoomExtractionService
                     Counts = result.Summary.Counts with { RoomsExported = 0, RoomsWithAnomalies = 0 },
                 },
             };
+        }
+    }
+
+    private void CloseDocument()
+    {
+        try
+        {
+            _document.Close();
+        }
+        catch (Exception ex)
+        {
+            // Sans effet sur le résultat : le RVT source n'est jamais sauvegardé.
+            _log.Log(new LogEvent(LogLevel.Warning, LogEventCodes.DocumentCloseFailed, Stages.Document, "Fermeture du document impossible.")
+            {
+                Exception = ex,
+            });
         }
     }
 

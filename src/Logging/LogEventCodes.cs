@@ -12,4 +12,5 @@ public static class LogEventCodes
     public const string ExtractionFailed = "EXTRACTION_FAILED";
     public const string ExtractionSummary = "EXTRACTION_SUMMARY";
     public const string RoomExtractionFailed = "ROOM_EXTRACTION_FAILED";
+    public const string DocumentCloseFailed = "DOCUMENT_CLOSE_FAILED";
 }

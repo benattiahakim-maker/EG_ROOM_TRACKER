@@ -9,20 +9,39 @@ namespace EgRoomTracker.Revit;
 /// </summary>
 public sealed class RevitExecutionContext
 {
-    public RevitExecutionContext(RevitApplication application, Document? document)
+    public RevitExecutionContext(RevitApplication application, Document? providedDocument)
     {
         Application = application;
-        Document = document;
+        ProvidedDocument = providedDocument;
     }
 
     public RevitApplication Application { get; }
 
     /// <summary>
-    /// Document principal : fourni par <c>DesignAutomationData.RevitDoc</c> ou ouvert explicitement
-    /// par <see cref="RevitDocumentService"/> selon la décision D1 (EGR-06).
+    /// Document éventuellement ouvert par RevitCoreConsole (<c>DesignAutomationData.RevitDoc</c>, option <c>/i</c>).
+    /// Selon D1, l'Activity ne fournit pas de document ; s'il est fourni et correspond au RVT principal, il est réutilisé
+    /// sans être fermé par l'application.
     /// </summary>
-    public Document? Document { get; internal set; }
+    public Document? ProvidedDocument { get; }
+
+    /// <summary>Document principal accessible après <see cref="RevitDocumentService.Open"/>.</summary>
+    public Document? Document { get; private set; }
+
+    /// <summary>Vrai si le document a été ouvert par l'application, qui doit le fermer.</summary>
+    public bool OwnsDocument { get; private set; }
 
     public Document RequireDocument() =>
         Document ?? throw new InvalidOperationException("Document Revit non ouvert.");
+
+    internal void Attach(Document document, bool owned)
+    {
+        Document = document;
+        OwnsDocument = owned;
+    }
+
+    internal void Detach()
+    {
+        Document = null;
+        OwnsDocument = false;
+    }
 }
