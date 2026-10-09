@@ -21,6 +21,8 @@
     <AppendTargetFrameworkToOutputPath>false</AppendTargetFrameworkToOutputPath>
     <!-- Exclut les sorties des autres versions (obj/<v>, bin/<v>) des fichiers compilés. -->
     <DefaultItemExcludes>$(DefaultItemExcludes);bin/**;obj/**</DefaultItemExcludes>
+    <!-- Copie les dépendances NuGet d'exécution (DesignAutomationBridge.dll) dans la sortie ; RevitAPI reste exclu (ExcludeAssets=runtime, dossier ref/). -->
+    <CopyLocalLockFileAssemblies>true</CopyLocalLockFileAssemblies>
   </PropertyGroup>
 
   <Target Name="EgrValidateRevitVersion" BeforeTargets="Restore;_CheckForInvalidConfigurationAndPlatform"

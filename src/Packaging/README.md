@@ -11,6 +11,6 @@ Règles (spécifications, section 7) :
 - un bundle par version, construit avec `-p:RevitVersion=<année>` ;
 - assemblies Revit non embarquées (références de compilation uniquement) ;
 - inclure uniquement les dépendances applicatives nécessaires (les assemblies du cœur `EgRoomTracker.*.dll`) ;
-  présence de `DesignAutomationBridge.dll` dans le bundle à vérifier : une bibliothèque de classes ne copie pas
-  les assemblies NuGet dans `bin/` par défaut ;
+  `DesignAutomationBridge.dll` est copié dans `bin/<RevitVersion>/<Configuration>/` (`CopyLocalLockFileAssemblies`) ;
+  son inclusion dans le bundle est à confirmer en EGR-13 ;
 - aucun secret dans les bundles.

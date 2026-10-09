@@ -13,13 +13,30 @@ Aucun fichier de log n'est produit et les logs ne font pas partie de `result.jso
 | `level` | toujours | `Info`, `Warning`, `Error` |
 | `eventCode` | toujours | code d'événement (`EXTRACTION_STARTED`, …, voir `LogEventCodes`) |
 | `correlationId` | toujours | identifiant de corrélation de l'exécution, identique à `summary.correlationId` |
-| `stage` | toujours | étape (`startup`, `configuration`, `document`, `collection`, `quality`, `export`, `completion`) |
+| `stage` | toujours | identifiant d'étape (voir ci-dessous) |
 | `message` | toujours | texte lisible, secrets masqués |
 | `documentPath` | si pertinent | chemin relatif au répertoire d'entrée |
 | `roomElementId` | si pertinent | ElementId de la pièce |
 | `durationMs` | si pertinent | durée en millisecondes |
 | `data` | si pertinent | données complémentaires (compteurs, `errorCode`, …) |
 | `exception` | si présente | `type`, `message`, `stackTrace`, `inner` (5 niveaux max) |
+
+Identifiants d'étape (`Stages`, également utilisés dans `summary.errors[].stage` de `result.json`) :
+
+| `stage` | Étape |
+| --- | --- |
+| `startup` | démarrage, adaptation du contexte APS |
+| `configuration` | lecture et validation de `settings.json` |
+| `input` | entrée : ZIP décompressé, résolution du RVT principal |
+| `document` | accès au document Revit |
+| `collection` | collecte et lecture des pièces |
+| `quality` | indicateurs qualité et anomalies |
+| `export` | écriture de `result.json` |
+| `completion` | bilan final |
+| `logging` | événements propres au journal (`LOG_EVENTS_SUPPRESSED`) |
+
+Les lignes sont en ASCII pur : les caractères non ASCII (accents) sont échappés en `\uXXXX` et restitués par tout
+lecteur JSON.
 
 Exemple :
 
@@ -31,7 +48,9 @@ Exemple :
 
 `EXTRACTION_STARTED`, `CONFIGURATION_VALIDATED`, `DOCUMENT_ACCESSIBLE`, `COLLECTION_COMPLETED`, `ANOMALIES_DETECTED`
 (compteur agrégé par code), `EXPORT_COMPLETED`, `EXTRACTION_FAILED` (avec `data.errorCode`), `EXTRACTION_SUMMARY`
-(statut, compteurs, erreurs, durée). En échec, `EXTRACTION_FAILED` puis `EXTRACTION_SUMMARY` restent écrits et le
+(statut au format de `result.json`, par exemple `succeededWithWarnings`, compteurs, erreurs, durée).
+`ROOM_EXTRACTION_FAILED` (niveau `Warning`, avec `roomElementId` et l'exception) signale une pièce exportée avec
+l'indicateur `EXTRACTION_ERROR`. En échec, `EXTRACTION_FAILED` puis `EXTRACTION_SUMMARY` restent écrits et le
 journal est vidé : le rapport APS reste exploitable.
 
 ## Volume
@@ -56,8 +75,8 @@ Le masquage est un filet de sécurité : le code ne doit pas transmettre de secr
 `Flush()` est appelé en fin de `RoomExtractionService.Run` et dans le bloc `finally` du gestionnaire
 `DesignAutomationReadyEvent` (`AutomationApplication`) ; `Dispose()` vide également le journal.
 
-## Décision D8 — proposition
+## Décision D8 — tranchée
 
-Pas de fichier de log de débogage dans le MVP : la console suffit, car le rapport APS conserve la sortie standard
-en succès comme en échec. Un fichier facultatif pourra être ajouté plus tard comme sortie distincte de l'Activity,
-sans modifier `result.json`. **À valider par le porteur**, puis à reporter en section 11 des spécifications.
+Console uniquement : aucun fichier de log de débogage dans le MVP. Le rapport APS conserve la sortie standard en
+succès comme en échec. Un fichier facultatif ne pourra être ajouté que comme évolution explicite, sortie distincte
+de l'Activity, sans modifier `result.json` (spécifications, section 11).
