@@ -1,0 +1,33 @@
+<Project>
+  <!-- Gestion centralisée des versions de packages NuGet. -->
+  <PropertyGroup>
+    <ManagePackageVersionsCentrally>true</ManagePackageVersionsCentrally>
+  </PropertyGroup>
+
+  <!-- Tests unitaires (hors Revit). -->
+  <ItemGroup>
+    <PackageVersion Include="Microsoft.NET.Test.Sdk" Version="17.14.1" />
+    <PackageVersion Include="xunit" Version="2.9.3" />
+    <PackageVersion Include="xunit.runner.visualstudio" Version="3.1.4" />
+    <PackageVersion Include="coverlet.collector" Version="6.0.4" />
+  </ItemGroup>
+
+  <!--
+    Références Revit par version. Assemblies de référence uniquement (dossier ref/), jamais embarquées :
+    l'API est fournie par le moteur Design Automation.
+    Nice3point.Revit.Api.* : assemblies de référence publiées par la communauté (non officielles Autodesk).
+    Alternative officielle : SDK/installation Revit locale via la propriété RevitApiDir (voir build/Revit.props).
+  -->
+  <ItemGroup Condition="'$(RevitVersion)' == '2025'">
+    <PackageVersion Include="Nice3point.Revit.Api.RevitAPI" Version="2025.4.60" />
+    <PackageVersion Include="Autodesk.Forge.DesignAutomation.Revit" Version="2025.0.1" />
+  </ItemGroup>
+  <ItemGroup Condition="'$(RevitVersion)' == '2026'">
+    <PackageVersion Include="Nice3point.Revit.Api.RevitAPI" Version="2026.4.10" />
+    <PackageVersion Include="Autodesk.Forge.DesignAutomation.Revit" Version="2026.0.0" />
+  </ItemGroup>
+  <ItemGroup Condition="'$(RevitVersion)' == '2027'">
+    <PackageVersion Include="Nice3point.Revit.Api.RevitAPI" Version="2027.3.0" />
+    <PackageVersion Include="Autodesk.Forge.DesignAutomation.Revit" Version="2027.0.0" />
+  </ItemGroup>
+</Project>

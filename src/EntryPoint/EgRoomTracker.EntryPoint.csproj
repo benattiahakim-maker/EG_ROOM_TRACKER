@@ -1,0 +1,15 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <!-- Point d'entrée Design Automation (IExternalDBApplication). Mince : délègue à RoomExtractionService. -->
+  <Import Project="..\..\build\Revit.props" />
+  <PropertyGroup>
+    <RootNamespace>EgRoomTracker.EntryPoint</RootNamespace>
+    <AssemblyName>EgRoomTracker</AssemblyName>
+  </PropertyGroup>
+  <ItemGroup>
+    <!-- Pont Design Automation (événement DesignAutomationReadyEvent). Présence requise dans le bundle à vérifier en EGR-13. -->
+    <PackageReference Include="Autodesk.Forge.DesignAutomation.Revit" />
+  </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\Revit\EgRoomTracker.Revit.csproj" />
+  </ItemGroup>
+</Project>

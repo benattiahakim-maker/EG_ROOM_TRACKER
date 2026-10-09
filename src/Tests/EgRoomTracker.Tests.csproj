@@ -1,0 +1,28 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <!-- Tests unitaires du cœur indépendant de Revit, exécutables hors Revit et hors APS (EGR-17). -->
+  <PropertyGroup>
+    <TargetFramework>$(CoreTargetFramework)</TargetFramework>
+    <IsPackable>false</IsPackable>
+    <IsTestProject>true</IsTestProject>
+    <RootNamespace>EgRoomTracker.Tests</RootNamespace>
+  </PropertyGroup>
+  <ItemGroup>
+    <PackageReference Include="Microsoft.NET.Test.Sdk" />
+    <PackageReference Include="xunit" />
+    <PackageReference Include="xunit.runner.visualstudio" PrivateAssets="all" />
+    <PackageReference Include="coverlet.collector" PrivateAssets="all" />
+  </ItemGroup>
+  <ItemGroup>
+    <Using Include="Xunit" />
+  </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\Contracts\EgRoomTracker.Contracts.csproj" />
+    <ProjectReference Include="..\Logging\EgRoomTracker.Logging.csproj" />
+    <ProjectReference Include="..\Export\EgRoomTracker.Export.csproj" />
+    <ProjectReference Include="..\Application\EgRoomTracker.Application.csproj" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="..\..\docs\schema\result.schema.json" Link="Data\result.schema.json" CopyToOutputDirectory="PreserveNewest" />
+    <None Include="..\..\docs\examples\*.json" LinkBase="Data" CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
+</Project>

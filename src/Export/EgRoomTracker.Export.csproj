@@ -1,0 +1,10 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <!-- Sérialisation déterministe de result.json (IExportService). Aucune référence Revit. -->
+  <PropertyGroup>
+    <TargetFramework>$(CoreTargetFramework)</TargetFramework>
+    <RootNamespace>EgRoomTracker.Export</RootNamespace>
+  </PropertyGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\Contracts\EgRoomTracker.Contracts.csproj" />
+  </ItemGroup>
+</Project>

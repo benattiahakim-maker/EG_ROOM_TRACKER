@@ -1,0 +1,15 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <!-- Orchestration (RoomExtractionService) et interfaces des services. Aucune référence Revit. -->
+  <PropertyGroup>
+    <TargetFramework>$(CoreTargetFramework)</TargetFramework>
+    <RootNamespace>EgRoomTracker.Application</RootNamespace>
+  </PropertyGroup>
+  <ItemGroup>
+    <InternalsVisibleTo Include="EgRoomTracker.Tests" />
+  </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\Contracts\EgRoomTracker.Contracts.csproj" />
+    <ProjectReference Include="..\Logging\EgRoomTracker.Logging.csproj" />
+    <ProjectReference Include="..\Export\EgRoomTracker.Export.csproj" />
+  </ItemGroup>
+</Project>
