@@ -34,8 +34,31 @@ pièce est convertie en `EXTRACTION_ERROR` par l'orchestration.
 
 ## Champs complétés par d'autres cartes
 
-Quantités et volume (EGR-09) : `null` en attendant ; `volumeStatus` provisoire `notComputed` si le calcul est
-désactivé, sinon `notAvailable`. Finitions et paramètres partagés (EGR-10) : vides en attendant.
+Finitions et paramètres partagés (EGR-10) : vides en attendant.
+
+## Quantités et volume (EGR-09)
+
+| Champ | Source Revit | Conversion |
+| --- | --- | --- |
+| `areaM2` | `SpatialElement.Area` | `UnitUtils.ConvertFromInternalUnits(v, UnitTypeId.SquareMeters)` |
+| `unboundedHeightM` | `Room.UnboundedHeight` | `UnitUtils.ConvertFromInternalUnits(v, UnitTypeId.Meters)` |
+| `volumeM3` | `Room.Volume` | `UnitUtils.ConvertFromInternalUnits(v, UnitTypeId.CubicMeters)` |
+
+Aucun `AsValueString`, aucun arrondi (D7) ; les nombres JSON sont des `double` sérialisés indépendamment de la culture.
+Règles pures dans `RoomQuantities` (testées sous Linux) :
+
+| Situation | `volumeM3` | `volumeStatus` |
+| --- | --- | --- |
+| `AreaVolumeSettings.ComputeVolumes` faux (lu une fois par `VolumeCalculationService.Prepare`) | `null` | `notComputed` (volume non lu) |
+| Calcul actif, pièce placée, lecture finie | m³ | `computed` |
+| Calcul actif, pièce non placée | `null` | `notAvailable` |
+| Calcul actif, lecture en échec ou valeur NaN/infinie | `null` | `notAvailable` |
+
+Surface et hauteur NaN/infinies : `null` (UnitUtils lève `ArgumentException` sur une valeur non finie ; filtrées
+avant l'appel). Une pièce non placée garde la surface lue (0 attendu). L'anomalie document `VOLUME_NOT_COMPUTED` est
+posée par le contrôle qualité (EGR-11) à partir des `volumeStatus`. Mode `compute` (EGR-16) : `CONFIG_INVALID`
+explicite (étape configuration) tant que la carte n'est pas livrée. Les tolérances d'écart (D5) se vérifient sur le
+jeu de référence (EGR-18).
 
 ## Limite connue
 
