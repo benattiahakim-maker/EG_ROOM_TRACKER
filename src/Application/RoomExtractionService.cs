@@ -165,7 +165,7 @@ public sealed class RoomExtractionService
         {
             var error = new GlobalError(ErrorCodes.ExportFailed, Stages.Export, "Écriture ou finalisation de result.json impossible.");
             LogFailure(error, ex);
-            return result with
+            var failed = result with
             {
                 Rooms = [],
                 Anomalies = [],
@@ -176,6 +176,30 @@ public sealed class RoomExtractionService
                     Counts = result.Summary.Counts with { RoomsExported = 0, RoomsWithAnomalies = 0 },
                 },
             };
+            WriteMinimalFailedResult(request, failed);
+            return failed;
+        }
+    }
+
+    /// <summary>
+    /// Repli EGR-13 (décision du chef de projet) : après <c>EXPORT_FAILED</c>, une seule nouvelle tentative d'écrire
+    /// un <c>result.json</c> minimal (statut <c>failed</c>, erreurs, pièces et anomalies vides). En cas de nouvel
+    /// échec, le diagnostic repose sur le seul log console.
+    /// </summary>
+    private void WriteMinimalFailedResult(ExtractionRequest request, ExtractionResult failed)
+    {
+        try
+        {
+            _export.Write(failed, request.OutputPath);
+            _log.Info(LogEventCodes.ExportCompleted, Stages.Export, "result.json minimal écrit après EXPORT_FAILED (statut failed).");
+        }
+        catch (Exception ex)
+        {
+            _log.Log(new LogEvent(LogLevel.Error, LogEventCodes.ExtractionFailed, Stages.Export, $"{ErrorCodes.ExportFailed} : result.json minimal impossible à écrire ; diagnostic par le log console uniquement.")
+            {
+                Exception = ex,
+                Data = new Dictionary<string, object?> { ["errorCode"] = ErrorCodes.ExportFailed, ["fallback"] = true },
+            });
         }
     }
 

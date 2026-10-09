@@ -38,6 +38,12 @@ internal sealed class TestPipeline
 
     public Exception? ExportException { get; set; }
 
+    /// <summary>Échec par tentative d'écriture (index à partir de 0) ; prioritaire sur <see cref="ExportException"/>.</summary>
+    public Func<int, Exception?>? ExportFailure { get; set; }
+
+    /// <summary>Résultats transmis à chaque tentative d'écriture, réussie ou non.</summary>
+    public List<ExtractionResult> ExportAttempts { get; } = [];
+
     public ExtractionResult? Exported { get; private set; }
 
     public ExtractionSettings? LoadedSettings { get; private set; }
@@ -99,9 +105,12 @@ internal sealed class TestPipeline
 
         public void Write(ExtractionResult result, string outputPath)
         {
-            if (p.ExportException is not null)
+            var attempt = p.ExportAttempts.Count;
+            p.ExportAttempts.Add(result);
+            var failure = p.ExportFailure is not null ? p.ExportFailure(attempt) : p.ExportException;
+            if (failure is not null)
             {
-                throw p.ExportException;
+                throw failure;
             }
 
             p.Exported = result;

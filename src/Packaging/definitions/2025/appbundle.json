@@ -1,0 +1,5 @@
+{
+  "id": "EgRoomTracker_R2025",
+  "engine": "Autodesk.Revit+2025",
+  "description": "EG_ROOM_TRACKER : extraction des pièces vers result.json (Revit 2025)"
+}

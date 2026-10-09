@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Généré par scripts/appbundle.py à partir de bundle/PackageContents.xml.template (série Revit et version).
+     L'Automation Service ne lit que RuntimeRequirements et ComponentEntry ; SeriesMin/SeriesMax doivent
+     correspondre à l'engine de l'AppBundle (Autodesk.Revit+<année>). -->
+<ApplicationPackage SchemaVersion="1.0" AutodeskProduct="Revit" ProductType="Application" Name="EgRoomTracker" AppVersion="@APP_VERSION@">
+  <CompanyDetails Name="EG" />
+  <Components Description="EG_ROOM_TRACKER @REVIT_SERIES@">
+    <RuntimeRequirements OS="Win64" Platform="Revit" SeriesMin="@REVIT_SERIES@" SeriesMax="@REVIT_SERIES@" />
+    <ComponentEntry AppName="EgRoomTracker"
+                    Version="@APP_VERSION@"
+                    ModuleName="./Contents/EgRoomTracker.addin"
+                    AppDescription="Extraction des pièces Revit vers result.json"
+                    LoadOnCommandInvocation="False"
+                    LoadOnRevitStartup="True" />
+  </Components>
+</ApplicationPackage>

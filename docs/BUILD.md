@@ -17,7 +17,7 @@
 | `EgRoomTracker.Revit` | `src/Revit` | par version | oui — implémentations Revit API |
 | `EgRoomTracker.EntryPoint` | `src/EntryPoint` | par version | oui — `AutomationApplication`, assembly `EgRoomTracker.dll` |
 | `EgRoomTracker.Tests` | `src/Tests` | `net8.0` | non — tests unitaires hors Revit/APS |
-| — | `src/Packaging` | — | manifestes et bundles (EGR-13) |
+| — | `src/Packaging` | — | manifestes, définitions d'AppBundle et d'Activity, scripts d'assemblage, de contrôle et de publication (EGR-13, voir [`src/Packaging/README.md`](../src/Packaging/README.md)) |
 
 Dépendances : `Contracts` ← `Export` ← `Application` (← `Logging`) ← `Revit` ← `EntryPoint`. Le cœur ne référence jamais
 Revit ; un test (`RevitIsolationTests`) le vérifie.
@@ -48,6 +48,13 @@ dotnet test EgRoomTracker.sln                       # tests du cœur
 for v in 2025 2026 2027; do
   dotnet build src/EntryPoint/EgRoomTracker.EntryPoint.csproj -c Release -p:RevitVersion=$v
 done
+```
+
+AppBundles (ZIP contrôlés, sans appel APS) et tests des scripts de packaging :
+
+```bash
+src/Packaging/scripts/build-appbundle.sh            # artifacts/appbundles/EgRoomTracker_R<année>.zip
+python3 -m unittest discover -s src/Packaging/scripts/tests
 ```
 
 Les cibles Windows se compilent aussi sous Linux/macOS (`EnableWindowsTargeting`), car seules des assemblies de

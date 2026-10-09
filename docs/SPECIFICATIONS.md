@@ -115,11 +115,15 @@ En échec global, écrire si possible un `result.json` avec `status: failed`, `e
 
 Mise en œuvre (EGR-12, `ResultExportService`) : le document est entièrement sérialisé en mémoire avant toute écriture ; il est écrit dans un fichier temporaire caché du dossier de sortie, vidé sur disque, puis renommé sur `result.json` en remplaçant un fichier existant. En cas d'échec, le fichier temporaire est supprimé et l'orchestration rend `EXPORT_FAILED`. Format : indentation de deux espaces, fins de ligne `\n` et saut de ligne final quelle que soit la plateforme, ordre des propriétés fixé par les contrats, pièces et anomalies dans l'ordre reçu (le tri relève de l'orchestration). Une valeur non représentable en JSON (nombre non fini) est refusée sans rien écrire.
 
+Repli après `EXPORT_FAILED` (EGR-13, décision du chef de projet) : une seule nouvelle tentative d'écrire un `result.json` minimal (`summary` avec `status: failed` et les erreurs, dont `EXPORT_FAILED` ; `rooms` et `anomalies` vides). Si elle échoue aussi, le diagnostic repose sur le seul log console (événement `EXTRACTION_FAILED` avec `fallback: true`).
+
 ## 7. Builds, AppBundles et Activities
 
 Préparer trois artefacts explicitement versionnés et testés : 2025, 2026, 2027. Références API provenant de chaque SDK cible, non embarquées si fournies par le moteur. Inclure uniquement les dépendances applicatives nécessaires et les manifestes exigés par APS/Revit.
 
 Les Activities déclarent le moteur, l'AppBundle, la commande RevitCoreConsole, l'entrée ZIP/configuration et le paramètre de sortie `result.json`. Valider les chemins après décompression dans un vrai WorkItem. Versionner bundles et Activities ; utiliser des alias de test puis de production avec procédure de retour à la version précédente.
+
+Mise en œuvre (EGR-13) : manifestes, définitions JSON par version, script d'assemblage et de contrôle des ZIP, et script de publication (dry-run par défaut) dans [`src/Packaging`](../src/Packaging/README.md).
 
 Le pipeline compile, exécute les tests unitaires (EGR-17), valide les exemples contre le schéma, vérifie le contenu des ZIP, publie une version de test et exécute les tests APS. Secrets fournis par le système de déploiement, jamais dans les bundles. La disponibilité des moteurs et l'évolution des runtimes sont vérifiées lors de chaque publication.
 
@@ -333,7 +337,7 @@ Chaque décision est tranchée et documentée dans la carte indiquée, puis repo
 | D3 | Choix métier par défaut de la section 12 (document principal, phases, hauteur non bornée, occupation et finitions textuelles, mode de volume) | EGR-01 |
 | D4 | ~~Arborescence des liens dans le ZIP et résolution de leurs chemins~~ — **Tranchée (EGR-05)** : arborescence du projet conservée sous la racine du ZIP, liens Revit en chemin relatif à l'hôte, `mainModelPath` obligatoire dès qu'il y a des liens, lien introuvable signalé `LINK_MISSING` sans échec ; détail dans [`docs/INPUTS.md`](INPUTS.md) | EGR-05 |
 | D5 | Tolérances de comparaison des quantités, confirmées sur le jeu de référence | EGR-18 |
-| D6 | Comportement de sortie en échec : remontée de `result.json` par APS quand le SDK signale l'échec, ou alternative documentée | EGR-13 |
+| D6 | Comportement de sortie en échec : remontée de `result.json` par APS quand le SDK signale l'échec, ou alternative documentée — **À tester (EGR-13)** : la documentation APS ne dit pas si les sorties sont téléversées quand l'add-in signale l'échec (`Succeeded = false`), ni l'effet de `required` sur un paramètre de sortie absent ; protocole de test dans [`src/Packaging/README.md`](../src/Packaging/README.md#d6--sortie-en-échec-à-tester) | EGR-13 |
 | D7 | Précision numérique de sérialisation (valeur brute convertie ou arrondi fixe) | EGR-01 |
 | D8 | ~~Besoin d'un fichier de log de débogage facultatif en plus de la console~~ — **Tranchée (EGR-04)** : console uniquement, aucun fichier de log de débogage dans le MVP | EGR-04 |
 | D9 | Objectifs de performance (temps, taille de maquette) après mesure | EGR-14 |
