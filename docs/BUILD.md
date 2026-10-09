@@ -19,6 +19,9 @@
 | `EgRoomTracker.Tests` | `src/Tests` | `net8.0` | non — tests unitaires hors Revit/APS |
 | `EgRoomTracker.Aps` | `tools/EgRoomTracker.Aps` | `net8.0` | non — client APS des outils développeur (EGR-19/EGR-20, voir [`tools/EgRoomTracker.Aps/README.md`](../tools/EgRoomTracker.Aps/README.md)) |
 | `EgRoomTracker.Aps.Tests` | `tools/EgRoomTracker.Aps.Tests` | `net8.0` | non — tests sur HTTP simulé |
+| `EgRoomTracker.WorkItemRunner` | `tools/EgRoomTracker.WorkItemRunner` | `net8.0-windows` (WPF) | non — lancement de WorkItems et lecture de `result.json`, sous Windows (EGR-20, voir [`tools/EgRoomTracker.WorkItemRunner/README.md`](../tools/EgRoomTracker.WorkItemRunner/README.md)) |
+| `EgRoomTracker.WorkItemRunner.Core` | `tools/EgRoomTracker.WorkItemRunner.Core` | `net8.0` | non — ViewModel et services de WorkItemRunner, sans WPF |
+| `EgRoomTracker.WorkItemRunner.Tests` | `tools/EgRoomTracker.WorkItemRunner.Tests` | `net8.0` | non — tests sur Automation API et OSS simulés |
 | — | `src/Packaging` | — | manifestes, définitions d'AppBundle et d'Activity, scripts d'assemblage, de contrôle et de publication (EGR-13, voir [`src/Packaging/README.md`](../src/Packaging/README.md)) |
 
 Dépendances : `Contracts` ← `Export` ← `Application` (← `Logging`) ← `Revit` ← `EntryPoint`. Le cœur ne référence jamais

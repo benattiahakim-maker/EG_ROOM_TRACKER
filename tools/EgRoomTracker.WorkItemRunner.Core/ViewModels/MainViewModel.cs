@@ -1,0 +1,449 @@
+using System.Collections.ObjectModel;
+using EgRoomTracker.Aps;
+using EgRoomTracker.Aps.DesignAutomation;
+using EgRoomTracker.Aps.Oss;
+using EgRoomTracker.Aps.Packaging;
+using EgRoomTracker.Logging;
+using EgRoomTracker.WorkItemRunner.Mvvm;
+using EgRoomTracker.WorkItemRunner.Services;
+
+namespace EgRoomTracker.WorkItemRunner.ViewModels;
+
+/// <summary>Entrée du journal (déjà masquée).</summary>
+public sealed record LogEntry(DateTimeOffset Time, string Level, string Message)
+{
+    public string TimeText => Time.ToLocalTime().ToString("HH:mm:ss", System.Globalization.CultureInfo.InvariantCulture);
+}
+
+/// <summary>
+/// Fenêtre principale de WorkItemRunner (EGR-20). Un lancement suit toujours le même parcours : contrôles locaux et
+/// lectures seules, plan affiché et confirmé (exécution facturée), puis téléversement, soumission, suivi et
+/// récupération des sorties. Aucun secret ni URL signée n'est affiché ou journalisé.
+/// </summary>
+public sealed class MainViewModel : ObservableObject
+{
+    private readonly RunnerOptions _options;
+    private readonly HttpClient _httpClient;
+    private readonly IConfirmationService _confirmation;
+    private readonly IFileDialogService? _files;
+    private readonly TimeProvider _time;
+    private readonly SynchronizationContext? _uiContext;
+    private WorkItemRunnerService? _service;
+    private ActiveRun? _activeRun;
+    private CancellationTokenSource? _follow;
+    private string _nickname;
+    private string _bucketKey;
+    private string _repositoryRoot;
+    private string _selectedRevitVersion = "2026";
+    private string _selectedAlias = DeploymentService.TestAlias;
+    private string _zipPath = string.Empty;
+    private string _settingsText = string.Empty;
+    private string _settingsValidation = string.Empty;
+    private int _pollIntervalSeconds = 10;
+    private string _workItemStatus = "—";
+    private RunRecord? _selectedRun;
+    private ResultView? _result;
+    private string _reportText = string.Empty;
+    private bool _isBusy;
+    private string _status = "Prêt.";
+
+    public MainViewModel(RunnerOptions options, HttpClient httpClient, IConfirmationService confirmation, IFileDialogService? files = null, TimeProvider? time = null)
+    {
+        _options = options;
+        _httpClient = httpClient;
+        _confirmation = confirmation;
+        _files = files;
+        _time = time ?? TimeProvider.System;
+        _uiContext = SynchronizationContext.Current;
+        _nickname = options.Aps.Nickname ?? string.Empty;
+        _bucketKey = options.BucketKey ?? string.Empty;
+        _repositoryRoot = options.RepositoryRoot ?? string.Empty;
+
+        RunCommand = new AsyncRelayCommand(() => RunAsync("Lancement", RunCoreAsync), () => !IsBusy);
+        StopFollowingCommand = new AsyncRelayCommand(StopFollowingAsync, () => _follow is not null);
+        CancelWorkItemCommand = new AsyncRelayCommand(CancelWorkItemAsync, () => _activeRun is not null && _follow is not null);
+        RefreshHistoryCommand = new AsyncRelayCommand(() => RunAsync("Historique", () => { ReloadHistory(); return Task.CompletedTask; }), () => !IsBusy);
+        ExportRunCommand = new AsyncRelayCommand(() => RunAsync("Export", ExportCoreAsync), () => !IsBusy && SelectedRun is not null);
+        BrowseZipCommand = new AsyncRelayCommand(() =>
+        {
+            ZipPath = _files?.OpenFile("ZIP de la maquette", "ZIP (*.zip)|*.zip", null) ?? ZipPath;
+            return Task.CompletedTask;
+        });
+        OpenSettingsCommand = new AsyncRelayCommand(() => RunAsync("settings.json", () =>
+        {
+            if (_files?.OpenFile("settings.json", "JSON (*.json)|*.json", null) is { } path)
+            {
+                SettingsText = File.ReadAllText(path);
+            }
+
+            return Task.CompletedTask;
+        }));
+        LoadExampleSettingsCommand = new AsyncRelayCommand(() => RunAsync("Exemple", () =>
+        {
+            SettingsText = File.ReadAllText(Path.Combine(RequireRepositoryRoot(), "docs", "examples", "settings.example.json"));
+            return Task.CompletedTask;
+        }));
+    }
+
+    public string CredentialSource => _options.CredentialSource;
+
+    public IReadOnlyList<string> RevitVersions => RunnerOptions.RevitVersions;
+
+    public IReadOnlyList<string> Aliases { get; } = [DeploymentService.TestAlias, DeploymentService.ProdAlias];
+
+    public ObservableCollection<RunRecord> History { get; } = [];
+
+    public ObservableCollection<LogEntry> Log { get; } = [];
+
+    public AsyncRelayCommand RunCommand { get; }
+
+    public AsyncRelayCommand StopFollowingCommand { get; }
+
+    public AsyncRelayCommand CancelWorkItemCommand { get; }
+
+    public AsyncRelayCommand RefreshHistoryCommand { get; }
+
+    public AsyncRelayCommand ExportRunCommand { get; }
+
+    public AsyncRelayCommand BrowseZipCommand { get; }
+
+    public AsyncRelayCommand OpenSettingsCommand { get; }
+
+    public AsyncRelayCommand LoadExampleSettingsCommand { get; }
+
+    public string Nickname
+    {
+        get => _nickname;
+        set => SetProperty(ref _nickname, value.Trim());
+    }
+
+    /// <summary>Bucket OSS (APS_BUCKET) ; objets transitoires, supprimés par APS après 24 h.</summary>
+    public string BucketKey
+    {
+        get => _bucketKey;
+        set => SetProperty(ref _bucketKey, value.Trim());
+    }
+
+    public string RepositoryRoot
+    {
+        get => _repositoryRoot;
+        set
+        {
+            if (SetProperty(ref _repositoryRoot, value.Trim()))
+            {
+                _service = null;
+            }
+        }
+    }
+
+    public string SelectedRevitVersion
+    {
+        get => _selectedRevitVersion;
+        set => SetProperty(ref _selectedRevitVersion, value);
+    }
+
+    public string SelectedAlias
+    {
+        get => _selectedAlias;
+        set => SetProperty(ref _selectedAlias, value);
+    }
+
+    public string ZipPath
+    {
+        get => _zipPath;
+        set => SetProperty(ref _zipPath, value.Trim());
+    }
+
+    /// <summary>Contenu de settings.json (éditeur) ; validé à chaque modification avec les règles de l'extracteur.</summary>
+    public string SettingsText
+    {
+        get => _settingsText;
+        set
+        {
+            if (SetProperty(ref _settingsText, value))
+            {
+                var check = InputChecks.CheckSettings(value);
+                SettingsValidation = check.Errors.Concat(check.Warnings).FirstOrDefault() ?? "settings.json valide.";
+            }
+        }
+    }
+
+    public string SettingsValidation
+    {
+        get => _settingsValidation;
+        private set => SetProperty(ref _settingsValidation, value);
+    }
+
+    public int PollIntervalSeconds
+    {
+        get => _pollIntervalSeconds;
+        set => SetProperty(ref _pollIntervalSeconds, Math.Max(0, value));
+    }
+
+    public string WorkItemStatus
+    {
+        get => _workItemStatus;
+        private set => SetProperty(ref _workItemStatus, value);
+    }
+
+    public RunRecord? SelectedRun
+    {
+        get => _selectedRun;
+        set
+        {
+            if (SetProperty(ref _selectedRun, value))
+            {
+                ShowRun(value);
+                ExportRunCommand.RaiseCanExecuteChanged();
+            }
+        }
+    }
+
+    /// <summary>result.json du lancement sélectionné (bilan, pièces, anomalies, écarts au schéma).</summary>
+    public ResultView? Result
+    {
+        get => _result;
+        private set => SetProperty(ref _result, value);
+    }
+
+    public string ReportText
+    {
+        get => _reportText;
+        private set => SetProperty(ref _reportText, value);
+    }
+
+    public bool IsBusy
+    {
+        get => _isBusy;
+        private set
+        {
+            if (SetProperty(ref _isBusy, value))
+            {
+                RaiseCanExecuteChanged();
+            }
+        }
+    }
+
+    public string Status
+    {
+        get => _status;
+        private set => SetProperty(ref _status, value);
+    }
+
+    /// <summary>Charge l'historique au démarrage (lecture locale uniquement).</summary>
+    public void Initialize()
+    {
+        try
+        {
+            ReloadHistory();
+        }
+        catch (InvalidOperationException exception)
+        {
+            AddLog("warning", exception.Message);
+        }
+    }
+
+    // ---- Opérations ----------------------------------------------------------------------------------------------
+
+    private async Task RunCoreAsync()
+    {
+        var service = Service();
+        if (string.IsNullOrEmpty(Nickname))
+        {
+            throw new InvalidOperationException("APS_NICKNAME est obligatoire (champ Nickname).");
+        }
+
+        var interval = TimeSpan.FromSeconds(PollIntervalSeconds);
+        var request = new RunRequest(SelectedRevitVersion, SelectedAlias, Nickname, ZipPath, SettingsText);
+        var prepared = await service.PrepareAsync(request, BucketKey, interval);
+        AddLog("plan", prepared.Plan.Title + Environment.NewLine + prepared.Plan.Text);
+        if (!await _confirmation.ConfirmAsync(prepared.Plan))
+        {
+            AddLog("info", "Annulé : aucun fichier téléversé, aucun WorkItem soumis.");
+            return;
+        }
+
+        AddLog("info", "Confirmé : lancement du WorkItem.");
+        var run = await service.SubmitAsync(prepared, Progress);
+        _activeRun = run;
+        _follow = new CancellationTokenSource();
+        RaiseCanExecuteChanged();
+        try
+        {
+            WorkItemStatus = run.Record.WorkItemStatus ?? "—";
+            var status = await service.WaitAsync(run, interval, new Callback<WorkItemStatus>(s => OnUi(() => WorkItemStatus = s.Status)), _follow.Token);
+            WorkItemStatus = status.Status;
+            AddLog(status.IsSuccess ? "info" : "warning", $"WorkItem {status.Id} terminé : {status.Status}.");
+            var (record, result, report) = await service.CollectAsync(run, status, Progress);
+            ReloadHistory();
+            SelectedRun = History.FirstOrDefault(r => r.RunId == record.RunId);
+            if (result is { IsSchemaValid: false })
+            {
+                AddLog("warning", $"result.json non conforme au schéma : {result.SchemaErrors.Count} écart(s).");
+            }
+        }
+        catch (OperationCanceledException)
+        {
+            AddLog("info", $"Suivi arrêté ; le WorkItem {run.Record.WorkItemId} continue côté APS (statut conservé 3 jours).");
+            ReloadHistory();
+        }
+        finally
+        {
+            _follow?.Dispose();
+            _follow = null;
+            _activeRun = null;
+            RaiseCanExecuteChanged();
+        }
+    }
+
+    private Task StopFollowingAsync()
+    {
+        _follow?.Cancel();
+        return Task.CompletedTask;
+    }
+
+    private async Task CancelWorkItemAsync()
+    {
+        if (_activeRun is not { } run)
+        {
+            return;
+        }
+
+        var plan = new OperationPlan("Annuler le WorkItem", [$"DELETE /workitems/{run.Record.WorkItemId} : le WorkItem en attente ou en cours est annulé.", "Les sorties ne seront probablement pas produites."], IsDestructive: true);
+        AddLog("plan", plan.Title + Environment.NewLine + plan.Text);
+        if (!await _confirmation.ConfirmAsync(plan))
+        {
+            AddLog("info", "Annulation du WorkItem abandonnée.");
+            return;
+        }
+
+        try
+        {
+            await Service().CancelAsync(run);
+            AddLog("info", $"Annulation demandée pour {run.Record.WorkItemId}.");
+        }
+        catch (ApsException exception)
+        {
+            AddLog("error", $"Annulation : {exception.Message}");
+        }
+    }
+
+    private Task ExportCoreAsync()
+    {
+        var run = SelectedRun ?? throw new InvalidOperationException("Sélectionner un lancement.");
+        if (_files?.SaveFile("Exporter le lancement", "ZIP (*.zip)|*.zip", $"workitem-{run.RunId}.zip") is { } path)
+        {
+            Service().History.Export(run.RunId, path);
+            AddLog("info", $"Lancement {run.RunId} exporté : {Path.GetFileName(path)}");
+        }
+
+        return Task.CompletedTask;
+    }
+
+    // ---- Interne -------------------------------------------------------------------------------------------------
+
+    private void ShowRun(RunRecord? run)
+    {
+        if (run is null || _service is null)
+        {
+            Result = null;
+            ReportText = string.Empty;
+            return;
+        }
+
+        var (result, report) = _service.LoadRun(run);
+        Result = result;
+        ReportText = report is null ? "(rapport non téléchargé)" : SecretRedactor.Redact(report);
+    }
+
+    private void ReloadHistory()
+    {
+        var records = Service().History.Load();
+        var selected = SelectedRun?.RunId;
+        History.Clear();
+        foreach (var record in records)
+        {
+            History.Add(record);
+        }
+
+        SelectedRun = History.FirstOrDefault(r => r.RunId == selected);
+    }
+
+    private async Task RunAsync(string operation, Func<Task> action)
+    {
+        IsBusy = true;
+        Status = operation + "…";
+        try
+        {
+            await action();
+            Status = operation + " : terminé.";
+        }
+        catch (Exception exception) when (exception is ApsException or InvalidOperationException or IOException or HttpRequestException or ArgumentException or UnauthorizedAccessException)
+        {
+            AddLog("error", $"{operation} : {exception.Message}");
+            Status = operation + " : échec (voir le journal).";
+        }
+        finally
+        {
+            IsBusy = false;
+        }
+    }
+
+    private WorkItemRunnerService Service()
+    {
+        if (_service is not null)
+        {
+            return _service;
+        }
+
+        var root = RequireRepositoryRoot();
+        var tokens = _options.Aps.CreateTokenProvider(_httpClient, ApsScopes.All);
+        _service = new WorkItemRunnerService(
+            new DesignAutomationClient(_httpClient, tokens, _options.Aps.DaBaseUrl),
+            new OssClient(_httpClient, tokens, _options.Aps.OssBaseUrl),
+            DefinitionLoader.ForRepository(root),
+            ResultReader.ForRepository(root),
+            new RunHistory(_options.DataDirectory),
+            _time);
+        return _service;
+    }
+
+    private string RequireRepositoryRoot() =>
+        string.IsNullOrWhiteSpace(RepositoryRoot) || !Directory.Exists(Path.Combine(RepositoryRoot, "src", "Packaging", "definitions"))
+            ? throw new InvalidOperationException("Racine du dépôt introuvable (src/Packaging/definitions) : la choisir ou définir EGR_REPO_ROOT.")
+            : RepositoryRoot;
+
+    private void Progress(string message) => AddLog("info", message);
+
+    private void AddLog(string level, string message)
+    {
+        var entry = new LogEntry(_time.GetUtcNow(), level, SecretRedactor.Redact(message));
+        OnUi(() => Log.Add(entry));
+    }
+
+    private void OnUi(Action action)
+    {
+        if (_uiContext is null || SynchronizationContext.Current == _uiContext)
+        {
+            action();
+        }
+        else
+        {
+            _uiContext.Post(_ => action(), null);
+        }
+    }
+
+    private void RaiseCanExecuteChanged()
+    {
+        foreach (var command in new[] { RunCommand, StopFollowingCommand, CancelWorkItemCommand, RefreshHistoryCommand, ExportRunCommand })
+        {
+            command?.RaiseCanExecuteChanged();
+        }
+    }
+
+    /// <summary>IProgress synchrone : le marshalling vers l'interface est fait par <see cref="OnUi"/>.</summary>
+    private sealed class Callback<T>(Action<T> report) : IProgress<T>
+    {
+        public void Report(T value) => report(value);
+    }
+}
