@@ -22,6 +22,9 @@
 | `EgRoomTracker.DaManager` | `tools/EgRoomTracker.DaManager` | `net8.0-windows` (WPF) | non — outil de gestion APS, lancement sous Windows (voir [`tools/EgRoomTracker.DaManager/README.md`](../tools/EgRoomTracker.DaManager/README.md)) |
 | `EgRoomTracker.DaManager.Core` | `tools/EgRoomTracker.DaManager.Core` | `net8.0` | non — ViewModels et services de DaManager, sans WPF |
 | `EgRoomTracker.DaManager.Tests` | `tools/EgRoomTracker.DaManager.Tests` | `net8.0` | non — tests sur Automation API simulée |
+| `EgRoomTracker.WorkItemRunner` | `tools/EgRoomTracker.WorkItemRunner` | `net8.0-windows` (WPF) | non — lancement de WorkItems et lecture de `result.json`, sous Windows (EGR-20, voir [`tools/EgRoomTracker.WorkItemRunner/README.md`](../tools/EgRoomTracker.WorkItemRunner/README.md)) |
+| `EgRoomTracker.WorkItemRunner.Core` | `tools/EgRoomTracker.WorkItemRunner.Core` | `net8.0` | non — ViewModel et services de WorkItemRunner, sans WPF |
+| `EgRoomTracker.WorkItemRunner.Tests` | `tools/EgRoomTracker.WorkItemRunner.Tests` | `net8.0` | non — tests sur Automation API et OSS simulés |
 | — | `src/Packaging` | — | manifestes, définitions d'AppBundle et d'Activity, scripts d'assemblage, de contrôle et de publication (EGR-13, voir [`src/Packaging/README.md`](../src/Packaging/README.md)) |
 
 Dépendances : `Contracts` ← `Export` ← `Application` (← `Logging`) ← `Revit` ← `EntryPoint`. Le cœur ne référence jamais
