@@ -1,0 +1,16 @@
+{
+  "schemaVersion": "1.0",
+  "mainModelPath": null,
+  "phaseIds": null,
+  "volumeMode": "preserve",
+  "sharedParameters": [
+    {
+      "key": "inconnu",
+      "guid": "6f79aade-d799-4d28-8e69-c5d249693cbe"
+    },
+    {
+      "key": "murSeulement",
+      "guid": "2fba96b5-25d5-47ba-8e60-df0e1ce6d86b"
+    }
+  ]
+}

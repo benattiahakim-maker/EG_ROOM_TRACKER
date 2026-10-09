@@ -1,0 +1,571 @@
+{
+  "schemaVersion": "1.3",
+  "summary": {
+    "correlationId": "recette-R11",
+    "extractorVersion": "0.1.0",
+    "revit": {
+      "version": "2026",
+      "build": null
+    },
+    "apsEngine": null,
+    "source": {
+      "fileName": "EGR_Ref.rvt",
+      "relativePath": "EGR_Ref.rvt",
+      "isWorkshared": false
+    },
+    "startedAtUtc": "2026-10-09T12:00:00Z",
+    "completedAtUtc": "2026-10-09T12:00:30Z",
+    "options": {
+      "phaseIds": null,
+      "volumeMode": "compute",
+      "sharedParameterKeys": []
+    },
+    "volumeComputation": {
+      "documentComputeVolumes": false,
+      "computeApplied": true,
+      "transactionRolledBack": true
+    },
+    "counts": {
+      "roomsCollected": 15,
+      "roomsExported": 15,
+      "roomsWithAnomalies": 5
+    },
+    "status": "succeededWithWarnings",
+    "errors": []
+  },
+  "rooms": [
+    {
+      "elementId": "9000101",
+      "uniqueId": "EGR18-P01",
+      "name": "Bureau d'étude",
+      "number": "001",
+      "areaM2": 20.0,
+      "unboundedHeightM": 2.7,
+      "level": {
+        "elementId": "9000001",
+        "uniqueId": "EGR18-NIVEAU-R+0",
+        "name": "R+0"
+      },
+      "occupancy": "Bureau",
+      "volumeM3": 54.0,
+      "volumeStatus": "computed",
+      "finishes": {
+        "floor": "Parquet chêne",
+        "wall": "Peinture blanche",
+        "ceiling": "Faux plafond 60×60",
+        "base": "Plinthe bois"
+      },
+      "phase": {
+        "elementId": "9000012",
+        "name": "Nouvelle construction"
+      },
+      "designOption": null,
+      "sharedParameters": {},
+      "qualityFlags": [
+        "DUPLICATE_NUMBER"
+      ]
+    },
+    {
+      "elementId": "9000102",
+      "uniqueId": "EGR18-P02",
+      "name": "Salle de réunion « Été »",
+      "number": "0010",
+      "areaM2": 12.0,
+      "unboundedHeightM": 2.7,
+      "level": {
+        "elementId": "9000001",
+        "uniqueId": "EGR18-NIVEAU-R+0",
+        "name": "R+0"
+      },
+      "occupancy": "Réunion",
+      "volumeM3": 32.4,
+      "volumeStatus": "computed",
+      "finishes": {
+        "floor": "Moquette",
+        "wall": "Enduit à la chaux",
+        "ceiling": "Dalles acoustiques",
+        "base": "Plinthe carrelage"
+      },
+      "phase": {
+        "elementId": "9000012",
+        "name": "Nouvelle construction"
+      },
+      "designOption": null,
+      "sharedParameters": {},
+      "qualityFlags": []
+    },
+    {
+      "elementId": "9000103",
+      "uniqueId": "EGR18-P03",
+      "name": "Local technique",
+      "number": "002",
+      "areaM2": 6.0,
+      "unboundedHeightM": 2.7,
+      "level": {
+        "elementId": "9000001",
+        "uniqueId": "EGR18-NIVEAU-R+0",
+        "name": "R+0"
+      },
+      "occupancy": null,
+      "volumeM3": 16.2,
+      "volumeStatus": "computed",
+      "finishes": {
+        "floor": "Résine",
+        "wall": "",
+        "ceiling": "Brut",
+        "base": null
+      },
+      "phase": {
+        "elementId": "9000012",
+        "name": "Nouvelle construction"
+      },
+      "designOption": null,
+      "sharedParameters": {},
+      "qualityFlags": []
+    },
+    {
+      "elementId": "9000104",
+      "uniqueId": "EGR18-P04",
+      "name": "Réserve",
+      "number": "001",
+      "areaM2": 0,
+      "unboundedHeightM": 2.7,
+      "level": {
+        "elementId": "9000001",
+        "uniqueId": "EGR18-NIVEAU-R+0",
+        "name": "R+0"
+      },
+      "occupancy": "Stockage",
+      "volumeM3": null,
+      "volumeStatus": "notAvailable",
+      "finishes": {
+        "floor": null,
+        "wall": null,
+        "ceiling": null,
+        "base": null
+      },
+      "phase": {
+        "elementId": "9000012",
+        "name": "Nouvelle construction"
+      },
+      "designOption": null,
+      "sharedParameters": {},
+      "qualityFlags": [
+        "UNPLACED",
+        "DUPLICATE_NUMBER"
+      ]
+    },
+    {
+      "elementId": "9000105",
+      "uniqueId": "EGR18-P05",
+      "name": "Couloir",
+      "number": "003",
+      "areaM2": 0,
+      "unboundedHeightM": 2.7,
+      "level": {
+        "elementId": "9000001",
+        "uniqueId": "EGR18-NIVEAU-R+0",
+        "name": "R+0"
+      },
+      "occupancy": "Circulation",
+      "volumeM3": 0.0,
+      "volumeStatus": "computed",
+      "finishes": {
+        "floor": null,
+        "wall": null,
+        "ceiling": null,
+        "base": null
+      },
+      "phase": {
+        "elementId": "9000012",
+        "name": "Nouvelle construction"
+      },
+      "designOption": null,
+      "sharedParameters": {},
+      "qualityFlags": [
+        "ZERO_AREA"
+      ]
+    },
+    {
+      "elementId": "9000106",
+      "uniqueId": "EGR18-P06",
+      "name": "Archives",
+      "number": "1",
+      "areaM2": 4.0,
+      "unboundedHeightM": 2.7,
+      "level": {
+        "elementId": "9000001",
+        "uniqueId": "EGR18-NIVEAU-R+0",
+        "name": "R+0"
+      },
+      "occupancy": "Archives",
+      "volumeM3": 10.8,
+      "volumeStatus": "computed",
+      "finishes": {
+        "floor": null,
+        "wall": null,
+        "ceiling": null,
+        "base": null
+      },
+      "phase": {
+        "elementId": "9000012",
+        "name": "Nouvelle construction"
+      },
+      "designOption": null,
+      "sharedParameters": {},
+      "qualityFlags": []
+    },
+    {
+      "elementId": "9000107",
+      "uniqueId": "EGR18-P07",
+      "name": "Dégagement",
+      "number": "",
+      "areaM2": 3.0,
+      "unboundedHeightM": 2.7,
+      "level": {
+        "elementId": "9000001",
+        "uniqueId": "EGR18-NIVEAU-R+0",
+        "name": "R+0"
+      },
+      "occupancy": null,
+      "volumeM3": 8.1,
+      "volumeStatus": "computed",
+      "finishes": {
+        "floor": null,
+        "wall": null,
+        "ceiling": null,
+        "base": null
+      },
+      "phase": {
+        "elementId": "9000012",
+        "name": "Nouvelle construction"
+      },
+      "designOption": null,
+      "sharedParameters": {},
+      "qualityFlags": []
+    },
+    {
+      "elementId": "9000108",
+      "uniqueId": "EGR18-P08",
+      "name": "Placard",
+      "number": "",
+      "areaM2": 1.0,
+      "unboundedHeightM": 2.7,
+      "level": {
+        "elementId": "9000001",
+        "uniqueId": "EGR18-NIVEAU-R+0",
+        "name": "R+0"
+      },
+      "occupancy": null,
+      "volumeM3": 2.7,
+      "volumeStatus": "computed",
+      "finishes": {
+        "floor": null,
+        "wall": null,
+        "ceiling": null,
+        "base": null
+      },
+      "phase": {
+        "elementId": "9000012",
+        "name": "Nouvelle construction"
+      },
+      "designOption": null,
+      "sharedParameters": {},
+      "qualityFlags": []
+    },
+    {
+      "elementId": "9000109",
+      "uniqueId": "EGR18-P09",
+      "name": "Sans attributs",
+      "number": "004",
+      "areaM2": 5.0,
+      "unboundedHeightM": 2.7,
+      "level": {
+        "elementId": "9000001",
+        "uniqueId": "EGR18-NIVEAU-R+0",
+        "name": "R+0"
+      },
+      "occupancy": null,
+      "volumeM3": 13.5,
+      "volumeStatus": "computed",
+      "finishes": {
+        "floor": null,
+        "wall": null,
+        "ceiling": null,
+        "base": null
+      },
+      "phase": {
+        "elementId": "9000012",
+        "name": "Nouvelle construction"
+      },
+      "designOption": null,
+      "sharedParameters": {},
+      "qualityFlags": []
+    },
+    {
+      "elementId": "9000110",
+      "uniqueId": "EGR18-P10",
+      "name": "Archives existantes",
+      "number": "001",
+      "areaM2": 9.0,
+      "unboundedHeightM": 2.7,
+      "level": {
+        "elementId": "9000001",
+        "uniqueId": "EGR18-NIVEAU-R+0",
+        "name": "R+0"
+      },
+      "occupancy": null,
+      "volumeM3": 24.3,
+      "volumeStatus": "computed",
+      "finishes": {
+        "floor": null,
+        "wall": null,
+        "ceiling": null,
+        "base": null
+      },
+      "phase": {
+        "elementId": "9000011",
+        "name": "Existant"
+      },
+      "designOption": null,
+      "sharedParameters": {},
+      "qualityFlags": []
+    },
+    {
+      "elementId": "9000111",
+      "uniqueId": "EGR18-P11",
+      "name": "Bureau variante A",
+      "number": "010",
+      "areaM2": 7.5,
+      "unboundedHeightM": 2.7,
+      "level": {
+        "elementId": "9000001",
+        "uniqueId": "EGR18-NIVEAU-R+0",
+        "name": "R+0"
+      },
+      "occupancy": null,
+      "volumeM3": 20.25,
+      "volumeStatus": "computed",
+      "finishes": {
+        "floor": null,
+        "wall": null,
+        "ceiling": null,
+        "base": null
+      },
+      "phase": {
+        "elementId": "9000012",
+        "name": "Nouvelle construction"
+      },
+      "designOption": {
+        "elementId": "9000021",
+        "name": "Option A"
+      },
+      "sharedParameters": {},
+      "qualityFlags": []
+    },
+    {
+      "elementId": "9000112",
+      "uniqueId": "EGR18-P12",
+      "name": "Bureau variante B",
+      "number": "010",
+      "areaM2": 7.5,
+      "unboundedHeightM": 2.7,
+      "level": {
+        "elementId": "9000001",
+        "uniqueId": "EGR18-NIVEAU-R+0",
+        "name": "R+0"
+      },
+      "occupancy": null,
+      "volumeM3": 20.25,
+      "volumeStatus": "computed",
+      "finishes": {
+        "floor": null,
+        "wall": null,
+        "ceiling": null,
+        "base": null
+      },
+      "phase": {
+        "elementId": "9000012",
+        "name": "Nouvelle construction"
+      },
+      "designOption": {
+        "elementId": "9000022",
+        "name": "Option B"
+      },
+      "sharedParameters": {},
+      "qualityFlags": []
+    },
+    {
+      "elementId": "9000113",
+      "uniqueId": "EGR18-P13",
+      "name": "Combles aménagés",
+      "number": "101",
+      "areaM2": 20.0,
+      "unboundedHeightM": 2.7,
+      "level": {
+        "elementId": "9000002",
+        "uniqueId": "EGR18-NIVEAU-R+1",
+        "name": "R+1"
+      },
+      "occupancy": null,
+      "volumeM3": 54.0,
+      "volumeStatus": "computed",
+      "finishes": {
+        "floor": null,
+        "wall": null,
+        "ceiling": null,
+        "base": null
+      },
+      "phase": {
+        "elementId": "9000012",
+        "name": "Nouvelle construction"
+      },
+      "designOption": null,
+      "sharedParameters": {},
+      "qualityFlags": []
+    },
+    {
+      "elementId": "9000114",
+      "uniqueId": "EGR18-P14",
+      "name": "Accueil commun",
+      "number": "011",
+      "areaM2": 6.0,
+      "unboundedHeightM": 2.7,
+      "level": {
+        "elementId": "9000001",
+        "uniqueId": "EGR18-NIVEAU-R+0",
+        "name": "R+0"
+      },
+      "occupancy": null,
+      "volumeM3": 16.2,
+      "volumeStatus": "computed",
+      "finishes": {
+        "floor": null,
+        "wall": null,
+        "ceiling": null,
+        "base": null
+      },
+      "phase": {
+        "elementId": "9000012",
+        "name": "Nouvelle construction"
+      },
+      "designOption": null,
+      "sharedParameters": {},
+      "qualityFlags": [
+        "DUPLICATE_NUMBER"
+      ]
+    },
+    {
+      "elementId": "9000115",
+      "uniqueId": "EGR18-P15",
+      "name": "Bureau variante B2",
+      "number": "011",
+      "areaM2": 4.5,
+      "unboundedHeightM": 2.7,
+      "level": {
+        "elementId": "9000001",
+        "uniqueId": "EGR18-NIVEAU-R+0",
+        "name": "R+0"
+      },
+      "occupancy": null,
+      "volumeM3": 12.15,
+      "volumeStatus": "computed",
+      "finishes": {
+        "floor": null,
+        "wall": null,
+        "ceiling": null,
+        "base": null
+      },
+      "phase": {
+        "elementId": "9000012",
+        "name": "Nouvelle construction"
+      },
+      "designOption": {
+        "elementId": "9000022",
+        "name": "Option B"
+      },
+      "sharedParameters": {},
+      "qualityFlags": [
+        "DUPLICATE_NUMBER"
+      ]
+    }
+  ],
+  "anomalies": [
+    {
+      "code": "DUPLICATE_NUMBER",
+      "severity": "warning",
+      "scope": "room",
+      "elementId": "9000101",
+      "message": "Numéro 001 partagé par 2 pièces.",
+      "details": {
+        "number": "001",
+        "elementIds": [
+          "9000101",
+          "9000104"
+        ]
+      }
+    },
+    {
+      "code": "UNPLACED",
+      "severity": "warning",
+      "scope": "room",
+      "elementId": "9000104",
+      "message": "Pièce non placée (Location absente).",
+      "details": {
+        "locationIsNull": true
+      }
+    },
+    {
+      "code": "DUPLICATE_NUMBER",
+      "severity": "warning",
+      "scope": "room",
+      "elementId": "9000104",
+      "message": "Numéro 001 partagé par 2 pièces.",
+      "details": {
+        "number": "001",
+        "elementIds": [
+          "9000101",
+          "9000104"
+        ]
+      }
+    },
+    {
+      "code": "ZERO_AREA",
+      "severity": "warning",
+      "scope": "room",
+      "elementId": "9000105",
+      "message": "Surface nulle sur une pièce placée (non fermée ou redondante).",
+      "details": {
+        "areaM2": 0.0
+      }
+    },
+    {
+      "code": "DUPLICATE_NUMBER",
+      "severity": "warning",
+      "scope": "room",
+      "elementId": "9000114",
+      "message": "Numéro 011 partagé par 2 pièces.",
+      "details": {
+        "number": "011",
+        "elementIds": [
+          "9000114",
+          "9000115"
+        ]
+      }
+    },
+    {
+      "code": "DUPLICATE_NUMBER",
+      "severity": "warning",
+      "scope": "room",
+      "elementId": "9000115",
+      "message": "Numéro 011 partagé par 2 pièces.",
+      "details": {
+        "number": "011",
+        "elementIds": [
+          "9000114",
+          "9000115"
+        ]
+      }
+    }
+  ]
+}
