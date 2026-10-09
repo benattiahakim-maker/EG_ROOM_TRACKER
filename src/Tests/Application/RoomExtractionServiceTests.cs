@@ -63,7 +63,10 @@ public class RoomExtractionServiceTests
         Assert.Null(result.Summary.Source);
         Assert.Equal(["config", "export"], pipeline.Calls);
         Assert.Same(result, pipeline.Exported);
-        Assert.Contains(pipeline.Logs, l => l.Level == LogLevel.Error && l.EventCode == LogEventCodes.ExtractionFailed);
+        var failure = Assert.Single(pipeline.Logs, l => l.Level == LogLevel.Error && l.EventCode == LogEventCodes.ExtractionFailed);
+        Assert.Equal(ErrorCodes.ConfigInvalid, failure.Data?["errorCode"]);
+        Assert.Equal(Stages.Configuration, failure.Stage);
+        Assert.NotNull(failure.Exception);
         Assert.Equal(1, pipeline.Flushes);
     }
 
