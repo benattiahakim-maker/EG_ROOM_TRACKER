@@ -19,6 +19,9 @@
 | `EgRoomTracker.Tests` | `src/Tests` | `net8.0` | non — tests unitaires hors Revit/APS |
 | `EgRoomTracker.Aps` | `tools/EgRoomTracker.Aps` | `net8.0` | non — client APS des outils développeur (EGR-19/EGR-20, voir [`tools/EgRoomTracker.Aps/README.md`](../tools/EgRoomTracker.Aps/README.md)) |
 | `EgRoomTracker.Aps.Tests` | `tools/EgRoomTracker.Aps.Tests` | `net8.0` | non — tests sur HTTP simulé |
+| `EgRoomTracker.DaManager` | `tools/EgRoomTracker.DaManager` | `net8.0-windows` (WPF) | non — outil de gestion APS, lancement sous Windows (voir [`tools/EgRoomTracker.DaManager/README.md`](../tools/EgRoomTracker.DaManager/README.md)) |
+| `EgRoomTracker.DaManager.Core` | `tools/EgRoomTracker.DaManager.Core` | `net8.0` | non — ViewModels et services de DaManager, sans WPF |
+| `EgRoomTracker.DaManager.Tests` | `tools/EgRoomTracker.DaManager.Tests` | `net8.0` | non — tests sur Automation API simulée |
 | — | `src/Packaging` | — | manifestes, définitions d'AppBundle et d'Activity, scripts d'assemblage, de contrôle et de publication (EGR-13, voir [`src/Packaging/README.md`](../src/Packaging/README.md)) |
 
 Dépendances : `Contracts` ← `Export` ← `Application` (← `Logging`) ← `Revit` ← `EntryPoint`. Le cœur ne référence jamais
