@@ -54,11 +54,14 @@ jobs:
 
       - name: Tests .NET
         run: >
-          dotnet test src/Tests/EgRoomTracker.Tests.csproj -c Release --no-build
-          --logger "trx;LogFileName=tests.trx" --results-directory artifacts/test-results
+          dotnet test EgRoomTracker.sln -c Release --no-build
+          --logger trx --results-directory artifacts/test-results
 
       - name: Tests des scripts de packaging (sans réseau)
         run: python -m unittest discover -s src/Packaging/scripts/tests -v
+
+      - name: Tests du comparateur de recette (sans réseau)
+        run: python -m unittest discover -s tools/recette/tests -v
 
       - name: Exemples conformes au schéma result.json
         run: python docs/schema/validate_examples.py

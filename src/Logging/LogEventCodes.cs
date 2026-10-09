@@ -15,6 +15,9 @@ public static class LogEventCodes
     public const string DocumentCloseFailed = "DOCUMENT_CLOSE_FAILED";
     public const string RoomCollectionDetails = "ROOM_COLLECTION_DETAILS";
 
+    /// <summary>DUPLICATE_NUMBER signalé entre variantes différentes dont le jeu d'options n'a pas pu être lu (étape <c>quality</c>).</summary>
+    public const string DuplicateOptionSetUnknown = "DUPLICATE_OPTION_SET_UNKNOWN";
+
     /// <summary>Préparation des volumes (EGR-16) : mode, réglage du document, activation temporaire, annulation.</summary>
     public const string VolumeComputation = "VOLUME_COMPUTATION";
 

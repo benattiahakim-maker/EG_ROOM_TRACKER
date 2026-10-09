@@ -6,6 +6,11 @@ Le format s'inspire de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/).
 
 ## [Non publié]
 
+### Ajouté
+
+- Préparation de la recette EGR-18 / EGR-14 (#44) : matrice des maquettes de référence R01–R12 (construites en Revit 2025, mises à niveau pour 2026 et 2027 ; R09 non applicable en 2027), `settings.json` et `result.json` attendus (`docs/recette/`), fiche de construction des maquettes, comparateur `tools/recette/compare_result.py` (tolérances D5, champs volatils ignorés, `bind` des identifiants réels) et ses tests ; tests .NET de cohérence des attendus avec le code ; `validate_examples.py` valide aussi les attendus ([`docs/RECETTE.md`](docs/RECETTE.md)).
+- Règle `DUPLICATE_NUMBER` par contexte (phase, variante) décidée en EGR-18 et implémentée (#45) : variantes différentes d'un même jeu non comparées, jeux différents comparés, modèle principal comparé à toute la phase, `elementIds` propre à chaque pièce ; jeu d'options illisible → détail `optionSetUnknown: true` et log `DUPLICATE_OPTION_SET_UNKNOWN`. Tests de rejeu de la recette réactivés (R01, R02, R06, R11).
+
 ### Modifié
 
 - Spécifications v0.3 : sections 9 et 10 alignées sur le code et le schéma 1.3 (codes, sévérités, détails, champs de `summary`, événements de log, variantes), statut des décisions D1 à D9 ; README, backlog (EGR-19 #35, EGR-20 #36, état des cartes) et ce CHANGELOG.

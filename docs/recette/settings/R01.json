@@ -1,0 +1,40 @@
+{
+  "schemaVersion": "1.0",
+  "mainModelPath": null,
+  "phaseIds": null,
+  "volumeMode": "preserve",
+  "sharedParameters": [
+    {
+      "key": "texte",
+      "guid": "cb4b0672-757b-4a76-87ae-7e37cc266035"
+    },
+    {
+      "key": "entier",
+      "guid": "ae35a261-77c1-455b-8e4d-f65999306f6f"
+    },
+    {
+      "key": "nombre",
+      "guid": "b747d301-23b1-47f7-bbb9-a09fa4147731"
+    },
+    {
+      "key": "longueur",
+      "guid": "a1be583b-a4ea-4794-8151-1a9b115c5a8a"
+    },
+    {
+      "key": "surface",
+      "guid": "bf1f9fc0-84f2-45a3-b7d1-bd70b04d445f"
+    },
+    {
+      "key": "volume",
+      "guid": "90dd40a1-a42c-4daa-aac7-25200f273c50"
+    },
+    {
+      "key": "ouiNon",
+      "guid": "49261c8b-d425-45e6-a969-bce44e9ae681"
+    },
+    {
+      "key": "angle",
+      "guid": "bc7bf97e-4d2c-43e5-beb6-2cefd5617aa9"
+    }
+  ]
+}

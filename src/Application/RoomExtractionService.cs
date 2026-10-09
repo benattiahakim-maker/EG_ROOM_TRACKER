@@ -121,6 +121,8 @@ public sealed class RoomExtractionService
                     LogAnomalySummary(report.Anomalies);
                 }
 
+                LogDuplicatesWithUnknownOptionSet(report.Anomalies, stage);
+
                 // Une pièce en erreur n'est jamais présentée comme un succès sans réserve (section 6).
                 var status = roomErrors > 0 && report.Status == ExtractionStatus.Succeeded
                     ? ExtractionStatus.SucceededWithWarnings
@@ -390,6 +392,26 @@ public sealed class RoomExtractionService
     /// <summary>Statut au format de <c>result.json</c> (<c>succeededWithWarnings</c>).</summary>
     internal static string ToCamelCase(string value) =>
         string.IsNullOrEmpty(value) ? value : char.ToLowerInvariant(value[0]) + value[1..];
+
+    /// <summary>Une ligne Warning si des doublons reposent sur un jeu d'options illisible (détail <c>optionSetUnknown</c>).</summary>
+    private void LogDuplicatesWithUnknownOptionSet(IReadOnlyList<AnomalyDto> anomalies, string stage)
+    {
+        var rooms = anomalies
+            .Where(a => a.Code == QualityFlagCodes.DuplicateNumber
+                && a.Details.TryGetValue(QualityCheckService.OptionSetUnknownDetail, out var unknown) && unknown is true)
+            .Select(a => a.ElementId)
+            .ToList();
+        if (rooms.Count == 0)
+        {
+            return;
+        }
+
+        _log.Log(new LogEvent(LogLevel.Warning, LogEventCodes.DuplicateOptionSetUnknown, stage,
+            $"{rooms.Count} pièce(s) signalée(s) DUPLICATE_NUMBER faute de jeu d'options lisible (variantes différentes comparées par prudence).")
+        {
+            Data = new Dictionary<string, object?> { ["roomsAffected"] = rooms.Count, ["elementIds"] = rooms },
+        });
+    }
 
     private static string ReadExtractorVersion()
     {

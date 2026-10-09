@@ -1,0 +1,109 @@
+{
+  "schemaVersion": "1.3",
+  "summary": {
+    "correlationId": "recette-R07",
+    "extractorVersion": "0.1.0",
+    "revit": {
+      "version": "2026",
+      "build": null
+    },
+    "apsEngine": null,
+    "source": {
+      "fileName": "EGR_Collab.rvt",
+      "relativePath": "EGR_Collab.rvt",
+      "isWorkshared": true
+    },
+    "startedAtUtc": "2026-10-09T12:00:00Z",
+    "completedAtUtc": "2026-10-09T12:00:30Z",
+    "options": {
+      "phaseIds": null,
+      "volumeMode": "preserve",
+      "sharedParameterKeys": []
+    },
+    "volumeComputation": {
+      "documentComputeVolumes": false,
+      "computeApplied": false,
+      "transactionRolledBack": null
+    },
+    "counts": {
+      "roomsCollected": 2,
+      "roomsExported": 2,
+      "roomsWithAnomalies": 0
+    },
+    "status": "succeeded",
+    "errors": []
+  },
+  "rooms": [
+    {
+      "elementId": "9000301",
+      "uniqueId": "EGR18-C01",
+      "name": "Pièce workset A",
+      "number": "201",
+      "areaM2": 16.0,
+      "unboundedHeightM": 2.7,
+      "level": {
+        "elementId": "9000001",
+        "uniqueId": "EGR18-NIVEAU-R+0",
+        "name": "R+0"
+      },
+      "occupancy": null,
+      "volumeM3": null,
+      "volumeStatus": "notComputed",
+      "finishes": {
+        "floor": null,
+        "wall": null,
+        "ceiling": null,
+        "base": null
+      },
+      "phase": {
+        "elementId": "9000012",
+        "name": "Nouvelle construction"
+      },
+      "designOption": null,
+      "sharedParameters": {},
+      "qualityFlags": []
+    },
+    {
+      "elementId": "9000302",
+      "uniqueId": "EGR18-C02",
+      "name": "Pièce workset B",
+      "number": "202",
+      "areaM2": 12.0,
+      "unboundedHeightM": 2.7,
+      "level": {
+        "elementId": "9000001",
+        "uniqueId": "EGR18-NIVEAU-R+0",
+        "name": "R+0"
+      },
+      "occupancy": null,
+      "volumeM3": null,
+      "volumeStatus": "notComputed",
+      "finishes": {
+        "floor": null,
+        "wall": null,
+        "ceiling": null,
+        "base": null
+      },
+      "phase": {
+        "elementId": "9000012",
+        "name": "Nouvelle construction"
+      },
+      "designOption": null,
+      "sharedParameters": {},
+      "qualityFlags": []
+    }
+  ],
+  "anomalies": [
+    {
+      "code": "VOLUME_NOT_COMPUTED",
+      "severity": "info",
+      "scope": "document",
+      "elementId": null,
+      "message": "Calcul des volumes désactivé dans le document ; volumeM3 exporté à null (mode preserve).",
+      "details": {
+        "volumeMode": "preserve",
+        "roomsAffected": 2
+      }
+    }
+  ]
+}

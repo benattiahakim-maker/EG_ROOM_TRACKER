@@ -25,5 +25,6 @@
   <ItemGroup>
     <None Include="..\..\docs\schema\result.schema.json" Link="Data\result.schema.json" CopyToOutputDirectory="PreserveNewest" />
     <None Include="..\..\docs\examples\*.json" LinkBase="Data" CopyToOutputDirectory="PreserveNewest" />
+    <None Include="..\..\docs\recette\**\*.json" LinkBase="Data\recette" CopyToOutputDirectory="PreserveNewest" />
   </ItemGroup>
 </Project>

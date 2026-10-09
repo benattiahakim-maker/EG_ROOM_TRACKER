@@ -179,6 +179,44 @@ public class QualityCheckServiceTests
         var report = _service.Evaluate([InOption(1, "101", "500", null), InOption(2, "101", "501", "400")], [], Computed);
 
         Assert.All(report.Rooms, r => Assert.Contains(QualityFlagCodes.DuplicateNumber, r.QualityFlags));
+        Assert.All(report.Anomalies.Where(a => a.Code == QualityFlagCodes.DuplicateNumber),
+            a => Assert.Equal(true, a.Details[QualityCheckService.OptionSetUnknownDetail]));
+    }
+
+    [Fact]
+    public void DuplicateNumber_KnownSets_HaveNoOptionSetUnknownDetail()
+    {
+        var rooms = new[] { InOption(1, "101", null, null), InOption(2, "101", "500", "400"), InOption(3, "101", "600", "410") };
+
+        var report = _service.Evaluate(rooms, [], Computed);
+
+        var duplicates = report.Anomalies.Where(a => a.Code == QualityFlagCodes.DuplicateNumber).ToList();
+        Assert.Equal(3, duplicates.Count);
+        Assert.All(duplicates, a => Assert.False(a.Details.ContainsKey(QualityCheckService.OptionSetUnknownDetail)));
+    }
+
+    [Fact]
+    public void DuplicateNumber_OptionSetUnknown_OnlyOnRoomsWhoseConflictRestsOnIt()
+    {
+        // 1 (principal) en conflit avec 2 et 3 sans jeu inconnu en jeu pour lui ; 2 (jeu inconnu) et 3 (variante différente).
+        var rooms = new[] { InOption(1, "101", null, null), InOption(2, "101", "500", null), InOption(3, "101", "501", "400") };
+
+        var report = _service.Evaluate(rooms, [], Computed);
+
+        AnomalyDto Duplicate(string id) => report.Anomalies.Single(a => a.Code == QualityFlagCodes.DuplicateNumber && a.ElementId == id);
+        Assert.False(Duplicate("1").Details.ContainsKey(QualityCheckService.OptionSetUnknownDetail));
+        Assert.Equal(true, Duplicate("2").Details[QualityCheckService.OptionSetUnknownDetail]);
+        Assert.Equal(true, Duplicate("3").Details[QualityCheckService.OptionSetUnknownDetail]);
+        Assert.Equal(["1", "2", "3"], DuplicateIds(report, "2"));
+    }
+
+    [Fact]
+    public void DuplicateNumber_SameOptionWithUnknownSet_HasNoOptionSetUnknownDetail()
+    {
+        var report = _service.Evaluate([InOption(1, "101", "500", null), InOption(2, "101", "500", null)], [], Computed);
+
+        Assert.All(report.Anomalies.Where(a => a.Code == QualityFlagCodes.DuplicateNumber),
+            a => Assert.False(a.Details.ContainsKey(QualityCheckService.OptionSetUnknownDetail)));
     }
 
     [Fact]

@@ -23,12 +23,19 @@ Dans une même phase et pour un même numéro, deux pièces sont en doublon si e
 | variante V | même variante V | oui |
 | variante V du jeu J1 | variante W du jeu J2 ≠ J1 | oui (une vue affiche une variante par jeu : elles coexistent) |
 | variante V du jeu J | autre variante W du même jeu J | **non** (variantes mutuellement exclusives) |
-| variante V | variante W ≠ V, jeu inconnu pour l'une des deux | oui (prudence : doublon signalé plutôt que manqué) |
+| variante V | variante W ≠ V, jeu inconnu pour l'une des deux | oui (prudence : doublon signalé plutôt que manqué), détail `optionSetUnknown: true` |
 
 La relation n'est pas transitive : une pièce du modèle principal est comparée à toutes les pièces de la phase, alors que deux
 variantes d'un même jeu ne le sont pas entre elles. `elementIds` est donc propre à chaque pièce. Le jeu de variantes
 (`DesignOptionSetId`) est lu côté Revit (`BuiltInParameter.OPTION_SET_ID` de la variante) et porté par le DTO comme
 donnée interne non sérialisée : le schéma `result.json` est inchangé.
+
+Jeu inconnu : lorsqu'au moins un des conflits d'une pièce oppose deux variantes différentes dont le jeu n'a pas pu être
+lu (`OPTION_SET_ID` absent ou illisible), l'anomalie `DUPLICATE_NUMBER` de cette pièce porte le détail
+`optionSetUnknown: true` (absent sinon) et une ligne de log `DUPLICATE_OPTION_SET_UNKNOWN` (Warning, étape `quality`,
+`data.roomsAffected` et `data.elementIds`) est écrite, une seule par exécution. Le doublon reste signalé : il est à
+revoir à la main. Règle et trois choix (jeux différents comparés, modèle principal comparé à tout, `elementIds` propre
+à chaque pièce) approuvés par New Bot (PR #45).
 
 `qualityFlags` : sans doublon, indicateurs de lecture d'abord puis `ZERO_AREA` et `DUPLICATE_NUMBER`. Chaque indicateur
 de pièce a son anomalie détaillée (même `elementId`). Aucune pièce n'est supprimée, fusionnée ni réordonnée (l'orchestration

@@ -1,0 +1,103 @@
+{
+  "schemaVersion": "1.3",
+  "summary": {
+    "correlationId": "recette-R05",
+    "extractorVersion": "0.1.0",
+    "revit": {
+      "version": "2026",
+      "build": null
+    },
+    "apsEngine": null,
+    "source": {
+      "fileName": "EGR_Liens.rvt",
+      "relativePath": "Projet/EGR_Liens.rvt",
+      "isWorkshared": false
+    },
+    "startedAtUtc": "2026-10-09T12:00:00Z",
+    "completedAtUtc": "2026-10-09T12:00:30Z",
+    "options": {
+      "phaseIds": null,
+      "volumeMode": "preserve",
+      "sharedParameterKeys": []
+    },
+    "volumeComputation": {
+      "documentComputeVolumes": false,
+      "computeApplied": false,
+      "transactionRolledBack": null
+    },
+    "counts": {
+      "roomsCollected": 1,
+      "roomsExported": 1,
+      "roomsWithAnomalies": 0
+    },
+    "status": "succeededWithWarnings",
+    "errors": []
+  },
+  "rooms": [
+    {
+      "elementId": "9000201",
+      "uniqueId": "EGR18-L01",
+      "name": "Hall",
+      "number": "100",
+      "areaM2": 30.0,
+      "unboundedHeightM": 2.7,
+      "level": {
+        "elementId": "9000001",
+        "uniqueId": "EGR18-NIVEAU-R+0",
+        "name": "R+0"
+      },
+      "occupancy": "Accueil",
+      "volumeM3": null,
+      "volumeStatus": "notComputed",
+      "finishes": {
+        "floor": null,
+        "wall": null,
+        "ceiling": null,
+        "base": null
+      },
+      "phase": {
+        "elementId": "9000012",
+        "name": "Nouvelle construction"
+      },
+      "designOption": null,
+      "sharedParameters": {},
+      "qualityFlags": []
+    }
+  ],
+  "anomalies": [
+    {
+      "code": "LINK_MISSING",
+      "severity": "warning",
+      "scope": "document",
+      "elementId": null,
+      "message": "Lien Revit absent : EGR_Lien_B.rvt.",
+      "details": {
+        "linkName": "EGR_Lien_B.rvt",
+        "linkPath": "Liens/EGR_Lien_B.rvt"
+      }
+    },
+    {
+      "code": "LINK_NOT_LOADED",
+      "severity": "info",
+      "scope": "document",
+      "elementId": null,
+      "message": "Lien Revit présent mais non chargé : EGR_Lien_C.rvt.",
+      "details": {
+        "linkName": "EGR_Lien_C.rvt",
+        "linkPath": "Liens/EGR_Lien_C.rvt",
+        "linkStatus": "Unloaded"
+      }
+    },
+    {
+      "code": "VOLUME_NOT_COMPUTED",
+      "severity": "info",
+      "scope": "document",
+      "elementId": null,
+      "message": "Calcul des volumes désactivé dans le document ; volumeM3 exporté à null (mode preserve).",
+      "details": {
+        "volumeMode": "preserve",
+        "roomsAffected": 1
+      }
+    }
+  ]
+}

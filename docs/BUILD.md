@@ -60,6 +60,7 @@ AppBundles (ZIP contrôlés, sans appel APS) et tests des scripts de packaging :
 ```bash
 src/Packaging/scripts/build-appbundle.sh            # artifacts/appbundles/EgRoomTracker_R<année>.zip
 python3 -m unittest discover -s src/Packaging/scripts/tests
+python3 -m unittest discover -s tools/recette/tests   # comparateur de recette (docs/RECETTE.md)
 ```
 
 Les cibles Windows se compilent aussi sous Linux/macOS (`EnableWindowsTargeting`), car seules des assemblies de

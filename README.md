@@ -53,6 +53,7 @@ Détails : [Build et tests](docs/BUILD.md) ; publication : [PUBLISHING.md](docs/
 - [Spécifications techniques](docs/SPECIFICATIONS.md) (v0.3) et [CHANGELOG](CHANGELOG.md)
 - [Build et tests](docs/BUILD.md)
 - [Publication, recette, retour arrière et CI](docs/PUBLISHING.md) ; [packaging](src/Packaging/README.md)
+- [Recette : maquettes de référence, résultats attendus, comparateur](docs/RECETTE.md) — [fiche de construction des maquettes](docs/recette/FICHE_MAQUETTES.md) — [outil de comparaison](tools/recette/compare_result.py)
 - [Entrées ZIP et settings.json](docs/INPUTS.md)
 - [Accès au document Revit](docs/DOCUMENT.md)
 - [Collecte des pièces](docs/COLLECTE.md) ; [lecture des champs et volumes](docs/LECTURE.md) ; [qualité](docs/QUALITE.md)

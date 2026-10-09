@@ -52,9 +52,16 @@ public sealed class QualityCheckService : IQualityCheckService
                 }
 
                 var elementIds = conflicts.Select(j => rooms[j].ElementId).OrderBy(NumericKey).ThenBy(id => id, StringComparer.Ordinal).ToArray();
+                var details = new Dictionary<string, object?> { ["number"] = group.Key.Number, ["elementIds"] = elementIds };
+                if (conflicts.Any(j => j != i && ConflictRestsOnUnknownSet(rooms[i], rooms[j])))
+                {
+                    // Jeu d'options illisible : doublon signalé par prudence, marqué pour revue.
+                    details[OptionSetUnknownDetail] = true;
+                }
+
                 AddFlag(flags[i], added[i], rooms[i], QualityFlagCodes.DuplicateNumber,
                     $"Numéro {group.Key.Number} partagé par {elementIds.Length} pièces.",
-                    new Dictionary<string, object?> { ["number"] = group.Key.Number, ["elementIds"] = elementIds });
+                    details);
             }
         }
 
@@ -137,6 +144,19 @@ public sealed class QualityCheckService : IQualityCheckService
             || b.DesignOptionSetId is null
             || !string.Equals(a.DesignOptionSetId, b.DesignOptionSetId, StringComparison.Ordinal);
     }
+
+    /// <summary>
+    /// Détail <c>optionSetUnknown: true</c> d'une anomalie DUPLICATE_NUMBER : le conflit oppose deux variantes
+    /// différentes dont le jeu d'options n'a pas pu être lu pour au moins l'une ; présent seulement dans ce cas.
+    /// </summary>
+    public const string OptionSetUnknownDetail = "optionSetUnknown";
+
+    /// <summary>Le conflit entre deux pièces ne tient qu'à un jeu d'options inconnu (variantes différentes, jeu illisible).</summary>
+    internal static bool ConflictRestsOnUnknownSet(RoomDto a, RoomDto b) =>
+        a.DesignOption is not null
+        && b.DesignOption is not null
+        && !string.Equals(a.DesignOption.ElementId, b.DesignOption.ElementId, StringComparison.Ordinal)
+        && (a.DesignOptionSetId is null || b.DesignOptionSetId is null);
 
     /// <summary>Statut (9.3) : une anomalie warning ou error donne succeededWithWarnings ; info seule, succeeded. Jamais failed ici.</summary>
     internal static ExtractionStatus StatusOf(IEnumerable<AnomalyDto> anomalies) =>
