@@ -33,6 +33,7 @@ internal sealed class Pipeline
     public bool ReverseQualityOrder { get; set; }
     public ExtractionStatus QualityStatus { get; set; } = ExtractionStatus.Succeeded;
     public Exception? ExportException { get; set; }
+    public IReadOnlyList<AnomalyDto> SharedParameterAnomalies { get; set; } = [];
 
     public static ExtractionRequest Request => new()
     {
@@ -102,6 +103,9 @@ internal sealed class Pipeline
                 new RoomDto { ElementId = room.ElementId.ToString(), UniqueId = room.UniqueId, VolumeStatus = VolumeStatus.NotComputed },
                 []);
         }
+
+        public IReadOnlyList<AnomalyDto> CheckSharedParameters(IReadOnlyList<SharedParameterMapping> sharedParameters) =>
+            p.SharedParameterAnomalies;
 
         public QualityReport Evaluate(IReadOnlyList<RoomDto> rooms, IReadOnlyList<AnomalyDto> anomalies, VolumeComputationState volumeState)
         {

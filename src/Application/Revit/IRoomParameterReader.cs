@@ -11,6 +11,12 @@ namespace EgRoomTracker.Application.Revit;
 public interface IRoomParameterReader
 {
     RoomReadResult Read(CollectedRoom room, IReadOnlyList<SharedParameterMapping> sharedParameters, VolumeComputationState volumeState);
+
+    /// <summary>
+    /// Contrôle des mappings partagés au niveau document, appelé une fois avant la lecture des pièces :
+    /// une anomalie document SHARED_PARAMETER_NOT_FOUND par GUID inconnu du document (EGR-10).
+    /// </summary>
+    IReadOnlyList<AnomalyDto> CheckSharedParameters(IReadOnlyList<SharedParameterMapping> sharedParameters) => [];
 }
 
 public sealed record RoomReadResult(RoomDto Room, IReadOnlyList<AnomalyDto> Anomalies);

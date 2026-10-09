@@ -67,6 +67,8 @@ Les finitions sont les textes renseignés sur la pièce, sans inférence depuis 
 
 Représentation des valeurs : paramètre présent sans valeur → `null` ; chaîne vide renseignée → `""` ; paramètre absent → `null` et indicateur `MISSING_PARAMETER` avec le paramètre en détail ; valeur numérique nulle → `0`. Les nombres restent numériques dans le JSON, en notation invariante, sans arrondi de présentation (précision à confirmer, décision D7).
 
+Paramètres partagés : lecture par GUID ; GUID inconnu du document → `value: null` et une anomalie document `SHARED_PARAMETER_NOT_FOUND` ; paramètre absent de la pièce → `null` et `MISSING_PARAMETER`. Valeurs : texte tel quel, entier en nombre, double de longueur/surface/volume converti en m/m²/m³, autre double en valeur interne Revit, ElementId en chaîne ; détail dans [`docs/LECTURE.md`](LECTURE.md) (EGR-10).
+
 Conserver toutes les pièces, y compris non placées ou de surface nulle, avec indicateurs. Ne pas déduire une cause précise uniquement d'une surface nulle : distinguer `UNPLACED` si l'absence de placement est vérifiée, et `ZERO_AREA` autrement. Signaler les doublons de numéro, sans supprimer ni fusionner de pièces.
 
 Volume : en mode `preserve`, lire le réglage du document ; lorsque le calcul est désactivé, exporter `volumeM3: null` et `volumeStatus: notComputed` pour toutes les pièces et une anomalie document `VOLUME_NOT_COMPUTED`, jamais présenter zéro comme un volume calculé. En mode `compute`, activer le calcul dans une transaction sur la copie de travail, régénérer et lire les résultats. Ne pas sauvegarder le RVT et consigner ce choix. Ce mode doit être validé sur les trois moteurs.

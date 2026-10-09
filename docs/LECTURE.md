@@ -34,7 +34,38 @@ pièce est convertie en `EXTRACTION_ERROR` par l'orchestration.
 
 ## Champs complétés par d'autres cartes
 
-Finitions et paramètres partagés (EGR-10) : vides en attendant.
+## Finitions et paramètres partagés (EGR-10)
+
+Finitions : textes saisis sur la pièce, lus par paramètre natif, aucune déduction depuis murs, sols ou plafonds,
+aucun libellé localisé (résultat identique en Revit français et anglais).
+
+| Champ | Paramètre natif |
+| --- | --- |
+| `finishes.floor` | `ROOM_FINISH_FLOOR` |
+| `finishes.wall` | `ROOM_FINISH_WALL` |
+| `finishes.ceiling` | `ROOM_FINISH_CEILING` |
+| `finishes.base` | `ROOM_FINISH_BASE` |
+
+Même représentation que les autres textes : valeur telle quelle, `""` conservée, `null` sans valeur, `null` +
+`MISSING_PARAMETER` (détail `parameter`) si absent.
+
+Paramètres partagés (`settings.sharedParameters`) : une entrée par clé de mapping, dans l'ordre de la configuration,
+`{ guid, value }` (le GUID est la provenance). Lecture par `Element.get_Parameter(Guid)`, jamais par nom.
+
+| Situation | `value` | Anomalie |
+| --- | --- | --- |
+| GUID inconnu du document (`SharedParameterElement.Lookup` nul) | `null` | document `SHARED_PARAMETER_NOT_FOUND` (une par GUID, détails `key`, `guid`) ; pas de `MISSING_PARAMETER` par pièce |
+| GUID connu, paramètre absent de la pièce | `null` | `MISSING_PARAMETER` (détails `parameter` = clé, `guid`) |
+| Présent sans valeur (`HasValue` faux) | `null` | — |
+| Texte | chaîne telle quelle (`""` conservée) | — |
+| Entier (dont Oui/Non : 0/1) | nombre | — |
+| Double longueur / surface / volume (`SpecTypeId.Length/Area/Volume`) | nombre en m / m² / m³ (UnitUtils, sans arrondi) | — |
+| Double d'une autre spec | valeur interne Revit telle quelle (nombre) | — |
+| ElementId | chaîne `ElementId.Value` ; `null` si `-1` | — |
+| Double NaN/infini | `null` | — |
+
+Une pièce en `EXTRACTION_ERROR` garde une entrée `null` par clé de mapping. Une exception de lecture d'un
+paramètre partagé convertit la pièce en `EXTRACTION_ERROR` (filet de sécurité de l'orchestration).
 
 ## Quantités et volume (EGR-09)
 
