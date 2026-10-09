@@ -23,8 +23,11 @@ public static class DocumentAnomalyCodes
     public const string RevitWarningOnOpen = "REVIT_WARNING_ON_OPEN";
     public const string SharedParameterNotFound = "SHARED_PARAMETER_NOT_FOUND";
 
+    /// <summary>Paramètre partagé numérique d'un type non exporté (angle, pourcentage, monnaie…) : valeur null (schéma 1.2).</summary>
+    public const string UnsupportedParameterType = "UNSUPPORTED_PARAMETER_TYPE";
+
     public static IReadOnlyList<string> All { get; } =
-        [VolumeNotComputed, LinkMissing, LinkNotLoaded, RevitWarningOnOpen, SharedParameterNotFound];
+        [VolumeNotComputed, LinkMissing, LinkNotLoaded, RevitWarningOnOpen, SharedParameterNotFound, UnsupportedParameterType];
 }
 
 /// <summary>Erreurs globales (section 9.2) : statut <c>failed</c>.</summary>
@@ -64,8 +67,8 @@ public static class Stages
 
 public static class SchemaVersions
 {
-    /// <summary>Version du contrat <c>result.json</c> (1.1 : ajout de LINK_NOT_LOADED).</summary>
-    public const string Result = "1.1";
+    /// <summary>Version du contrat <c>result.json</c> (1.1 : ajout de LINK_NOT_LOADED ; 1.2 : ajout de UNSUPPORTED_PARAMETER_TYPE).</summary>
+    public const string Result = "1.2";
 
     /// <summary>Version majeure de <c>settings.json</c> prise en charge.</summary>
     public const int SettingsMajor = 1;

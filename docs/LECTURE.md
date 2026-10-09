@@ -60,7 +60,8 @@ Paramètres partagés (`settings.sharedParameters`) : une entrée par clé de ma
 | Texte | chaîne telle quelle (`""` conservée) | — |
 | Entier (dont Oui/Non : 0/1) | nombre | — |
 | Double longueur / surface / volume (`SpecTypeId.Length/Area/Volume`) | nombre en m / m² / m³ (UnitUtils, sans arrondi) | — |
-| Double d'une autre spec | valeur interne Revit telle quelle (nombre) | — |
+| Double nombre sans unité (`SpecTypeId.Number`) | nombre tel quel | — |
+| Double d'une autre spec mesurable (angle, pourcentage, monnaie…) ou spec inconnue | `null` (jamais la valeur interne) | document `UNSUPPORTED_PARAMETER_TYPE` (info, une par GUID, détails `key`, `guid`, `typeId`) |
 | ElementId | chaîne `ElementId.Value` ; `null` si `-1` | — |
 | Double NaN/infini | `null` | — |
 

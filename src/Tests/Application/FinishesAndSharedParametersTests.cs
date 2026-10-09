@@ -1,5 +1,6 @@
 using System.Text.Json;
 using System.Text.Json.Nodes;
+using EgRoomTracker.Application.Quality;
 using EgRoomTracker.Application.Revit;
 using EgRoomTracker.Application.Units;
 using EgRoomTracker.Contracts.Codes;
@@ -102,7 +103,7 @@ public class FinishesAndSharedParametersTests
         Assert.Equal(SharedParameterRead.Of(10 * 0.3048), SharedParameterValues.FromDouble(10, SharedParameterMeasure.Length, units));
         Assert.Equal(SharedParameterRead.Of(100 * 0.3048 * 0.3048), SharedParameterValues.FromDouble(100, SharedParameterMeasure.Area, units));
         Assert.Equal(SharedParameterRead.Of(1000 * 0.3048 * 0.3048 * 0.3048), SharedParameterValues.FromDouble(1000, SharedParameterMeasure.Volume, units));
-        Assert.Equal(SharedParameterRead.Of(0.25), SharedParameterValues.FromDouble(0.25, SharedParameterMeasure.Other, units));
+        Assert.Equal(SharedParameterRead.Of(0.25), SharedParameterValues.FromDouble(0.25, SharedParameterMeasure.Number, units));
         Assert.Equal(SharedParameterRead.Of(0.0), SharedParameterValues.FromDouble(0, SharedParameterMeasure.Area, units));
         Assert.Equal(SharedParameterRead.NoValue, SharedParameterValues.FromDouble(double.NaN, SharedParameterMeasure.Length, units));
         Assert.Equal(SharedParameterRead.Of("311"), SharedParameterValues.FromElementId(311));
@@ -188,5 +189,76 @@ public class FinishesAndSharedParametersTests
         Assert.Null(shared["inconnu"]!["value"]);
         Assert.Equal("", json["rooms"]![0]!["finishes"]!["ceiling"]!.GetValue<string>());
         ResultSchema.AssertValid(json);
+    }
+
+    [Theory]
+    [InlineData(1.5707963267948966)]
+    [InlineData(0.25)]
+    [InlineData(0.0)]
+    public void UnsupportedNumericType_IsNeverExportedAsInternalValue(double raw)
+    {
+        Assert.Equal(SharedParameterRead.NoValue, SharedParameterValues.FromDouble(raw, SharedParameterMeasure.Unsupported, new ThrowingUnits()));
+    }
+
+    [Fact]
+    public void Number_IsExportedAsIs_WithoutConversion()
+    {
+        Assert.Equal(SharedParameterRead.Of(12.5), SharedParameterValues.FromDouble(12.5, SharedParameterMeasure.Number, new ThrowingUnits()));
+    }
+
+    [Fact]
+    public void UnsupportedTypeAnomaly_IsDocumentInfo_WithKeyGuidAndTypeId()
+    {
+        var anomaly = SharedParameterAnomalies.UnsupportedType(SurfaceUtile, "autodesk.spec.aec:angle-2.0.0");
+
+        Assert.Equal(DocumentAnomalyCodes.UnsupportedParameterType, anomaly.Code);
+        Assert.Equal(AnomalySeverity.Info, anomaly.Severity);
+        Assert.Equal(AnomalyScope.Document, anomaly.Scope);
+        Assert.Null(anomaly.ElementId);
+        Assert.Equal("surfaceUtile", anomaly.Details["key"]);
+        Assert.Equal("0b6c1d2e-3f40-4a5b-8c6d-7e8f9a0b1c2d", anomaly.Details["guid"]);
+        Assert.Equal("autodesk.spec.aec:angle-2.0.0", anomaly.Details["typeId"]);
+    }
+
+    [Fact]
+    public void NotFoundAnomaly_IsDocumentWarning_WithKeyAndGuid()
+    {
+        var anomaly = SharedParameterAnomalies.NotFound(Inconnu);
+
+        Assert.Equal((DocumentAnomalyCodes.SharedParameterNotFound, AnomalySeverity.Warning, AnomalyScope.Document), (anomaly.Code, anomaly.Severity, anomaly.Scope));
+        Assert.Equal("inconnu", anomaly.Details["key"]);
+        Assert.False(anomaly.Details.ContainsKey("typeId"));
+    }
+
+    [Fact]
+    public void ContractJson_UnsupportedTypeAnomaly_IsSchemaValid_WithNullValue()
+    {
+        var anomaly = SharedParameterAnomalies.UnsupportedType(SurfaceUtile, "autodesk.spec.aec:angle-2.0.0");
+        var pipeline = new TestPipeline
+        {
+            RoomIds = [412345],
+            LoadSettings = () => new ExtractionSettings { SchemaVersion = "1.0", SharedParameters = [SurfaceUtile] },
+            ReadRoom = id => NewBuilder()
+                .SharedParameters([(SurfaceUtile, SharedParameterValues.FromDouble(1.57, SharedParameterMeasure.Unsupported, new FeetUnits()))])
+                .Build(),
+            Evaluate = (rooms, anomalies, _) => new QualityReport(rooms, [.. anomalies, anomaly], ExtractionStatus.Succeeded),
+        };
+
+        var json = JsonNode.Parse(ContractJson.Serialize(pipeline.Run()))!;
+
+        Assert.Equal(SchemaVersions.Result, json["schemaVersion"]!.GetValue<string>());
+        Assert.Equal("1.2", json["schemaVersion"]!.GetValue<string>());
+        Assert.Null(json["rooms"]![0]!["sharedParameters"]!["surfaceUtile"]!["value"]);
+        var exported = json["anomalies"]!.AsArray().Single(a => a!["code"]!.GetValue<string>() == "UNSUPPORTED_PARAMETER_TYPE")!;
+        Assert.Equal("info", exported["severity"]!.GetValue<string>());
+        Assert.Equal("autodesk.spec.aec:angle-2.0.0", exported["details"]!["typeId"]!.GetValue<string>());
+        ResultSchema.AssertValid(json);
+    }
+
+    private sealed class ThrowingUnits : IUnitConversionService
+    {
+        public double ToMeters(double internalLength) => throw new InvalidOperationException();
+        public double ToSquareMeters(double internalArea) => throw new InvalidOperationException();
+        public double ToCubicMeters(double internalVolume) => throw new InvalidOperationException();
     }
 }

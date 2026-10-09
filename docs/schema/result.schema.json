@@ -2,7 +2,7 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://github.com/benattiahakim-maker/EG_ROOM_TRACKER/docs/schema/result.schema.json",
   "title": "EG_ROOM_TRACKER — résultat d'extraction (result.json)",
-  "description": "Contrat unique de sortie de l'extracteur. Version de schéma 1.x (courante : 1.1 ; 1.1 ajoute le code LINK_NOT_LOADED). Voir docs/SPECIFICATIONS.md, sections 2, 3 et 9.",
+  "description": "Contrat unique de sortie de l'extracteur. Version de schéma 1.x (courante : 1.2 ; 1.1 ajoute le code LINK_NOT_LOADED ; 1.2 ajoute le code UNSUPPORTED_PARAMETER_TYPE). Voir docs/SPECIFICATIONS.md, sections 2, 3 et 9.",
   "type": "object",
   "additionalProperties": false,
   "required": ["schemaVersion", "summary", "rooms", "anomalies"],
@@ -55,7 +55,7 @@
       "enum": ["UNPLACED", "ZERO_AREA", "DUPLICATE_NUMBER", "MISSING_PARAMETER", "LEVEL_NOT_FOUND", "EXTRACTION_ERROR"]
     },
     "documentAnomalyCode": {
-      "enum": ["VOLUME_NOT_COMPUTED", "LINK_MISSING", "LINK_NOT_LOADED", "REVIT_WARNING_ON_OPEN", "SHARED_PARAMETER_NOT_FOUND"]
+      "enum": ["VOLUME_NOT_COMPUTED", "LINK_MISSING", "LINK_NOT_LOADED", "REVIT_WARNING_ON_OPEN", "SHARED_PARAMETER_NOT_FOUND", "UNSUPPORTED_PARAMETER_TYPE"]
     },
     "errorCode": {
       "enum": [

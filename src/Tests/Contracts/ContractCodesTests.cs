@@ -29,13 +29,20 @@ public class ContractCodesTests
         Assert.Contains(DocumentAnomalyCodes.LinkNotLoaded, SchemaEnum("documentAnomalyCode"));
 
     [Fact]
+    public void UnsupportedParameterType_IsDocumentAnomalyInSchema()
+    {
+        Assert.Contains(DocumentAnomalyCodes.UnsupportedParameterType, SchemaEnum("documentAnomalyCode"));
+        Assert.DoesNotContain(DocumentAnomalyCodes.UnsupportedParameterType, SchemaEnum("qualityFlag"));
+    }
+
+    [Fact]
     public void ResultExample_UsesCurrentResultSchemaVersion()
     {
         var path = Path.Combine(AppContext.BaseDirectory, "Data", "result.example.json");
         using var example = JsonDocument.Parse(File.ReadAllText(path));
 
         Assert.Equal(SchemaVersions.Result, example.RootElement.GetProperty("schemaVersion").GetString());
-        Assert.Equal("1.1", SchemaVersions.Result);
+        Assert.Equal("1.2", SchemaVersions.Result);
     }
 
     private static IEnumerable<string> SchemaEnum(string name) =>

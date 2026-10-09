@@ -36,7 +36,7 @@ Sortie : **un seul fichier `result.json`**, paramètre de sortie de l'Activity, 
 - `rooms` : toutes les pièces collectées (section 3), triées par `elementId` numérique croissant ;
 - `anomalies` : anomalies non bloquantes détaillées, au niveau pièce ou document (section 9.1).
 
-`schemaVersion` figure à la racine. Toute modification incompatible du contrat incrémente la version majeure ; un ajout de champ facultatif ou de code incrémente la mineure. Version courante : `1.1` (ajout de `LINK_NOT_LOADED`). Aucun autre fichier de résultat (`rooms.csv`, `summary.json`, `execution.jsonl`) n'est produit. Le rapport natif APS, qui contient les logs console, reste disponible via le WorkItem ; son téléchargement appartient au consommateur, hors bundle.
+`schemaVersion` figure à la racine. Toute modification incompatible du contrat incrémente la version majeure ; un ajout de champ facultatif ou de code incrémente la mineure. Version courante : `1.2` (1.1 : ajout de `LINK_NOT_LOADED` ; 1.2 : ajout de `UNSUPPORTED_PARAMETER_TYPE`). Aucun autre fichier de résultat (`rooms.csv`, `summary.json`, `execution.jsonl`) n'est produit. Le rapport natif APS, qui contient les logs console, reste disponible via le WorkItem ; son téléchargement appartient au consommateur, hors bundle.
 
 ## 3. Données des pièces
 
@@ -67,7 +67,7 @@ Les finitions sont les textes renseignés sur la pièce, sans inférence depuis 
 
 Représentation des valeurs : paramètre présent sans valeur → `null` ; chaîne vide renseignée → `""` ; paramètre absent → `null` et indicateur `MISSING_PARAMETER` avec le paramètre en détail ; valeur numérique nulle → `0`. Les nombres restent numériques dans le JSON, en notation invariante, sans arrondi de présentation (précision à confirmer, décision D7).
 
-Paramètres partagés : lecture par GUID ; GUID inconnu du document → `value: null` et une anomalie document `SHARED_PARAMETER_NOT_FOUND` ; paramètre absent de la pièce → `null` et `MISSING_PARAMETER`. Valeurs : texte tel quel, entier en nombre, double de longueur/surface/volume converti en m/m²/m³, autre double en valeur interne Revit, ElementId en chaîne ; détail dans [`docs/LECTURE.md`](LECTURE.md) (EGR-10).
+Paramètres partagés : lecture par GUID ; GUID inconnu du document → `value: null` et une anomalie document `SHARED_PARAMETER_NOT_FOUND` ; paramètre absent de la pièce → `null` et `MISSING_PARAMETER`. Valeurs : texte tel quel, entier en nombre, double de longueur/surface/volume converti en m/m²/m³, nombre sans unité tel quel, autre double jamais exporté en valeur interne (`null` et anomalie document `UNSUPPORTED_PARAMETER_TYPE`), ElementId en chaîne ; détail dans [`docs/LECTURE.md`](LECTURE.md) (EGR-10).
 
 Conserver toutes les pièces, y compris non placées ou de surface nulle, avec indicateurs. Ne pas déduire une cause précise uniquement d'une surface nulle : distinguer `UNPLACED` si l'absence de placement est vérifiée, et `ZERO_AREA` autrement. Signaler les doublons de numéro, sans supprimer ni fusionner de pièces.
 
@@ -154,6 +154,7 @@ Les codes de portée pièce figurent dans `rooms[].qualityFlags` et sont détail
 | `LINK_NOT_LOADED` | document | info | Lien Revit présent mais déchargé (statut `Unloaded` ou `LocallyUnloaded`) ; sans effet sur le statut (schéma 1.1) |
 | `REVIT_WARNING_ON_OPEN` | document | warning | Avertissement Revit toléré par la politique d'ouverture (D2) |
 | `SHARED_PARAMETER_NOT_FOUND` | document | warning | GUID de `sharedParameters` inconnu dans le document |
+| `UNSUPPORTED_PARAMETER_TYPE` | document | info | Paramètre partagé numérique d'un type autre que longueur, surface, volume ou nombre sans unité (angle, pourcentage, monnaie…) : `value: null` pour toutes les pièces ; détails `key`, `guid`, `typeId` (`ForgeTypeId.TypeId`) ; sans effet sur le statut (schéma 1.2) |
 
 ### 9.2 Erreurs globales
 
@@ -208,7 +209,7 @@ Trois pièces, document sans calcul de volume : « Bureau » complet mais numér
 
 ```json
 {
-  "schemaVersion": "1.1",
+  "schemaVersion": "1.2",
   "summary": {
     "correlationId": "wi-7f3c2a9e5b1d4c08",
     "extractorVersion": "0.2.0",
