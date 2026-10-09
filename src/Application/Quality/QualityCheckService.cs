@@ -50,7 +50,25 @@ public sealed class QualityCheckService : IQualityCheckService
         }
 
         var documentAnomalies = anomalies.Where(a => a.Scope == AnomalyScope.Document).ToList();
-        if (!volumeState.VolumesComputed)
+        if (volumeState.ComputeFailure is not null)
+        {
+            // volumeMode compute (EGR-16) : activation temporaire impossible, volumes exportés en notAvailable.
+            documentAnomalies.Add(new AnomalyDto
+            {
+                Code = DocumentAnomalyCodes.VolumeComputeFailed,
+                Severity = AnomalySeverity.Warning,
+                Scope = AnomalyScope.Document,
+                ElementId = null,
+                Message = "Activation temporaire du calcul des volumes impossible ; volumeM3 exporté à null (mode compute).",
+                Details = new Dictionary<string, object?>
+                {
+                    ["volumeMode"] = volumeState.Mode.ToString().ToLowerInvariant(),
+                    ["reason"] = volumeState.ComputeFailure,
+                    ["roomsAffected"] = rooms.Count(r => r.VolumeStatus == VolumeStatus.NotAvailable),
+                },
+            });
+        }
+        else if (!volumeState.VolumesComputed)
         {
             documentAnomalies.Add(new AnomalyDto
             {

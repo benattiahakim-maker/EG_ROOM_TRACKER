@@ -1,5 +1,5 @@
 {
-  "schemaVersion": "1.2",
+  "schemaVersion": "1.3",
   "summary": {
     "correlationId": "wi-7f3c2a9e5b1d4c08",
     "extractorVersion": "0.2.0",
@@ -17,6 +17,7 @@
       "volumeMode": "preserve",
       "sharedParameterKeys": ["codeLocal"]
     },
+    "volumeComputation": { "documentComputeVolumes": false, "computeApplied": false, "transactionRolledBack": null },
     "counts": { "roomsCollected": 3, "roomsExported": 3, "roomsWithAnomalies": 2 },
     "status": "succeededWithWarnings",
     "errors": []

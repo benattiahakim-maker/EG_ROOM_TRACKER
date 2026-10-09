@@ -26,8 +26,14 @@ public static class DocumentAnomalyCodes
     /// <summary>Paramètre partagé numérique d'un type non exporté (angle, pourcentage, monnaie…) : valeur null (schéma 1.2).</summary>
     public const string UnsupportedParameterType = "UNSUPPORTED_PARAMETER_TYPE";
 
+    /// <summary>volumeMode <c>compute</c> : activation temporaire du calcul des volumes impossible ; volumes non disponibles (schéma 1.3).</summary>
+    public const string VolumeComputeFailed = "VOLUME_COMPUTE_FAILED";
+
     public static IReadOnlyList<string> All { get; } =
-        [VolumeNotComputed, LinkMissing, LinkNotLoaded, RevitWarningOnOpen, SharedParameterNotFound, UnsupportedParameterType];
+    [
+        VolumeNotComputed, LinkMissing, LinkNotLoaded, RevitWarningOnOpen, SharedParameterNotFound, UnsupportedParameterType,
+        VolumeComputeFailed,
+    ];
 }
 
 /// <summary>Erreurs globales (section 9.2) : statut <c>failed</c>.</summary>
@@ -67,8 +73,9 @@ public static class Stages
 
 public static class SchemaVersions
 {
-    /// <summary>Version du contrat <c>result.json</c> (1.1 : ajout de LINK_NOT_LOADED ; 1.2 : ajout de UNSUPPORTED_PARAMETER_TYPE).</summary>
-    public const string Result = "1.2";
+    /// <summary>Version du contrat <c>result.json</c> (1.1 : ajout de LINK_NOT_LOADED ; 1.2 : ajout de UNSUPPORTED_PARAMETER_TYPE ;
+    /// 1.3 : ajout de <c>summary.volumeComputation</c> et de VOLUME_COMPUTE_FAILED).</summary>
+    public const string Result = "1.3";
 
     /// <summary>Version majeure de <c>settings.json</c> prise en charge.</summary>
     public const int SettingsMajor = 1;

@@ -25,18 +25,18 @@ Paramètres de `settings.json` (exemple en section 10.1) :
 | `schemaVersion` | chaîne | Obligatoire ; `1.0` pour cette version. Version majeure inconnue : `CONFIG_SCHEMA_UNSUPPORTED` |
 | `mainModelPath` | chaîne ou null | Chemin relatif au répertoire d'entrée ; obligatoire si le ZIP contient plusieurs RVT ; un RVT unique est détecté automatiquement |
 | `phaseIds` | tableau d'ElementId (chaînes) ou null | Null ou absent : toutes les phases. Sinon entiers positifs sans doublon. Tableau vide : `CONFIG_INVALID` (étape `configuration`). Phase absente du document : `CONFIG_INVALID` (étape `collection`), identifiants inconnus listés dans le message ; jamais de résultat vide présenté comme réussi |
-| `volumeMode` | `preserve` ou `compute` | `preserve` par défaut ; `compute` en P2 (EGR-16) : tant qu'il n'est pas livré, `compute` est refusé en `CONFIG_INVALID` (étape `configuration`), avant l'ouverture du document |
+| `volumeMode` | `preserve` ou `compute` | `preserve` par défaut ; `compute` (P2, EGR-16) : calcul temporaire dans une transaction annulée, voir section 3 |
 | `sharedParameters` | tableau `{ key, guid }` | Facultatif ; mapping de paramètres partagés par GUID, `key` unique |
 
 Les chemins restent confinés au répertoire d'entrée. Les liens présents dans le ZIP conservent une arborescence documentée (décision D4, règles détaillées de validation dans [`docs/INPUTS.md`](INPUTS.md)) ; les liens absents sont signalés (`LINK_MISSING`), les liens présents mais déchargés sont indiqués (`LINK_NOT_LOADED`, info). Le MVP collecte les pièces du document principal uniquement, sans parcourir les pièces des documents liés.
 
 Sortie : **un seul fichier `result.json`**, paramètre de sortie de l'Activity, UTF-8 sans BOM. C'est l'unique contrat de résultat, décrit par le schéma [`docs/schema/result.schema.json`](schema/result.schema.json) (JSON Schema draft 2020-12) et illustré en section 10.2. Il contient trois blocs :
 
-- `summary` : identifiant de corrélation, version de l'extracteur, version/build Revit, moteur APS lorsque disponible, nom/chemin relatif de la source, dates UTC de début et de fin, options appliquées, nombres de pièces collectées/exportées/en anomalie, statut final (section 9.3) et erreurs globales (section 9.2) ;
+- `summary` : identifiant de corrélation, version de l'extracteur, version/build Revit, moteur APS lorsque disponible, nom/chemin relatif de la source, dates UTC de début et de fin, options appliquées, traçabilité du calcul des volumes (`volumeComputation`, depuis 1.3), nombres de pièces collectées/exportées/en anomalie, statut final (section 9.3) et erreurs globales (section 9.2) ;
 - `rooms` : toutes les pièces collectées (section 3), triées par `elementId` numérique croissant ;
 - `anomalies` : anomalies non bloquantes détaillées, au niveau pièce ou document (section 9.1).
 
-`schemaVersion` figure à la racine. Toute modification incompatible du contrat incrémente la version majeure ; un ajout de champ facultatif ou de code incrémente la mineure. Version courante : `1.2` (1.1 : ajout de `LINK_NOT_LOADED` ; 1.2 : ajout de `UNSUPPORTED_PARAMETER_TYPE`). Aucun autre fichier de résultat (`rooms.csv`, `summary.json`, `execution.jsonl`) n'est produit. Le rapport natif APS, qui contient les logs console, reste disponible via le WorkItem ; son téléchargement appartient au consommateur, hors bundle.
+`schemaVersion` figure à la racine. Toute modification incompatible du contrat incrémente la version majeure ; un ajout de champ facultatif ou de code incrémente la mineure. Version courante : `1.3` (1.1 : ajout de `LINK_NOT_LOADED` ; 1.2 : ajout de `UNSUPPORTED_PARAMETER_TYPE` ; 1.3 : ajout de `summary.volumeComputation` et de `VOLUME_COMPUTE_FAILED`). Aucun autre fichier de résultat (`rooms.csv`, `summary.json`, `execution.jsonl`) n'est produit. Le rapport natif APS, qui contient les logs console, reste disponible via le WorkItem ; son téléchargement appartient au consommateur, hors bundle.
 
 ## 3. Données des pièces
 
@@ -71,7 +71,7 @@ Paramètres partagés : lecture par GUID ; GUID inconnu du document → `value: 
 
 Conserver toutes les pièces, y compris non placées ou de surface nulle, avec indicateurs. Ne pas déduire une cause précise uniquement d'une surface nulle : distinguer `UNPLACED` si l'absence de placement est vérifiée, et `ZERO_AREA` autrement. Signaler les doublons de numéro, sans supprimer ni fusionner de pièces.
 
-Volume : en mode `preserve`, lire le réglage du document ; lorsque le calcul est désactivé, exporter `volumeM3: null` et `volumeStatus: notComputed` pour toutes les pièces et une anomalie document `VOLUME_NOT_COMPUTED`, jamais présenter zéro comme un volume calculé. En mode `compute`, activer le calcul dans une transaction sur la copie de travail, régénérer et lire les résultats. Ne pas sauvegarder le RVT et consigner ce choix. Ce mode doit être validé sur les trois moteurs.
+Volume : en mode `preserve`, lire le réglage du document ; lorsque le calcul est désactivé, exporter `volumeM3: null` et `volumeStatus: notComputed` pour toutes les pièces et une anomalie document `VOLUME_NOT_COMPUTED`, jamais présenter zéro comme un volume calculé. En mode `compute`, activer le calcul dans une transaction sur la copie de travail, régénérer et lire les résultats. Ne pas sauvegarder le RVT et consigner ce choix. Ce mode doit être validé sur les trois moteurs. Mise en œuvre (EGR-16) : si le réglage du document est déjà actif, lecture directe sans transaction ; sinon transaction temporaire (`ComputeVolumes = true`, `Document.Regenerate()`), lecture des volumes de toutes les pièces **avant** l'annulation (`Transaction.RollBack()` rejette toutes les modifications), puis annulation ; le document est ensuite fermé sans sauvegarde. Volume lu : `computed` ; pièce non placée ou lecture impossible : `notAvailable`. Échec d'activation (transaction refusée, réglage non modifiable) : extraction poursuivie, toutes les pièces en `notAvailable` et anomalie document `VOLUME_COMPUTE_FAILED` (warning) ; échec de régénération (document corrompu) : `DOCUMENT_CORRUPTED`. Traçabilité : `summary.volumeComputation` (`documentComputeVolumes`, `computeApplied`, `transactionRolledBack`) et événement de log `VOLUME_COMPUTATION` (section 5).
 
 ## 4. Architecture par services
 
@@ -150,6 +150,7 @@ Les codes de portée pièce figurent dans `rooms[].qualityFlags` et sont détail
 | `LEVEL_NOT_FOUND` | pièce | warning | `LevelId` invalide ou niveau introuvable ; `level: null` |
 | `EXTRACTION_ERROR` | pièce | error | Exception limitée à la pièce ; identité exportée, champs illisibles à null |
 | `VOLUME_NOT_COMPUTED` | document | info | Calcul des volumes désactivé en mode `preserve` |
+| `VOLUME_COMPUTE_FAILED` | document | warning | Mode `compute` : activation temporaire du calcul impossible ; `volumeM3: null` et `volumeStatus: notAvailable` pour toutes les pièces ; détails `volumeMode`, `reason`, `roomsAffected` (schéma 1.3) |
 | `LINK_MISSING` | document | warning | Lien Revit référencé absent du ZIP |
 | `LINK_NOT_LOADED` | document | info | Lien Revit présent mais déchargé (statut `Unloaded` ou `LocallyUnloaded`) ; sans effet sur le statut (schéma 1.1) |
 | `REVIT_WARNING_ON_OPEN` | document | warning | Avertissement Revit toléré par la politique d'ouverture (D2) |
@@ -162,14 +163,14 @@ Une erreur globale termine le traitement avec `status: failed` ; le code figure 
 
 | Code | `stage` | Cause |
 | --- | --- | --- |
-| `CONFIG_INVALID` | `configuration` (configuration) ; `collection` (collecte) pour une phase inconnue | `settings.json` absent, illisible ou non conforme, dont `phaseIds` vide ou `volumeMode` `compute` non encore disponible ; ou `phaseIds` désignant une phase absente du document (identifiants listés dans le message) |
+| `CONFIG_INVALID` | `configuration` (configuration) ; `collection` (collecte) pour une phase inconnue | `settings.json` absent, illisible ou non conforme, dont `phaseIds` vide ; ou `phaseIds` désignant une phase absente du document (identifiants listés dans le message) |
 | `CONFIG_SCHEMA_UNSUPPORTED` | `configuration` (configuration) | Version majeure de `schemaVersion` non prise en charge |
 | `PATH_OUTSIDE_INPUT` | `configuration` (configuration) | Chemin sortant du répertoire d'entrée |
 | `RVT_NOT_FOUND` | `input` (entrée) | Aucun RVT, ou `mainModelPath` introuvable |
 | `RVT_AMBIGUOUS` | `input` (entrée) | Plusieurs RVT sans `mainModelPath` |
 | `REVIT_VERSION_INCOMPATIBLE` | `document` (document) | RVT enregistré dans une version postérieure au moteur ou non ouvrable par lui |
 | `DOCUMENT_OPEN_FAILED` | `document` (document) | Échec d'ouverture ou d'accès au document |
-| `DOCUMENT_CORRUPTED` | `document` (document) | Corruption ou erreur bloquante à l'ouverture |
+| `DOCUMENT_CORRUPTED` | `document` (document) | Corruption ou erreur bloquante à l'ouverture ; échec de régénération pendant le calcul temporaire des volumes (mode `compute`) |
 | `EXPORT_FAILED` | `export` (export) | Écriture ou finalisation de `result.json` impossible |
 | `UNEXPECTED_ERROR` | étape en cours : `startup`, `configuration`, `input`, `document`, `collection`, `quality`, `export` ou `completion` (toutes) | Exception non prévue hors du périmètre d'une pièce |
 
@@ -209,7 +210,7 @@ Trois pièces, document sans calcul de volume : « Bureau » complet mais numér
 
 ```json
 {
-  "schemaVersion": "1.2",
+  "schemaVersion": "1.3",
   "summary": {
     "correlationId": "wi-7f3c2a9e5b1d4c08",
     "extractorVersion": "0.2.0",
@@ -227,6 +228,7 @@ Trois pièces, document sans calcul de volume : « Bureau » complet mais numér
       "volumeMode": "preserve",
       "sharedParameterKeys": ["codeLocal"]
     },
+    "volumeComputation": { "documentComputeVolumes": false, "computeApplied": false, "transactionRolledBack": null },
     "counts": { "roomsCollected": 3, "roomsExported": 3, "roomsWithAnomalies": 2 },
     "status": "succeededWithWarnings",
     "errors": []

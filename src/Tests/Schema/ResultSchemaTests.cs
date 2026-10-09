@@ -87,7 +87,7 @@ public class ResultSchemaTests
         { "elementId 64 bits", r => Room(r, 2)!["elementId"] = "9223372036854775807" },
         { "paramètre partagé numérique", r => Room(r, 0)!["sharedParameters"]!["codeLocal"]!["value"] = 12.5 },
         { "sans paramètre partagé", r => Room(r, 0)!["sharedParameters"] = new JsonObject() },
-        { "schemaVersion mineure supérieure", r => r["schemaVersion"] = "1.3" },
+        { "schemaVersion mineure supérieure", r => r["schemaVersion"] = "1.4" },
         { "date avec décalage +00:00", r => r["summary"]!["startedAtUtc"] = "2026-10-09T12:00:03+00:00" },
         { "source inconnue", r => r["summary"]!["source"] = null },
         { "phases filtrées", r => r["summary"]!["options"]!["phaseIds"] = new JsonArray("86961") },
