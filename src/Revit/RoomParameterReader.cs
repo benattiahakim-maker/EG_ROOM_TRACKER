@@ -72,11 +72,13 @@ public sealed class RoomParameterReader(RevitExecutionContext context, IUnitConv
 
         var isPlaced = element.Location is not null;
         builder.Placement(isPlaced);
+        // Mode compute (EGR-16) : volume lu pendant la transaction temporaire, avant son annulation.
+        var volume = volumeState.VolumeSource(room.ElementId, () => element.Volume);
         builder.Quantities(RoomQuantities.Convert(
             rawArea: element.Area,
             rawUnboundedHeight: element.UnboundedHeight,
-            readVolume: () => element.Volume,
-            volumesComputed: volumeState.VolumesComputed,
+            readVolume: volume.ReadVolume,
+            volumesComputed: volume.VolumesComputed,
             isPlaced: isPlaced,
             units: units));
         builder.Phase(ReadPhase(document, element));

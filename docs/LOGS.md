@@ -57,6 +57,14 @@ par le filtre de phase, filtre appliqué). Une phase demandée absente du docume
 `CONFIG_INVALID` (`EXTRACTION_FAILED`). `LINKED_DOCUMENT_FAILURES` (Warning) compte les messages d'échec émis par des
 liens à l'ouverture.
 
+Événements de volume (EGR-16), étape `document`, après `DOCUMENT_ACCESSIBLE` :
+
+- `VOLUME_COMPUTATION` (Info ; Warning si l'annulation de la transaction temporaire n'est pas confirmée) : `data`
+  `volumeMode`, `documentComputeVolumes`, `computeApplied`, `transactionRolledBack`, `volumesComputed`, `roomsRead`
+  (nombre de volumes lus pendant la transaction, null sans transaction) ;
+- `VOLUME_COMPUTE_FAILED` (Warning) : activation temporaire impossible en mode `compute` ; message = motif. Les volumes
+  sont exportés en `notAvailable` et l'anomalie document `VOLUME_COMPUTE_FAILED` figure dans `result.json`.
+
 En échec, `EXTRACTION_FAILED` puis `EXTRACTION_SUMMARY` restent écrits et le
 journal est vidé : le rapport APS reste exploitable.
 

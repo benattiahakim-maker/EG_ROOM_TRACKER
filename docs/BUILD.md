@@ -62,7 +62,7 @@ Les cibles Windows se compilent aussi sous Linux/macOS (`EnableWindowsTargeting`
 référence sont utilisées. L'exécution réelle requiert Revit / Design Automation.
 
 Publication sur l'Automation API, recette, promotion, retour arrière et intégration continue :
-[`PUBLISHING.md`](PUBLISHING.md). La CI ([`docs/ci/ci.yml`](ci/ci.yml), à copier dans `.github/workflows/`) exécute le build,
+[`PUBLISHING.md`](PUBLISHING.md). La CI ([`.github/workflows/ci.yml`](../.github/workflows/ci.yml)) exécute le build,
 les tests .NET et Python, la validation des exemples et la construction contrôlée des trois AppBundles, sans secret
 ni déploiement.
 

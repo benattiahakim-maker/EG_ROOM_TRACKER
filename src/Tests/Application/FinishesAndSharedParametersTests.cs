@@ -247,7 +247,6 @@ public class FinishesAndSharedParametersTests
         var json = JsonNode.Parse(ContractJson.Serialize(pipeline.Run()))!;
 
         Assert.Equal(SchemaVersions.Result, json["schemaVersion"]!.GetValue<string>());
-        Assert.Equal("1.2", json["schemaVersion"]!.GetValue<string>());
         Assert.Null(json["rooms"]![0]!["sharedParameters"]!["surfaceUtile"]!["value"]);
         var exported = json["anomalies"]!.AsArray().Single(a => a!["code"]!.GetValue<string>() == "UNSUPPORTED_PARAMETER_TYPE")!;
         Assert.Equal("info", exported["severity"]!.GetValue<string>());

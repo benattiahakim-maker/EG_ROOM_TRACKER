@@ -35,6 +35,7 @@ internal sealed class Pipeline
     public ExtractionStatus QualityStatus { get; set; } = ExtractionStatus.Succeeded;
     public Exception? ExportException { get; set; }
     public IReadOnlyList<AnomalyDto> SharedParameterAnomalies { get; set; } = [];
+    public Func<VolumeMode, VolumeComputationState>? PrepareVolume { get; set; }
 
     public static ExtractionRequest Request => new()
     {
@@ -88,7 +89,7 @@ internal sealed class Pipeline
         public VolumeComputationState Prepare(VolumeMode mode)
         {
             p.Calls.Add("volume");
-            return new VolumeComputationState(mode, VolumesComputed: false);
+            return p.PrepareVolume?.Invoke(mode) ?? new VolumeComputationState(mode, VolumesComputed: false);
         }
 
         public IReadOnlyList<CollectedRoom> CollectRooms(IReadOnlyList<long>? phaseElementIds)

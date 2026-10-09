@@ -184,9 +184,7 @@ journal.
 
 ## 9. Intégration continue
 
-Workflow : [`docs/ci/ci.yml`](ci/ci.yml), **à copier par le porteur dans `.github/workflows/ci.yml`** pour être
-activé (le jeton utilisé pour la PR n'a pas le scope `workflow`, nécessaire pour pousser un fichier sous
-`.github/workflows/`). Il s'exécute sur `push` vers `main`, sur les pull requests et à la demande. Un seul job `ubuntu-latest` :
+Workflow : [`.github/workflows/ci.yml`](../.github/workflows/ci.yml). Il s'exécute sur `push` vers `main`, sur les pull requests et à la demande. Un seul job `ubuntu-latest` :
 
 1. SDK .NET de `global.json` + runtime .NET 8, Python 3.12, `jsonschema` 4.26.0 ;
 2. `dotnet build EgRoomTracker.sln -c Release` ;

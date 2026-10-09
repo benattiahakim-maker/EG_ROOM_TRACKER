@@ -65,6 +65,7 @@ public sealed class RoomExtractionService
         ExtractionSettings? settings = null;
         DocumentDescriptor? document = null;
         var roomsCollected = 0;
+        VolumeComputationState? volumeState = null;
         ExtractionResult result;
 
         try
@@ -84,7 +85,8 @@ public sealed class RoomExtractionService
                     DocumentPath = document.Source.RelativePath,
                 });
 
-                var volumeState = _volume.Prepare(settings.VolumeMode);
+                volumeState = _volume.Prepare(settings.VolumeMode);
+                LogVolumeComputation(volumeState, stage);
 
                 stage = Stages.Collection;
                 var collected = _collection.CollectRooms(settings.PhaseElementIds);
@@ -123,18 +125,18 @@ public sealed class RoomExtractionService
                 var status = roomErrors > 0 && report.Status == ExtractionStatus.Succeeded
                     ? ExtractionStatus.SucceededWithWarnings
                     : report.Status;
-                result = BuildResult(request, settings, document, startedAt, status, sortedRooms, report.Anomalies, roomsCollected, []);
+                result = BuildResult(request, settings, document, volumeState, startedAt, status, sortedRooms, report.Anomalies, roomsCollected, []);
             }
             catch (ExtractionFailedException ex)
             {
                 LogFailure(ex.Error, ex);
-                result = BuildResult(request, settings, document, startedAt, ExtractionStatus.Failed, [], [], roomsCollected, [ex.Error]);
+                result = BuildResult(request, settings, document, volumeState, startedAt, ExtractionStatus.Failed, [], [], roomsCollected, [ex.Error]);
             }
             catch (Exception ex)
             {
                 var error = new GlobalError(ErrorCodes.UnexpectedError, stage, "Erreur inattendue hors du périmètre d'une pièce.");
                 LogFailure(error, ex);
-                result = BuildResult(request, settings, document, startedAt, ExtractionStatus.Failed, [], [], roomsCollected, [error]);
+                result = BuildResult(request, settings, document, volumeState, startedAt, ExtractionStatus.Failed, [], [], roomsCollected, [error]);
             }
             finally
             {
@@ -280,6 +282,7 @@ public sealed class RoomExtractionService
         ExtractionRequest request,
         ExtractionSettings? settings,
         DocumentDescriptor? document,
+        VolumeComputationState? volumeState,
         DateTimeOffset startedAt,
         ExtractionStatus status,
         IReadOnlyList<RoomDto> rooms,
@@ -304,6 +307,9 @@ public sealed class RoomExtractionService
                 StartedAtUtc = startedAt,
                 CompletedAtUtc = _time.GetUtcNow(),
                 Options = options,
+                VolumeComputation = volumeState is null
+                    ? null
+                    : new VolumeComputationSummary(volumeState.DocumentComputeVolumes, volumeState.ComputeApplied, volumeState.TransactionRolledBack),
                 Counts = new RoomCounts(roomsCollected, rooms.Count, rooms.Count(r => r.QualityFlags.Count > 0)),
                 Status = status,
                 Errors = errors,
@@ -311,6 +317,36 @@ public sealed class RoomExtractionService
             Rooms = rooms,
             Anomalies = anomalies,
         };
+    }
+
+    /// <summary>
+    /// Traçabilité du calcul des volumes (EGR-16) : VOLUME_COMPUTATION (info ; warning si l'annulation de la transaction
+    /// temporaire n'est pas confirmée), et VOLUME_COMPUTE_FAILED (warning) si l'activation temporaire a échoué.
+    /// </summary>
+    private void LogVolumeComputation(VolumeComputationState state, string stage)
+    {
+        var mode = state.Mode.ToString().ToLowerInvariant();
+        var level = state.TransactionRolledBack == false ? LogLevel.Warning : LogLevel.Info;
+        var message = state.ComputeApplied
+            ? "Calcul des volumes activé temporairement (transaction annulée après lecture, RVT non sauvegardé)."
+            : $"Calcul des volumes : mode {mode}, réglage du document conservé.";
+        _log.Log(new LogEvent(level, LogEventCodes.VolumeComputation, stage, message)
+        {
+            Data = new Dictionary<string, object?>
+            {
+                ["volumeMode"] = mode,
+                ["documentComputeVolumes"] = state.DocumentComputeVolumes,
+                ["computeApplied"] = state.ComputeApplied,
+                ["transactionRolledBack"] = state.TransactionRolledBack,
+                ["volumesComputed"] = state.VolumesComputed,
+                ["roomsRead"] = state.ComputedVolumes?.Count,
+            },
+        });
+
+        if (state.ComputeFailure is not null)
+        {
+            _log.Warning(LogEventCodes.VolumeComputeFailed, stage, state.ComputeFailure);
+        }
     }
 
     /// <summary>Compteur agrégé par code : pas un message par pièce (section 5).</summary>
