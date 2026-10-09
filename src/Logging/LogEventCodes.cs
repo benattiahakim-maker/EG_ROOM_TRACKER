@@ -14,5 +14,4 @@ public static class LogEventCodes
     public const string RoomExtractionFailed = "ROOM_EXTRACTION_FAILED";
     public const string DocumentCloseFailed = "DOCUMENT_CLOSE_FAILED";
     public const string RoomCollectionDetails = "ROOM_COLLECTION_DETAILS";
-    public const string PhaseNotFound = "PHASE_NOT_FOUND";
 }

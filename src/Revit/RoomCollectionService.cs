@@ -8,7 +8,7 @@ namespace EgRoomTracker.Revit;
 
 /// <summary>
 /// Collecte des pièces du document principal (EGR-07) : instances <see cref="Room"/> de catégorie
-/// <c>OST_Rooms</c>, collecteur sur le document entier (aucun filtre de vue active), toutes phases par défaut,
+/// <c>OST_Rooms</c>, collecteur sur le document entier (aucun filtre de vue active), toutes phases par défaut (phase inconnue : CONFIG_INVALID),
 /// variantes et pièces non placées incluses. Espaces MEP, surfaces et étiquettes exclus (autres catégories/types).
 /// Les pièces des documents liés ne sont pas parcourues.
 /// </summary>
@@ -72,8 +72,8 @@ public sealed class RoomCollectionService(RevitExecutionContext context, ILogSer
     private static long RoomPhaseId(Room room) =>
         room.get_Parameter(BuiltInParameter.ROOM_PHASE_ID)?.AsElementId()?.Value ?? ElementId.InvalidElementId.Value;
 
-    /// <summary>Ne conserve que les identifiants de phases existant dans le document ; les autres sont signalés dans le journal.</summary>
-    private IReadOnlySet<long>? ResolvePhases(Document document, IReadOnlySet<long>? requested)
+    /// <summary>Vérifie que les phases demandées existent dans le document (CONFIG_INVALID sinon).</summary>
+    private static IReadOnlySet<long>? ResolvePhases(Document document, IReadOnlySet<long>? requested)
     {
         if (requested is null)
         {
@@ -86,15 +86,8 @@ public sealed class RoomCollectionService(RevitExecutionContext context, ILogSer
             known.Add(phase.Id.Value);
         }
 
-        var unknown = requested.Where(id => !known.Contains(id)).Order().ToArray();
-        if (unknown.Length > 0)
-        {
-            log.Log(new LogEvent(LogLevel.Warning, LogEventCodes.PhaseNotFound, Stages.Collection, $"{unknown.Length} phase(s) demandée(s) absente(s) du document ; ignorée(s).")
-            {
-                Data = new Dictionary<string, object?> { ["phaseIds"] = unknown.Select(id => id.ToString(System.Globalization.CultureInfo.InvariantCulture)).ToArray() },
-            });
-        }
-
-        return requested.Where(known.Contains).ToHashSet();
+        // Phase inconnue : échec global CONFIG_INVALID (étape collection), jamais un résultat vide « réussi ».
+        PhaseSelection.EnsureKnown(requested, known);
+        return requested;
     }
 }

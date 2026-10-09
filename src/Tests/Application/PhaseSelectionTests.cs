@@ -11,7 +11,33 @@ public class PhaseSelectionTests
     public void Parse_Null_MeansAllPhases() => Assert.Null(PhaseSelection.Parse(null));
 
     [Fact]
-    public void Parse_Empty_SelectsNoPhase() => Assert.Empty(PhaseSelection.Parse([])!);
+    public void Parse_Empty_FailsWithConfigInvalid()
+    {
+        var ex = Assert.Throws<ExtractionFailedException>(() => PhaseSelection.Parse([]));
+
+        Assert.Equal(ErrorCodes.ConfigInvalid, ex.Error.Code);
+        Assert.Equal(Stages.Configuration, ex.Error.Stage);
+    }
+
+    [Fact]
+    public void EnsureKnown_AllPhasesKnown_Passes() =>
+        PhaseSelection.EnsureKnown(new HashSet<long> { 86961 }, new HashSet<long> { 86961, 86962 });
+
+    [Fact]
+    public void EnsureKnown_NullMeansAllPhases_Passes() =>
+        PhaseSelection.EnsureKnown(null, new HashSet<long>());
+
+    [Fact]
+    public void EnsureKnown_UnknownPhases_FailsWithConfigInvalidListingIds()
+    {
+        var ex = Assert.Throws<ExtractionFailedException>(() =>
+            PhaseSelection.EnsureKnown(new HashSet<long> { 99, 86961, 12 }, new HashSet<long> { 86961 }));
+
+        Assert.Equal(ErrorCodes.ConfigInvalid, ex.Error.Code);
+        Assert.Equal(Stages.Collection, ex.Error.Stage);
+        Assert.Contains("12, 99", ex.Error.Message);
+        Assert.DoesNotContain("86961", ex.Error.Message);
+    }
 
     [Fact]
     public void Parse_ElementIds_AreConvertedAndDeduplicated()

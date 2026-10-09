@@ -53,7 +53,11 @@ Exemple :
 l'indicateur `EXTRACTION_ERROR`.
 
 Événements de collecte (EGR-07) : `ROOM_COLLECTION_DETAILS` (nombre de pièces, non placées, en variante, exclues
-par le filtre de phase, filtre appliqué) et `PHASE_NOT_FOUND` (Warning, phases demandées absentes du document). En échec, `EXTRACTION_FAILED` puis `EXTRACTION_SUMMARY` restent écrits et le
+par le filtre de phase, filtre appliqué). Une phase demandée absente du document provoque un échec global
+`CONFIG_INVALID` (`EXTRACTION_FAILED`). `LINKED_DOCUMENT_FAILURES` (Warning) compte les messages d'échec émis par des
+liens à l'ouverture.
+
+En échec, `EXTRACTION_FAILED` puis `EXTRACTION_SUMMARY` restent écrits et le
 journal est vidé : le rapport APS reste exploitable.
 
 ## Volume

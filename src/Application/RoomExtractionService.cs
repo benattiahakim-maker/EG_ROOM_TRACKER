@@ -69,75 +69,78 @@ public sealed class RoomExtractionService
 
         try
         {
-            _log.Info(LogEventCodes.ExtractionStarted, stage, $"Extraction démarrée (Revit {request.RevitVersion}, extracteur {ExtractorVersion}).");
-
-            stage = Stages.Configuration;
-            settings = _configuration.Load(request.InputDirectory, request.SettingsPath);
-            _log.Info(LogEventCodes.ConfigurationValidated, stage, "Configuration validée.");
-
-            stage = Stages.Document;
-            document = _document.Open(settings, request.InputDirectory);
-            _log.Log(new LogEvent(LogLevel.Info, LogEventCodes.DocumentAccessible, stage, "Document accessible.")
+            try
             {
-                DocumentPath = document.Source.RelativePath,
-            });
+                _log.Info(LogEventCodes.ExtractionStarted, stage, $"Extraction démarrée (Revit {request.RevitVersion}, extracteur {ExtractorVersion}).");
 
-            var volumeState = _volume.Prepare(settings.VolumeMode);
+                stage = Stages.Configuration;
+                settings = _configuration.Load(request.InputDirectory, request.SettingsPath);
+                _log.Info(LogEventCodes.ConfigurationValidated, stage, "Configuration validée.");
 
-            stage = Stages.Collection;
-            var collected = _collection.CollectRooms(settings.PhaseIds);
-            roomsCollected = collected.Count;
-            var rooms = new List<RoomDto>(collected.Count);
-            var anomalies = new List<AnomalyDto>(document.Anomalies);
-            var roomErrors = 0;
-            foreach (var room in collected.OrderBy(r => r.ElementId))
-            {
-                var read = ReadRoom(room, settings.SharedParameters, volumeState, document.Source.RelativePath);
-                if (read is null)
+                stage = Stages.Document;
+                document = _document.Open(settings, request.InputDirectory);
+                _log.Log(new LogEvent(LogLevel.Info, LogEventCodes.DocumentAccessible, stage, "Document accessible.")
                 {
-                    roomErrors++;
-                    read = ExtractionErrorRoom(room);
+                    DocumentPath = document.Source.RelativePath,
+                });
+
+                var volumeState = _volume.Prepare(settings.VolumeMode);
+
+                stage = Stages.Collection;
+                var collected = _collection.CollectRooms(settings.PhaseIds);
+                roomsCollected = collected.Count;
+                var rooms = new List<RoomDto>(collected.Count);
+                var anomalies = new List<AnomalyDto>(document.Anomalies);
+                var roomErrors = 0;
+                foreach (var room in collected.OrderBy(r => r.ElementId))
+                {
+                    var read = ReadRoom(room, settings.SharedParameters, volumeState, document.Source.RelativePath);
+                    if (read is null)
+                    {
+                        roomErrors++;
+                        read = ExtractionErrorRoom(room);
+                    }
+
+                    rooms.Add(read.Room);
+                    anomalies.AddRange(read.Anomalies);
                 }
 
-                rooms.Add(read.Room);
-                anomalies.AddRange(read.Anomalies);
+                _log.Log(new LogEvent(LogLevel.Info, LogEventCodes.CollectionCompleted, stage, $"{rooms.Count} pièce(s) collectée(s).")
+                {
+                    Data = new Dictionary<string, object?> { ["roomsCollected"] = roomsCollected },
+                });
+
+                stage = Stages.Quality;
+                var report = _quality.Evaluate(rooms, anomalies, volumeState);
+                var sortedRooms = SortByElementId(report.Rooms);
+                if (report.Anomalies.Count > 0)
+                {
+                    LogAnomalySummary(report.Anomalies);
+                }
+
+                // Une pièce en erreur n'est jamais présentée comme un succès sans réserve (section 6).
+                var status = roomErrors > 0 && report.Status == ExtractionStatus.Succeeded
+                    ? ExtractionStatus.SucceededWithWarnings
+                    : report.Status;
+                result = BuildResult(request, settings, document, startedAt, status, sortedRooms, report.Anomalies, roomsCollected, []);
+            }
+            catch (ExtractionFailedException ex)
+            {
+                LogFailure(ex.Error, ex);
+                result = BuildResult(request, settings, document, startedAt, ExtractionStatus.Failed, [], [], roomsCollected, [ex.Error]);
+            }
+            catch (Exception ex)
+            {
+                var error = new GlobalError(ErrorCodes.UnexpectedError, stage, "Erreur inattendue hors du périmètre d'une pièce.");
+                LogFailure(error, ex);
+                result = BuildResult(request, settings, document, startedAt, ExtractionStatus.Failed, [], [], roomsCollected, [error]);
+            }
+            finally
+            {
+                // Fermeture du document par son propriétaire (D1), en succès comme en échec, avant l'export.
+                CloseDocument();
             }
 
-            _log.Log(new LogEvent(LogLevel.Info, LogEventCodes.CollectionCompleted, stage, $"{rooms.Count} pièce(s) collectée(s).")
-            {
-                Data = new Dictionary<string, object?> { ["roomsCollected"] = roomsCollected },
-            });
-
-            stage = Stages.Quality;
-            var report = _quality.Evaluate(rooms, anomalies, volumeState);
-            if (report.Anomalies.Count > 0)
-            {
-                LogAnomalySummary(report.Anomalies);
-            }
-
-            // Une pièce en erreur n'est jamais présentée comme un succès sans réserve (section 6).
-            var status = roomErrors > 0 && report.Status == ExtractionStatus.Succeeded
-                ? ExtractionStatus.SucceededWithWarnings
-                : report.Status;
-            result = BuildResult(request, settings, document, startedAt, status, report.Rooms, report.Anomalies, roomsCollected, []);
-        }
-        catch (ExtractionFailedException ex)
-        {
-            LogFailure(ex.Error, ex);
-            result = BuildResult(request, settings, document, startedAt, ExtractionStatus.Failed, [], [], roomsCollected, [ex.Error]);
-        }
-        catch (Exception ex)
-        {
-            var error = new GlobalError(ErrorCodes.UnexpectedError, stage, "Erreur inattendue hors du périmètre d'une pièce.");
-            LogFailure(error, ex);
-            result = BuildResult(request, settings, document, startedAt, ExtractionStatus.Failed, [], [], roomsCollected, [error]);
-        }
-
-        // Fermeture du document par son propriétaire (D1) dès la fin de la lecture, avant l'export.
-        CloseDocument();
-
-        try
-        {
             result = Export(request, result);
             LogSummary(result, stopwatch.Elapsed);
         }
@@ -174,6 +177,13 @@ public sealed class RoomExtractionService
             };
         }
     }
+
+    /// <summary>Tri par elementId numérique croissant (section 2), quel que soit l'ordre rendu par le contrôle qualité.</summary>
+    internal static IReadOnlyList<RoomDto> SortByElementId(IReadOnlyList<RoomDto> rooms) =>
+        rooms
+            .OrderBy(r => long.TryParse(r.ElementId, NumberStyles.AllowLeadingSign, CultureInfo.InvariantCulture, out var id) ? id : long.MaxValue)
+            .ThenBy(r => r.ElementId, StringComparer.Ordinal)
+            .ToList();
 
     private void CloseDocument()
     {

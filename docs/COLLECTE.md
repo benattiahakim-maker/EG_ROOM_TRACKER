@@ -12,9 +12,14 @@ Implémentation : `EgRoomTracker.Revit.RoomCollectionService` ; filtre de phases
 - **Inclus** : pièces non placées (`Location` nulle), de surface nulle, dans un groupe et dans toutes les variantes
   (`DesignOption`). Aucune pièce n'est supprimée ni fusionnée ; les indicateurs qualité relèvent d'EGR-11.
 - **Phases** : `phaseIds` null ou absent = toutes les phases. Sinon, seules les pièces dont `ROOM_PHASE_ID`
-  appartient à la liste sont conservées. Les identifiants absents du document sont ignorés et journalisés
-  (`PHASE_NOT_FOUND`) ; aucune anomalie de `result.json` n'est définie pour ce cas.
-- **Identité** : `CollectedRoom(ElementId.Value, UniqueId)`, triée par `elementId` croissant ; elle permet d'exporter
+  appartient à la liste sont conservées.
+  - Tableau vide : `CONFIG_INVALID` (étape `configuration`).
+  - Phase absente du document : échec global `CONFIG_INVALID` (étape `collection`), identifiants inconnus listés
+    dans le message ; jamais un résultat vide présenté comme réussi.
+  - `PhaseSelection.Parse` n'est qu'un contrôle défensif : la validation de `settings.json`, y compris le format
+    entier des `phaseIds`, relève d'EGR-05.
+- **Identité** : `CollectedRoom(ElementId.Value, UniqueId)`, triée par `elementId` croissant (l'orchestration
+  retrie aussi les pièces par `elementId` numérique après le contrôle qualité) ; elle permet d'exporter
   une pièce en `EXTRACTION_ERROR` même si la lecture de ses paramètres échoue.
 - Exécution séquentielle sur le thread de l'événement Design Automation.
 

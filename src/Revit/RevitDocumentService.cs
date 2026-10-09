@@ -41,6 +41,15 @@ public sealed class RevitDocumentService(RevitExecutionContext context, ILogServ
             anomalies.Add(warnings);
         }
 
+        if (policy.LinkedDocumentFailures > 0)
+        {
+            log.Log(new LogEvent(LogLevel.Warning, "LINKED_DOCUMENT_FAILURES", Stages.Document,
+                $"{policy.LinkedDocumentFailures} message(s) d'échec émis par des liens à l'ouverture ; traitement par défaut de Revit, sans effet sur le document principal.")
+            {
+                DocumentPath = relativePath,
+            });
+        }
+
         anomalies.AddRange(FindMissingLinks(document));
         return new DocumentDescriptor(
             new SourceInfo(Path.GetFileName(fullPath), relativePath, document.IsWorkshared || fileInfo.IsWorkshared),

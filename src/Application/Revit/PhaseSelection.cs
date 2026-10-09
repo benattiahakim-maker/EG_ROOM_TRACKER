@@ -4,19 +4,27 @@ using EgRoomTracker.Contracts.Codes;
 namespace EgRoomTracker.Application.Revit;
 
 /// <summary>
-/// Filtre explicite de phases (<c>settings.phaseIds</c>) : null ou absent = toutes les phases (section 2).
+/// Filtre explicite de phases (<c>settings.phaseIds</c>, section 2) : null ou absent = toutes les phases ;
+/// liste vide ou phase absente du document = configuration invalide (CONFIG_INVALID).
 /// </summary>
 public static class PhaseSelection
 {
     /// <summary>
     /// Convertit les ElementId de phase (chaînes) en valeurs entières ; null = aucune restriction.
-    /// Une valeur non entière est une configuration invalide (contrôle défensif, la validation relève d'EGR-05).
+    /// Contrôle défensif uniquement : la validation de <c>settings.json</c>, y compris le format entier des
+    /// <c>phaseIds</c>, relève d'EGR-05 (<c>IInputConfigurationService</c>).
     /// </summary>
     public static IReadOnlySet<long>? Parse(IReadOnlyList<string>? phaseIds)
     {
         if (phaseIds is null)
         {
             return null;
+        }
+
+        if (phaseIds.Count == 0)
+        {
+            throw new ExtractionFailedException(ErrorCodes.ConfigInvalid, Stages.Configuration,
+                "phaseIds : liste vide ; utiliser null ou omettre la clé pour toutes les phases.");
         }
 
         var result = new HashSet<long>();
@@ -31,5 +39,25 @@ public static class PhaseSelection
         }
 
         return result;
+    }
+
+    /// <summary>
+    /// Vérifie que toutes les phases demandées existent dans le document ; sinon échec global CONFIG_INVALID
+    /// (étape <c>collection</c>) listant les identifiants inconnus. Null = toutes les phases, toujours valide.
+    /// </summary>
+    public static void EnsureKnown(IReadOnlySet<long>? requested, IReadOnlySet<long> documentPhaseIds)
+    {
+        if (requested is null)
+        {
+            return;
+        }
+
+        var unknown = requested.Where(id => !documentPhaseIds.Contains(id)).Order().ToArray();
+        if (unknown.Length > 0)
+        {
+            var list = string.Join(", ", unknown.Select(id => id.ToString(CultureInfo.InvariantCulture)));
+            throw new ExtractionFailedException(ErrorCodes.ConfigInvalid, Stages.Collection,
+                $"phaseIds : phase(s) absente(s) du document : {list}.");
+        }
     }
 }
