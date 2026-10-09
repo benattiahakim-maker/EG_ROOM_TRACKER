@@ -24,6 +24,20 @@ public class ContractCodesTests
     public void ResultSchemaVersion_MatchesSchemaPattern() =>
         Assert.Matches(Defs.GetProperty("__root_pattern").GetString()!, SchemaVersions.Result);
 
+    [Fact]
+    public void LinkNotLoaded_IsDocumentAnomalyInSchema() =>
+        Assert.Contains(DocumentAnomalyCodes.LinkNotLoaded, SchemaEnum("documentAnomalyCode"));
+
+    [Fact]
+    public void ResultExample_UsesCurrentResultSchemaVersion()
+    {
+        var path = Path.Combine(AppContext.BaseDirectory, "Data", "result.example.json");
+        using var example = JsonDocument.Parse(File.ReadAllText(path));
+
+        Assert.Equal(SchemaVersions.Result, example.RootElement.GetProperty("schemaVersion").GetString());
+        Assert.Equal("1.1", SchemaVersions.Result);
+    }
+
     private static IEnumerable<string> SchemaEnum(string name) =>
         Defs.GetProperty(name).GetProperty("enum").EnumerateArray().Select(e => e.GetString()!).Order();
 

@@ -50,7 +50,7 @@ public sealed class RevitDocumentService(RevitExecutionContext context, ILogServ
             });
         }
 
-        anomalies.AddRange(FindMissingLinks(document));
+        anomalies.AddRange(FindLinkAnomalies(document));
         return new DocumentDescriptor(
             new SourceInfo(Path.GetFileName(fullPath), relativePath, document.IsWorkshared || fileInfo.IsWorkshared),
             anomalies);
@@ -154,13 +154,22 @@ public sealed class RevitDocumentService(RevitExecutionContext context, ILogServ
     private static string BlockingMessage(OpenFailurePolicy policy) =>
         $"Erreur bloquante à l'ouverture ({policy.BlockingFailures.Count}) : {policy.BlockingFailures[0]}";
 
-    /// <summary>Liens Revit introuvables (absents du ZIP ou chemin non résolu).</summary>
-    private static IEnumerable<AnomalyDto> FindMissingLinks(Document document)
+    /// <summary>
+    /// Liens Revit de premier niveau : introuvables (absents du ZIP ou chemin non résolu) → LINK_MISSING ;
+    /// présents mais déchargés → LINK_NOT_LOADED (info).
+    /// </summary>
+    private static IEnumerable<AnomalyDto> FindLinkAnomalies(Document document)
     {
         using var collector = new FilteredElementCollector(document).OfClass(typeof(RevitLinkType));
         foreach (var linkType in collector.Cast<RevitLinkType>().OrderBy(t => t.Id.Value))
         {
-            if (linkType.IsNestedLink || linkType.GetLinkedFileStatus() != LinkedFileStatus.NotFound)
+            if (linkType.IsNestedLink)
+            {
+                continue;
+            }
+
+            var status = linkType.GetLinkedFileStatus();
+            if (status is not (LinkedFileStatus.NotFound or LinkedFileStatus.Unloaded or LinkedFileStatus.LocallyUnloaded))
             {
                 continue;
             }
@@ -172,7 +181,9 @@ public sealed class RevitDocumentService(RevitExecutionContext context, ILogServ
                 path = ModelPathUtils.ConvertModelPathToUserVisiblePath(reference.GetPath());
             }
 
-            yield return DocumentAnomalies.LinkMissing(linkType.Name, path);
+            yield return status == LinkedFileStatus.NotFound
+                ? DocumentAnomalies.LinkMissing(linkType.Name, path)
+                : DocumentAnomalies.LinkNotLoaded(linkType.Name, path, status.ToString());
         }
     }
 }

@@ -20,6 +20,19 @@ public static class DocumentAnomalies
     };
 
     /// <summary>
+    /// Un lien Revit présent mais déchargé (statut <c>Unloaded</c> ou <c>LocallyUnloaded</c>) : information,
+    /// sans effet sur le statut. Les pièces des liens ne sont de toute façon pas collectées (MVP).
+    /// </summary>
+    public static AnomalyDto LinkNotLoaded(string linkName, string? linkPath, string linkStatus) => new()
+    {
+        Code = DocumentAnomalyCodes.LinkNotLoaded,
+        Severity = AnomalySeverity.Info,
+        Scope = AnomalyScope.Document,
+        Message = $"Lien Revit présent mais non chargé : {linkName}.",
+        Details = new Dictionary<string, object?> { ["linkName"] = linkName, ["linkPath"] = linkPath, ["linkStatus"] = linkStatus },
+    };
+
+    /// <summary>
     /// Avertissements Revit tolérés à l'ouverture (D2), agrégés en une anomalie : nombre total et descriptions
     /// distinctes (limitées) avec leur nombre d'occurrences. Null si aucun avertissement.
     /// </summary>

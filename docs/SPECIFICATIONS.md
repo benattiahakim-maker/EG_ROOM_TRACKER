@@ -28,7 +28,7 @@ Paramètres de `settings.json` (exemple en section 10.1) :
 | `volumeMode` | `preserve` ou `compute` | `preserve` par défaut ; `compute` en P2 (EGR-16) |
 | `sharedParameters` | tableau `{ key, guid }` | Facultatif ; mapping de paramètres partagés par GUID, `key` unique |
 
-Les chemins restent confinés au répertoire d'entrée. Les liens présents dans le ZIP conservent une arborescence documentée (décision D4) ; les liens absents sont signalés (`LINK_MISSING`). Le MVP collecte les pièces du document principal uniquement, sans parcourir les pièces des documents liés.
+Les chemins restent confinés au répertoire d'entrée. Les liens présents dans le ZIP conservent une arborescence documentée (décision D4) ; les liens absents sont signalés (`LINK_MISSING`), les liens présents mais déchargés sont indiqués (`LINK_NOT_LOADED`, info). Le MVP collecte les pièces du document principal uniquement, sans parcourir les pièces des documents liés.
 
 Sortie : **un seul fichier `result.json`**, paramètre de sortie de l'Activity, UTF-8 sans BOM. C'est l'unique contrat de résultat, décrit par le schéma [`docs/schema/result.schema.json`](schema/result.schema.json) (JSON Schema draft 2020-12) et illustré en section 10.2. Il contient trois blocs :
 
@@ -36,7 +36,7 @@ Sortie : **un seul fichier `result.json`**, paramètre de sortie de l'Activity, 
 - `rooms` : toutes les pièces collectées (section 3), triées par `elementId` numérique croissant ;
 - `anomalies` : anomalies non bloquantes détaillées, au niveau pièce ou document (section 9.1).
 
-`schemaVersion` figure à la racine. Toute modification incompatible du contrat incrémente la version majeure ; un ajout de champ facultatif incrémente la mineure. Aucun autre fichier de résultat (`rooms.csv`, `summary.json`, `execution.jsonl`) n'est produit. Le rapport natif APS, qui contient les logs console, reste disponible via le WorkItem ; son téléchargement appartient au consommateur, hors bundle.
+`schemaVersion` figure à la racine. Toute modification incompatible du contrat incrémente la version majeure ; un ajout de champ facultatif ou de code incrémente la mineure. Version courante : `1.1` (ajout de `LINK_NOT_LOADED`). Aucun autre fichier de résultat (`rooms.csv`, `summary.json`, `execution.jsonl`) n'est produit. Le rapport natif APS, qui contient les logs console, reste disponible via le WorkItem ; son téléchargement appartient au consommateur, hors bundle.
 
 ## 3. Données des pièces
 
@@ -143,6 +143,7 @@ Les codes de portée pièce figurent dans `rooms[].qualityFlags` et sont détail
 | `EXTRACTION_ERROR` | pièce | error | Exception limitée à la pièce ; identité exportée, champs illisibles à null |
 | `VOLUME_NOT_COMPUTED` | document | info | Calcul des volumes désactivé en mode `preserve` |
 | `LINK_MISSING` | document | warning | Lien Revit référencé absent du ZIP |
+| `LINK_NOT_LOADED` | document | info | Lien Revit présent mais déchargé (statut `Unloaded` ou `LocallyUnloaded`) ; sans effet sur le statut (schéma 1.1) |
 | `REVIT_WARNING_ON_OPEN` | document | warning | Avertissement Revit toléré par la politique d'ouverture (D2) |
 | `SHARED_PARAMETER_NOT_FOUND` | document | warning | GUID de `sharedParameters` inconnu dans le document |
 
@@ -199,7 +200,7 @@ Trois pièces, document sans calcul de volume : « Bureau » complet mais numér
 
 ```json
 {
-  "schemaVersion": "1.0",
+  "schemaVersion": "1.1",
   "summary": {
     "correlationId": "wi-7f3c2a9e5b1d4c08",
     "extractorVersion": "0.2.0",
