@@ -11,10 +11,8 @@ namespace EgRoomTracker.EntryPoint;
 /// <summary>Injection simple des dépendances, sans conteneur.</summary>
 internal static class CompositionRoot
 {
-    public static RoomExtractionService CreateExtractionService(DesignAutomationData data, string correlationId)
+    public static RoomExtractionService CreateExtractionService(DesignAutomationData data, ILogService log)
     {
-        // Journal console structuré : EGR-04.
-        ILogService log = new NullLogService(correlationId);
         var context = new RevitExecutionContext(data.RevitApp, data.RevitDoc);
 
         return new RoomExtractionService(

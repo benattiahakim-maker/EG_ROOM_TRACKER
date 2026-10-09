@@ -111,13 +111,13 @@ public sealed class RoomExtractionService
         }
         catch (ExtractionFailedException ex)
         {
-            _log.Error(LogEventCodes.ExtractionFailed, ex.Error.Stage, $"{ex.Error.Code} : {ex.Error.Message}", ex);
+            LogFailure(ex.Error, ex);
             result = BuildResult(request, settings, document, startedAt, ExtractionStatus.Failed, [], [], roomsCollected, [ex.Error]);
         }
         catch (Exception ex)
         {
             var error = new GlobalError(ErrorCodes.UnexpectedError, stage, "Erreur inattendue hors du périmètre d'une pièce.");
-            _log.Error(LogEventCodes.ExtractionFailed, stage, $"{error.Code} : {ex.Message}", ex);
+            LogFailure(error, ex);
             result = BuildResult(request, settings, document, startedAt, ExtractionStatus.Failed, [], [], roomsCollected, [error]);
         }
 
@@ -145,7 +145,7 @@ public sealed class RoomExtractionService
         catch (Exception ex)
         {
             var error = new GlobalError(ErrorCodes.ExportFailed, Stages.Export, "Écriture ou finalisation de result.json impossible.");
-            _log.Error(LogEventCodes.ExtractionFailed, Stages.Export, $"{error.Code} : {ex.Message}", ex);
+            LogFailure(error, ex);
             return result with
             {
                 Rooms = [],
@@ -159,6 +159,13 @@ public sealed class RoomExtractionService
             };
         }
     }
+
+    private void LogFailure(GlobalError error, Exception exception) =>
+        _log.Log(new LogEvent(LogLevel.Error, LogEventCodes.ExtractionFailed, error.Stage, $"{error.Code} : {error.Message}")
+        {
+            Exception = exception,
+            Data = new Dictionary<string, object?> { ["errorCode"] = error.Code },
+        });
 
     private ExtractionResult BuildResult(
         ExtractionRequest request,
