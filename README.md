@@ -8,6 +8,7 @@ Extraction des pièces d’une maquette RVT reçue dans un ZIP : identité, nom,
 
 - [Spécifications techniques](docs/SPECIFICATIONS.md) (v0.2)
 - [Build et tests](docs/BUILD.md)
+- [Publication, recette, retour arrière et CI](docs/PUBLISHING.md)
 - [Logs d’exécution](docs/LOGS.md)
 - [Accès au document Revit](docs/DOCUMENT.md)
 - [Collecte des pièces](docs/COLLECTE.md)
