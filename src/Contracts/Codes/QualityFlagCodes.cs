@@ -19,11 +19,12 @@ public static class DocumentAnomalyCodes
 {
     public const string VolumeNotComputed = "VOLUME_NOT_COMPUTED";
     public const string LinkMissing = "LINK_MISSING";
+    public const string LinkNotLoaded = "LINK_NOT_LOADED";
     public const string RevitWarningOnOpen = "REVIT_WARNING_ON_OPEN";
     public const string SharedParameterNotFound = "SHARED_PARAMETER_NOT_FOUND";
 
     public static IReadOnlyList<string> All { get; } =
-        [VolumeNotComputed, LinkMissing, RevitWarningOnOpen, SharedParameterNotFound];
+        [VolumeNotComputed, LinkMissing, LinkNotLoaded, RevitWarningOnOpen, SharedParameterNotFound];
 }
 
 /// <summary>Erreurs globales (section 9.2) : statut <c>failed</c>.</summary>
@@ -63,8 +64,8 @@ public static class Stages
 
 public static class SchemaVersions
 {
-    /// <summary>Version du contrat <c>result.json</c>.</summary>
-    public const string Result = "1.0";
+    /// <summary>Version du contrat <c>result.json</c> (1.1 : ajout de LINK_NOT_LOADED).</summary>
+    public const string Result = "1.1";
 
     /// <summary>Version majeure de <c>settings.json</c> prise en charge.</summary>
     public const int SettingsMajor = 1;
