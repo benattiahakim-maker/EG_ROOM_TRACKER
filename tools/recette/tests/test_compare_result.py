@@ -350,16 +350,20 @@ class ManifestTests(unittest.TestCase):
         self.assertEqual({"2027"}, set(next(c for c in MANIFEST["cases"] if c["id"] == "R09")["notApplicable"]))
 
     def test_duplicate_numbers_follow_the_context_rule(self):
-        """Règle du lead (EGR-18) : doublon si même phase et même numéro non vide, et même variante ou l'une des deux
-        pièces dans le modèle principal ; variantes différentes jamais en doublon. Implémentation EGR Dev en attente
-        (cas marqués pendingImplementation)."""
+        """Règle du lead (EGR-18) : doublon si même phase et même numéro non vide, sauf entre deux variantes
+        différentes d'un MÊME jeu d'options ; des variantes de jeux différents sont comparées ; une pièce du modèle
+        principal est comparée à tout. Implémentation EGR Dev en attente (cas marqués pendingImplementation)."""
+        set_of = {o: name for name, options in MANIFEST["designOptionSets"]["sets"].items() for o in options}
+
         def option(r):
             return (r["designOption"] or {}).get("elementId")
 
         def conflict(a, b):
+            exclusive = (option(a) is not None and option(b) is not None and option(a) != option(b)
+                         and set_of[option(a)] == set_of[option(b)])
             return (a is not b and bool(a["number"]) and a["number"] == b["number"]
                     and (a["phase"] or {}).get("elementId") == (b["phase"] or {}).get("elementId")
-                    and (option(a) is None or option(b) is None or option(a) == option(b)))
+                    and not exclusive)
 
         checked = set()
         for case in MANIFEST["cases"]:
@@ -381,6 +385,11 @@ class ManifestTests(unittest.TestCase):
                     self.assertNotIn("DUPLICATE_NUMBER", names["Bureau variante A"]["qualityFlags"])
                     self.assertNotIn("DUPLICATE_NUMBER", names["Bureau variante B"]["qualityFlags"])
                     self.assertIn("DUPLICATE_NUMBER", names["Accueil commun"]["qualityFlags"])
+                    # Variantes de deux jeux d'options différents (Option A / Option C) : comparées, donc doublon.
+                    a2, c = names["Bureau variante A2"], names["Salle aménagement C"]
+                    self.assertNotEqual(set_of[a2["designOption"]["elementId"]], set_of[c["designOption"]["elementId"]])
+                    self.assertIn("DUPLICATE_NUMBER", a2["qualityFlags"])
+                    self.assertIn("DUPLICATE_NUMBER", c["qualityFlags"])
                     self.assertIn("pendingImplementation", case)
         self.assertEqual({"R01", "R02", "R06", "R11"}, checked)
 

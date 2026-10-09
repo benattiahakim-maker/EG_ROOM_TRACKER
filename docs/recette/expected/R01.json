@@ -35,9 +35,9 @@
       "transactionRolledBack": null
     },
     "counts": {
-      "roomsCollected": 15,
-      "roomsExported": 15,
-      "roomsWithAnomalies": 5
+      "roomsCollected": 17,
+      "roomsExported": 17,
+      "roomsWithAnomalies": 7
     },
     "status": "succeededWithWarnings",
     "errors": []
@@ -992,6 +992,140 @@
       "qualityFlags": [
         "DUPLICATE_NUMBER"
       ]
+    },
+    {
+      "elementId": "9000116",
+      "uniqueId": "EGR18-P16",
+      "name": "Bureau variante A2",
+      "number": "012",
+      "areaM2": 3.0,
+      "unboundedHeightM": 2.7,
+      "level": {
+        "elementId": "9000001",
+        "uniqueId": "EGR18-NIVEAU-R+0",
+        "name": "R+0"
+      },
+      "occupancy": null,
+      "volumeM3": null,
+      "volumeStatus": "notComputed",
+      "finishes": {
+        "floor": null,
+        "wall": null,
+        "ceiling": null,
+        "base": null
+      },
+      "phase": {
+        "elementId": "9000012",
+        "name": "Nouvelle construction"
+      },
+      "designOption": {
+        "elementId": "9000021",
+        "name": "Option A"
+      },
+      "sharedParameters": {
+        "texte": {
+          "guid": "cb4b0672-757b-4a76-87ae-7e37cc266035",
+          "value": null
+        },
+        "entier": {
+          "guid": "ae35a261-77c1-455b-8e4d-f65999306f6f",
+          "value": null
+        },
+        "nombre": {
+          "guid": "b747d301-23b1-47f7-bbb9-a09fa4147731",
+          "value": null
+        },
+        "longueur": {
+          "guid": "a1be583b-a4ea-4794-8151-1a9b115c5a8a",
+          "value": null
+        },
+        "surface": {
+          "guid": "bf1f9fc0-84f2-45a3-b7d1-bd70b04d445f",
+          "value": null
+        },
+        "volume": {
+          "guid": "90dd40a1-a42c-4daa-aac7-25200f273c50",
+          "value": null
+        },
+        "ouiNon": {
+          "guid": "49261c8b-d425-45e6-a969-bce44e9ae681",
+          "value": null
+        },
+        "angle": {
+          "guid": "bc7bf97e-4d2c-43e5-beb6-2cefd5617aa9",
+          "value": null
+        }
+      },
+      "qualityFlags": [
+        "DUPLICATE_NUMBER"
+      ]
+    },
+    {
+      "elementId": "9000117",
+      "uniqueId": "EGR18-P17",
+      "name": "Salle aménagement C",
+      "number": "012",
+      "areaM2": 4.0,
+      "unboundedHeightM": 2.7,
+      "level": {
+        "elementId": "9000001",
+        "uniqueId": "EGR18-NIVEAU-R+0",
+        "name": "R+0"
+      },
+      "occupancy": null,
+      "volumeM3": null,
+      "volumeStatus": "notComputed",
+      "finishes": {
+        "floor": null,
+        "wall": null,
+        "ceiling": null,
+        "base": null
+      },
+      "phase": {
+        "elementId": "9000012",
+        "name": "Nouvelle construction"
+      },
+      "designOption": {
+        "elementId": "9000023",
+        "name": "Option C"
+      },
+      "sharedParameters": {
+        "texte": {
+          "guid": "cb4b0672-757b-4a76-87ae-7e37cc266035",
+          "value": null
+        },
+        "entier": {
+          "guid": "ae35a261-77c1-455b-8e4d-f65999306f6f",
+          "value": null
+        },
+        "nombre": {
+          "guid": "b747d301-23b1-47f7-bbb9-a09fa4147731",
+          "value": null
+        },
+        "longueur": {
+          "guid": "a1be583b-a4ea-4794-8151-1a9b115c5a8a",
+          "value": null
+        },
+        "surface": {
+          "guid": "bf1f9fc0-84f2-45a3-b7d1-bd70b04d445f",
+          "value": null
+        },
+        "volume": {
+          "guid": "90dd40a1-a42c-4daa-aac7-25200f273c50",
+          "value": null
+        },
+        "ouiNon": {
+          "guid": "49261c8b-d425-45e6-a969-bce44e9ae681",
+          "value": null
+        },
+        "angle": {
+          "guid": "bc7bf97e-4d2c-43e5-beb6-2cefd5617aa9",
+          "value": null
+        }
+      },
+      "qualityFlags": [
+        "DUPLICATE_NUMBER"
+      ]
     }
   ],
   "anomalies": [
@@ -1015,7 +1149,7 @@
       "message": "Calcul des volumes désactivé dans le document ; volumeM3 exporté à null (mode preserve).",
       "details": {
         "volumeMode": "preserve",
-        "roomsAffected": 15
+        "roomsAffected": 17
       }
     },
     {
@@ -1091,6 +1225,34 @@
         "elementIds": [
           "9000114",
           "9000115"
+        ]
+      }
+    },
+    {
+      "code": "DUPLICATE_NUMBER",
+      "severity": "warning",
+      "scope": "room",
+      "elementId": "9000116",
+      "message": "Numéro 012 partagé par 2 pièces.",
+      "details": {
+        "number": "012",
+        "elementIds": [
+          "9000116",
+          "9000117"
+        ]
+      }
+    },
+    {
+      "code": "DUPLICATE_NUMBER",
+      "severity": "warning",
+      "scope": "room",
+      "elementId": "9000117",
+      "message": "Numéro 012 partagé par 2 pièces.",
+      "details": {
+        "number": "012",
+        "elementIds": [
+          "9000116",
+          "9000117"
         ]
       }
     }

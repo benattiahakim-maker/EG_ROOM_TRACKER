@@ -1,5 +1,18 @@
 {
   "description": "Matrice de recette EGR-18 / EGR-14 (docs/RECETTE.md). Chemins ignore/pending : syntaxe de tools/recette/compare_result.py.",
+  "designOptionSets": {
+    "description": "Jeux d'options du modèle EGR_Ref par ElementId provisoire des gabarits (options sans pièce incluses) ; sert à vérifier la règle DUPLICATE_NUMBER sur les gabarits, non modifié par bind.",
+    "sets": {
+      "Variantes": [
+        "9000021",
+        "9000022"
+      ],
+      "Aménagement": [
+        "9000023",
+        "9000024"
+      ]
+    }
+  },
   "tolerances": {
     "length": 0.001,
     "area": 0.001,
@@ -40,6 +53,8 @@
         "rooms[name=Bureau variante A].designOption.name",
         "rooms[name=Bureau variante B].designOption.name",
         "rooms[name=Bureau variante B2].designOption.name",
+        "rooms[name=Bureau variante A2].designOption.name",
+        "rooms[name=Salle aménagement C].designOption.name",
         "rooms[name=Local technique].sharedParameters.texte.value",
         "rooms[name=Local technique].sharedParameters.ouiNon.value",
         "rooms[name=Réserve].sharedParameters.ouiNon.value",
@@ -54,13 +69,15 @@
         "rooms[name=Combles aménagés].sharedParameters.ouiNon.value",
         "rooms[name=Accueil commun].sharedParameters.ouiNon.value",
         "rooms[name=Bureau variante B2].sharedParameters.ouiNon.value",
+        "rooms[name=Bureau variante A2].sharedParameters.ouiNon.value",
+        "rooms[name=Salle aménagement C].sharedParameters.ouiNon.value",
         "anomalies[code=UNSUPPORTED_PARAMETER_TYPE].details.typeId"
       ],
       "pendingImplementation": {
         "code": "DUPLICATE_NUMBER",
-        "rule": "Comparaison par contexte (phase, variante) : deux pièces de variantes différentes ne sont pas en doublon ; une pièce du modèle principal est comparée à toutes les pièces de sa phase.",
+        "rule": "Comparaison par contexte (phase, variante) : seules deux pièces de variantes différentes d'un même jeu d'options ne sont pas comparées ; des variantes de jeux différents sont comparées ; une pièce du modèle principal est comparée à toutes les pièces de sa phase.",
         "owner": "EGR Dev",
-        "status": "Décision du lead (EGR-18), implémentation en attente : le contrôle qualité actuel signale encore Bureau variante A / B en doublon."
+        "status": "Décision du lead (EGR-18), implémentation en attente : le contrôle qualité actuel signale encore Bureau variante A / B (même jeu d'options) en doublon."
       },
       "allowExtraAnomalies": [
         "REVIT_WARNING_ON_OPEN"
@@ -91,14 +108,16 @@
         "rooms[name=Bureau variante A].designOption.name",
         "rooms[name=Bureau variante B].designOption.name",
         "rooms[name=Bureau variante B2].designOption.name",
+        "rooms[name=Bureau variante A2].designOption.name",
+        "rooms[name=Salle aménagement C].designOption.name",
         "rooms[name=Couloir].volumeM3",
         "rooms[name=Couloir].volumeStatus"
       ],
       "pendingImplementation": {
         "code": "DUPLICATE_NUMBER",
-        "rule": "Comparaison par contexte (phase, variante) : deux pièces de variantes différentes ne sont pas en doublon ; une pièce du modèle principal est comparée à toutes les pièces de sa phase.",
+        "rule": "Comparaison par contexte (phase, variante) : seules deux pièces de variantes différentes d'un même jeu d'options ne sont pas comparées ; des variantes de jeux différents sont comparées ; une pièce du modèle principal est comparée à toutes les pièces de sa phase.",
         "owner": "EGR Dev",
-        "status": "Décision du lead (EGR-18), implémentation en attente : le contrôle qualité actuel signale encore Bureau variante A / B en doublon."
+        "status": "Décision du lead (EGR-18), implémentation en attente : le contrôle qualité actuel signale encore Bureau variante A / B (même jeu d'options) en doublon."
       },
       "allowExtraAnomalies": [
         "REVIT_WARNING_ON_OPEN"
@@ -192,13 +211,15 @@
         "rooms[name=Couloir].unboundedHeightM",
         "rooms[name=Bureau variante A].designOption.name",
         "rooms[name=Bureau variante B].designOption.name",
-        "rooms[name=Bureau variante B2].designOption.name"
+        "rooms[name=Bureau variante B2].designOption.name",
+        "rooms[name=Bureau variante A2].designOption.name",
+        "rooms[name=Salle aménagement C].designOption.name"
       ],
       "pendingImplementation": {
         "code": "DUPLICATE_NUMBER",
-        "rule": "Comparaison par contexte (phase, variante) : deux pièces de variantes différentes ne sont pas en doublon ; une pièce du modèle principal est comparée à toutes les pièces de sa phase.",
+        "rule": "Comparaison par contexte (phase, variante) : seules deux pièces de variantes différentes d'un même jeu d'options ne sont pas comparées ; des variantes de jeux différents sont comparées ; une pièce du modèle principal est comparée à toutes les pièces de sa phase.",
         "owner": "EGR Dev",
-        "status": "Décision du lead (EGR-18), implémentation en attente : le contrôle qualité actuel signale encore Bureau variante A / B en doublon."
+        "status": "Décision du lead (EGR-18), implémentation en attente : le contrôle qualité actuel signale encore Bureau variante A / B (même jeu d'options) en doublon."
       },
       "allowExtraAnomalies": [
         "REVIT_WARNING_ON_OPEN"
@@ -303,14 +324,16 @@
         "rooms[name=Bureau variante A].designOption.name",
         "rooms[name=Bureau variante B].designOption.name",
         "rooms[name=Bureau variante B2].designOption.name",
+        "rooms[name=Bureau variante A2].designOption.name",
+        "rooms[name=Salle aménagement C].designOption.name",
         "rooms[name=Couloir].volumeM3",
         "rooms[name=Couloir].volumeStatus"
       ],
       "pendingImplementation": {
         "code": "DUPLICATE_NUMBER",
-        "rule": "Comparaison par contexte (phase, variante) : deux pièces de variantes différentes ne sont pas en doublon ; une pièce du modèle principal est comparée à toutes les pièces de sa phase.",
+        "rule": "Comparaison par contexte (phase, variante) : seules deux pièces de variantes différentes d'un même jeu d'options ne sont pas comparées ; des variantes de jeux différents sont comparées ; une pièce du modèle principal est comparée à toutes les pièces de sa phase.",
         "owner": "EGR Dev",
-        "status": "Décision du lead (EGR-18), implémentation en attente : le contrôle qualité actuel signale encore Bureau variante A / B en doublon."
+        "status": "Décision du lead (EGR-18), implémentation en attente : le contrôle qualité actuel signale encore Bureau variante A / B (même jeu d'options) en doublon."
       },
       "allowExtraAnomalies": [
         "REVIT_WARNING_ON_OPEN"
