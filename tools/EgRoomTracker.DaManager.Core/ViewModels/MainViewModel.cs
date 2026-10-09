@@ -75,9 +75,48 @@ public sealed class MainViewModel : ObservableObject
         ImportJournalCommand = new AsyncRelayCommand(() => RunAsync("Import du journal", ImportJournalCoreAsync), () => !IsBusy);
         ExportJournalCommand = new AsyncRelayCommand(() => RunAsync("Export du journal", ExportJournalCoreAsync), () => !IsBusy);
         ReloadJournal();
+        if (HasConfigurationBanner)
+        {
+            AddLog("warning", ConfigurationBanner);
+        }
     }
 
     public string CredentialSource => _options.CredentialSource;
+
+    /// <summary>
+    /// Variables de configuration manquantes (noms seulement, jamais de valeur) : identifiants APS, nickname, racine du
+    /// dépôt. Vide si la configuration est complète.
+    /// </summary>
+    public IReadOnlyList<string> MissingVariables
+    {
+        get
+        {
+            var missing = new List<string>(_options.Aps.MissingCredentialVariables());
+            if (string.IsNullOrEmpty(Nickname))
+            {
+                missing.Add(ApsSettings.NicknameVariable);
+            }
+
+            if (!IsRepositoryRootValid)
+            {
+                missing.Add(DaManagerOptions.RepositoryRootVariable);
+            }
+
+            return missing;
+        }
+    }
+
+    /// <summary>Bandeau affiché en haut de la fenêtre ; vide si rien ne manque.</summary>
+    public string ConfigurationBanner => MissingVariables is { Count: > 0 } missing
+        ? $"Configuration incomplète. Variables manquantes : {string.Join(", ", missing)}. " +
+          (_options.Aps.HasCredentials ? string.Empty : "Les actions APS (Actualiser, Publier, Promouvoir, Alias, Nettoyage, Nickname) sont impossibles sans identifiants. ") +
+          "Définir ces variables puis relancer l'outil (docs/OUTILS.md section 2) ; le journal de publication reste consultable."
+        : string.Empty;
+
+    public bool HasConfigurationBanner => ConfigurationBanner.Length > 0;
+
+    /// <summary>Vrai dès qu'un client APS (et donc un fournisseur de jeton) a été créé : jamais au démarrage.</summary>
+    internal bool HasApsClient => _client is not null;
 
     public string DaBaseUrl => _options.Aps.DaBaseUrl;
 
@@ -141,7 +180,13 @@ public sealed class MainViewModel : ObservableObject
     public string Nickname
     {
         get => _nickname;
-        set => SetProperty(ref _nickname, value.Trim());
+        set
+        {
+            if (SetProperty(ref _nickname, value.Trim()))
+            {
+                RaiseConfigurationChanged();
+            }
+        }
     }
 
     public string RepositoryRoot
@@ -153,6 +198,7 @@ public sealed class MainViewModel : ObservableObject
             {
                 _service = null; // définitions relues depuis le nouveau dépôt
                 OnPropertyChanged(nameof(Commit));
+                RaiseConfigurationChanged();
             }
         }
     }
@@ -389,7 +435,7 @@ public sealed class MainViewModel : ObservableObject
         {
             ShowJournal(PublicationJournal.Load(JournalPath), File.Exists(JournalPath) ? null : "fichier absent, créé à la première promotion ou au premier import");
         }
-        catch (Exception exception) when (exception is InvalidOperationException or IOException or UnauthorizedAccessException)
+        catch (Exception exception) when (exception is InvalidOperationException or IOException or UnauthorizedAccessException or ArgumentException or NotSupportedException or System.Security.SecurityException)
         {
             ShowJournal(new PublicationJournal(), "illisible : " + exception.Message);
             AddLog("error", $"Journal de publication illisible : {exception.Message}");
@@ -525,7 +571,7 @@ public sealed class MainViewModel : ObservableObject
             return _service;
         }
 
-        if (string.IsNullOrWhiteSpace(RepositoryRoot) || !Directory.Exists(Path.Combine(RepositoryRoot, "src", "Packaging", "definitions")))
+        if (!IsRepositoryRootValid)
         {
             throw new InvalidOperationException("Racine du dépôt introuvable (src/Packaging/definitions) : la choisir ou définir EGR_REPO_ROOT.");
         }
@@ -534,9 +580,47 @@ public sealed class MainViewModel : ObservableObject
         return _service;
     }
 
-    /// <summary>Client Automation API (ne dépend pas du dépôt : sert aussi au nickname).</summary>
-    private DesignAutomationClient Client() =>
-        _client ??= new DesignAutomationClient(_httpClient, _options.Aps.CreateTokenProvider(_httpClient, ApsScopes.DesignAutomation), _options.Aps.DaBaseUrl);
+    /// <summary>
+    /// Client Automation API, créé à la première action APS seulement (jamais au démarrage). Ne dépend pas du dépôt :
+    /// sert aussi au nickname.
+    /// </summary>
+    private DesignAutomationClient Client()
+    {
+        if (_client is not null)
+        {
+            return _client;
+        }
+
+        if (!_options.Aps.HasCredentials)
+        {
+            throw new InvalidOperationException($"Identifiants APS absents : {ApsSettings.MissingCredentialsMessage} Les définir puis relancer l'outil.");
+        }
+
+        _client = new DesignAutomationClient(_httpClient, _options.Aps.CreateTokenProvider(_httpClient, ApsScopes.DesignAutomation), _options.Aps.DaBaseUrl);
+        return _client;
+    }
+
+    private bool IsRepositoryRootValid
+    {
+        get
+        {
+            try
+            {
+                return !string.IsNullOrWhiteSpace(RepositoryRoot) && Directory.Exists(Path.Combine(RepositoryRoot, "src", "Packaging", "definitions"));
+            }
+            catch (ArgumentException)
+            {
+                return false;
+            }
+        }
+    }
+
+    private void RaiseConfigurationChanged()
+    {
+        OnPropertyChanged(nameof(MissingVariables));
+        OnPropertyChanged(nameof(ConfigurationBanner));
+        OnPropertyChanged(nameof(HasConfigurationBanner));
+    }
 
     private string RequireNickname() =>
         string.IsNullOrEmpty(Nickname) ? throw new InvalidOperationException("APS_NICKNAME est obligatoire (champ Nickname).") : Nickname;

@@ -31,6 +31,26 @@ public sealed class ApsSettings
     public bool HasClientCredentials => !string.IsNullOrEmpty(ClientId) && !string.IsNullOrEmpty(ClientSecret);
     public bool HasToken => !string.IsNullOrEmpty(Token);
 
+    /// <summary>Identifiants utilisables : couple ID client / secret, ou jeton.</summary>
+    public bool HasCredentials => HasClientCredentials || HasToken;
+
+    /// <summary>Message unique quand aucun identifiant n'est disponible (noms des variables seulement).</summary>
+    public const string MissingCredentialsMessage = $"{ClientIdVariable} et {ClientSecretVariable} (ou {TokenVariable}) sont obligatoires.";
+
+    /// <summary>Variables d'identification manquantes (noms seulement, jamais de valeur) ; vide si les identifiants suffisent.</summary>
+    public IReadOnlyList<string> MissingCredentialVariables()
+    {
+        if (HasCredentials)
+        {
+            return [];
+        }
+
+        var alternative = $" (ou {TokenVariable})";
+        return string.IsNullOrEmpty(ClientId) == string.IsNullOrEmpty(ClientSecret)
+            ? [ClientIdVariable, ClientSecretVariable + alternative]
+            : [(string.IsNullOrEmpty(ClientId) ? ClientIdVariable : ClientSecretVariable) + alternative];
+    }
+
     /// <summary>Lit les variables d'environnement du processus, ou le dictionnaire fourni (tests).</summary>
     public static ApsSettings FromEnvironment(IReadOnlyDictionary<string, string?>? environment = null)
     {
@@ -66,7 +86,7 @@ public sealed class ApsSettings
             return new StaticTokenProvider(Token!);
         }
 
-        throw new ApsException($"{ClientIdVariable} et {ClientSecretVariable} (ou {TokenVariable}) sont obligatoires.");
+        throw new ApsException(MissingCredentialsMessage);
     }
 
     /// <summary>Nickname obligatoire pour qualifier les identifiants d'Activity.</summary>

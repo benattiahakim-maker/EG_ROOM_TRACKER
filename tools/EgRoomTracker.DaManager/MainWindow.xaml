@@ -23,6 +23,11 @@
       </DockPanel>
     </Border>
 
+    <Border DockPanel.Dock="Top" Background="#FEF3C7" BorderBrush="#F59E0B" BorderThickness="0,0,0,1" Padding="20,8"
+            Visibility="{Binding HasConfigurationBanner, Converter={StaticResource BoolToVisibility}}">
+      <TextBlock Text="{Binding ConfigurationBanner, Mode=OneWay}" Foreground="#78350F" TextWrapping="Wrap" />
+    </Border>
+
     <!-- Barre d'état -->
     <Border DockPanel.Dock="Bottom" Background="#E2E8F0" Padding="12,6">
       <DockPanel>

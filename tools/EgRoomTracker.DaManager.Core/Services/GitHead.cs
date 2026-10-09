@@ -39,9 +39,9 @@ public static class GitHead
             var line = File.Exists(packed) ? File.ReadLines(packed).FirstOrDefault(l => l.EndsWith(" " + reference, StringComparison.Ordinal)) : null;
             return line is null ? null : $"{Short(line.Split(' ')[0])} ({reference.Replace("refs/heads/", string.Empty, StringComparison.Ordinal)})";
         }
-        catch (IOException)
+        catch (Exception exception) when (exception is IOException or UnauthorizedAccessException or ArgumentException or NotSupportedException or System.Security.SecurityException)
         {
-            return null;
+            return null; // commit inconnu : jamais bloquant
         }
     }
 

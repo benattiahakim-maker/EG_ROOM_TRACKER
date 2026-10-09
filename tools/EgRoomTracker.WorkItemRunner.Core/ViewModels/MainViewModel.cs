@@ -28,7 +28,9 @@ public sealed class MainViewModel : ObservableObject
     private readonly IFileDialogService? _files;
     private readonly TimeProvider _time;
     private readonly SynchronizationContext? _uiContext;
+    private readonly RunHistory _history;
     private WorkItemRunnerService? _service;
+    private ResultReader? _results;
     private ActiveRun? _activeRun;
     private CancellationTokenSource? _follow;
     private string _nickname;
@@ -58,6 +60,7 @@ public sealed class MainViewModel : ObservableObject
         _nickname = options.Aps.Nickname ?? string.Empty;
         _bucketKey = options.BucketKey ?? string.Empty;
         _repositoryRoot = options.RepositoryRoot ?? string.Empty;
+        _history = new RunHistory(options.DataDirectory); // historique local : aucun client APS au démarrage
 
         RunCommand = new AsyncRelayCommand(() => RunAsync("Lancement", RunCoreAsync), () => !IsBusy);
         StopFollowingCommand = new AsyncRelayCommand(StopFollowingAsync, () => _follow is not null);
@@ -87,6 +90,46 @@ public sealed class MainViewModel : ObservableObject
     }
 
     public string CredentialSource => _options.CredentialSource;
+
+    /// <summary>
+    /// Variables de configuration manquantes (noms seulement, jamais de valeur) : identifiants APS, nickname, racine du
+    /// dépôt, bucket. Vide si la configuration est complète.
+    /// </summary>
+    public IReadOnlyList<string> MissingVariables
+    {
+        get
+        {
+            var missing = new List<string>(_options.Aps.MissingCredentialVariables());
+            if (string.IsNullOrEmpty(Nickname))
+            {
+                missing.Add(ApsSettings.NicknameVariable);
+            }
+
+            if (!IsRepositoryRootValid)
+            {
+                missing.Add(RunnerOptions.RepositoryRootVariable);
+            }
+
+            if (string.IsNullOrEmpty(BucketKey))
+            {
+                missing.Add(RunnerOptions.BucketVariable);
+            }
+
+            return missing;
+        }
+    }
+
+    /// <summary>Bandeau affiché en haut de la fenêtre ; vide si rien ne manque.</summary>
+    public string ConfigurationBanner => MissingVariables is { Count: > 0 } missing
+        ? $"Configuration incomplète. Variables manquantes : {string.Join(", ", missing)}. " +
+          (_options.Aps.HasCredentials ? string.Empty : "Les actions APS (Lancer, Récupérer, Annuler) sont impossibles sans identifiants. ") +
+          "Définir ces variables puis relancer l'outil (docs/OUTILS.md section 2) ; l'historique local reste consultable."
+        : string.Empty;
+
+    public bool HasConfigurationBanner => ConfigurationBanner.Length > 0;
+
+    /// <summary>Vrai dès qu'un client APS (et donc un fournisseur de jeton) a été créé : jamais au démarrage.</summary>
+    internal bool HasApsClient => _service is not null;
 
     public IReadOnlyList<string> RevitVersions => RunnerOptions.RevitVersions;
 
@@ -118,14 +161,26 @@ public sealed class MainViewModel : ObservableObject
     public string Nickname
     {
         get => _nickname;
-        set => SetProperty(ref _nickname, value.Trim());
+        set
+        {
+            if (SetProperty(ref _nickname, value.Trim()))
+            {
+                RaiseConfigurationChanged();
+            }
+        }
     }
 
     /// <summary>Bucket OSS (APS_BUCKET) ; objets transitoires, supprimés par APS après 24 h.</summary>
     public string BucketKey
     {
         get => _bucketKey;
-        set => SetProperty(ref _bucketKey, value.Trim());
+        set
+        {
+            if (SetProperty(ref _bucketKey, value.Trim()))
+            {
+                RaiseConfigurationChanged();
+            }
+        }
     }
 
     public string RepositoryRoot
@@ -136,6 +191,8 @@ public sealed class MainViewModel : ObservableObject
             if (SetProperty(ref _repositoryRoot, value.Trim()))
             {
                 _service = null;
+                _results = null;
+                RaiseConfigurationChanged();
             }
         }
     }
@@ -235,16 +292,24 @@ public sealed class MainViewModel : ObservableObject
         private set => SetProperty(ref _status, value);
     }
 
-    /// <summary>Charge l'historique au démarrage (lecture locale uniquement).</summary>
+    /// <summary>
+    /// Démarrage : historique local uniquement, sans client APS ni jeton. Ne lève jamais : un historique illisible ou
+    /// une configuration incomplète sont signalés dans le journal et le bandeau.
+    /// </summary>
     public void Initialize()
     {
+        if (HasConfigurationBanner)
+        {
+            AddLog("warning", ConfigurationBanner);
+        }
+
         try
         {
             ReloadHistory();
         }
-        catch (InvalidOperationException exception)
+        catch (Exception exception) when (IsNonFatal(exception))
         {
-            AddLog("warning", exception.Message);
+            AddLog("warning", $"Historique local illisible ({_history.RunsDirectory}) : {exception.Message}");
         }
     }
 
@@ -353,7 +418,7 @@ public sealed class MainViewModel : ObservableObject
         var run = SelectedRun ?? throw new InvalidOperationException("Sélectionner un lancement.");
         if (_files?.SaveFile("Exporter le lancement", "ZIP (*.zip)|*.zip", $"workitem-{run.RunId}.zip") is { } path)
         {
-            Service().History.Export(run.RunId, path);
+            _history.Export(run.RunId, path);
             AddLog("info", $"Lancement {run.RunId} exporté : {Path.GetFileName(path)}");
         }
 
@@ -362,23 +427,41 @@ public sealed class MainViewModel : ObservableObject
 
     // ---- Interne -------------------------------------------------------------------------------------------------
 
+    /// <summary>Affiche un lancement depuis les fichiers locaux (sans APS ; sans dépôt, result.json n'est pas validé).</summary>
     private void ShowRun(RunRecord? run)
     {
-        if (run is null || _service is null)
+        Result = null;
+        ReportText = string.Empty;
+        if (run is null)
         {
-            Result = null;
-            ReportText = string.Empty;
             return;
         }
 
-        var (result, report) = _service.LoadRun(run);
-        Result = result;
-        ReportText = report is null ? "(rapport non téléchargé)" : SecretRedactor.Redact(report);
+        try
+        {
+            var directory = _history.DirectoryOf(run.RunId);
+            var resultPath = Path.Combine(directory, WorkItemRunnerService.ResultLocalName);
+            var reportPath = Path.Combine(directory, RunHistory.ReportFileName);
+            if (File.Exists(resultPath) && Results() is { } reader)
+            {
+                Result = reader.Read(File.ReadAllText(resultPath));
+            }
+
+            ReportText = File.Exists(reportPath) ? SecretRedactor.Redact(File.ReadAllText(reportPath)) : "(rapport non téléchargé)";
+        }
+        catch (Exception exception) when (IsNonFatal(exception))
+        {
+            AddLog("warning", $"Lancement {run.RunId} illisible : {exception.Message}");
+        }
     }
+
+    /// <summary>Lecteur de result.json (schéma du dépôt) ; null tant que la racine du dépôt est introuvable.</summary>
+    private ResultReader? Results() =>
+        _results ??= IsRepositoryRootValid ? ResultReader.ForRepository(RepositoryRoot) : null;
 
     private void ReloadHistory()
     {
-        var records = Service().History.Load();
+        var records = _history.Load();
         var selected = SelectedRun?.RunId;
         History.Clear();
         foreach (var record in records)
@@ -409,11 +492,17 @@ public sealed class MainViewModel : ObservableObject
         }
     }
 
+    /// <summary>Services APS, créés à la première action APS seulement (jamais au démarrage).</summary>
     private WorkItemRunnerService Service()
     {
         if (_service is not null)
         {
             return _service;
+        }
+
+        if (!_options.Aps.HasCredentials)
+        {
+            throw new InvalidOperationException($"Identifiants APS absents : {ApsSettings.MissingCredentialsMessage} Les définir puis relancer l'outil.");
         }
 
         var root = RequireRepositoryRoot();
@@ -423,17 +512,43 @@ public sealed class MainViewModel : ObservableObject
             new OssClient(_httpClient, tokens, _options.Aps.OssBaseUrl),
             DefinitionLoader.ForRepository(root),
             ResultReader.ForRepository(root),
-            new RunHistory(_options.DataDirectory),
+            _history,
             _time);
         return _service;
     }
 
+    private bool IsRepositoryRootValid
+    {
+        get
+        {
+            try
+            {
+                return !string.IsNullOrWhiteSpace(RepositoryRoot) && Directory.Exists(Path.Combine(RepositoryRoot, "src", "Packaging", "definitions"));
+            }
+            catch (ArgumentException)
+            {
+                return false;
+            }
+        }
+    }
+
     private string RequireRepositoryRoot() =>
-        string.IsNullOrWhiteSpace(RepositoryRoot) || !Directory.Exists(Path.Combine(RepositoryRoot, "src", "Packaging", "definitions"))
+        !IsRepositoryRootValid
             ? throw new InvalidOperationException("Racine du dépôt introuvable (src/Packaging/definitions) : la choisir ou définir EGR_REPO_ROOT.")
             : RepositoryRoot;
 
     private void Progress(string message) => AddLog("info", message);
+
+    /// <summary>Erreurs attendues à la lecture de fichiers locaux ou d'une configuration incomplète.</summary>
+    private static bool IsNonFatal(Exception exception) =>
+        exception is IOException or UnauthorizedAccessException or InvalidOperationException or ArgumentException or NotSupportedException or System.Text.Json.JsonException or System.Security.SecurityException;
+
+    private void RaiseConfigurationChanged()
+    {
+        OnPropertyChanged(nameof(MissingVariables));
+        OnPropertyChanged(nameof(ConfigurationBanner));
+        OnPropertyChanged(nameof(HasConfigurationBanner));
+    }
 
     private void AddLog(string level, string message)
     {
