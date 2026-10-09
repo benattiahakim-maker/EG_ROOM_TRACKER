@@ -1,0 +1,117 @@
+{
+  "schemaVersion": "1.0",
+  "summary": {
+    "correlationId": "wi-7f3c2a9e5b1d4c08",
+    "extractorVersion": "0.2.0",
+    "revit": { "version": "2026", "build": "26.0.4.409" },
+    "apsEngine": "Autodesk.Revit+2026",
+    "source": {
+      "fileName": "EG_Batiment_A.rvt",
+      "relativePath": "Projet/EG_Batiment_A.rvt",
+      "isWorkshared": false
+    },
+    "startedAtUtc": "2026-10-09T12:00:03Z",
+    "completedAtUtc": "2026-10-09T12:00:41Z",
+    "options": {
+      "phaseIds": null,
+      "volumeMode": "preserve",
+      "sharedParameterKeys": ["codeLocal"]
+    },
+    "counts": { "roomsCollected": 3, "roomsExported": 3, "roomsWithAnomalies": 2 },
+    "status": "succeededWithWarnings",
+    "errors": []
+  },
+  "rooms": [
+    {
+      "elementId": "412345",
+      "uniqueId": "5b1e2f8a-1c3d-4e5f-8a9b-0c1d2e3f4a5b-00064b39",
+      "name": "Bureau",
+      "number": "001",
+      "areaM2": 18.425,
+      "unboundedHeightM": 2.7,
+      "level": { "elementId": "311", "uniqueId": "8d2c4f6a-0b1e-4c3d-9e8f-7a6b5c4d3e2f-00000137", "name": "R+0" },
+      "occupancy": "Bureau individuel",
+      "volumeM3": null,
+      "volumeStatus": "notComputed",
+      "finishes": { "floor": "Parquet chêne", "wall": "Peinture blanche", "ceiling": "Faux plafond 60x60", "base": "Plinthe bois" },
+      "phase": { "elementId": "86961", "name": "Nouvelle construction" },
+      "designOption": null,
+      "sharedParameters": {
+        "codeLocal": { "guid": "3f2b8c1e-6d4a-4b7e-9a51-2c0d8e7f4a10", "value": "A-001" }
+      },
+      "qualityFlags": ["DUPLICATE_NUMBER"]
+    },
+    {
+      "elementId": "412398",
+      "uniqueId": "5b1e2f8a-1c3d-4e5f-8a9b-0c1d2e3f4a5b-00064b6e",
+      "name": "Local technique",
+      "number": "002",
+      "areaM2": 6.12,
+      "unboundedHeightM": 2.7,
+      "level": { "elementId": "311", "uniqueId": "8d2c4f6a-0b1e-4c3d-9e8f-7a6b5c4d3e2f-00000137", "name": "R+0" },
+      "occupancy": null,
+      "volumeM3": null,
+      "volumeStatus": "notComputed",
+      "finishes": { "floor": "Résine", "wall": "Peinture blanche", "ceiling": "", "base": null },
+      "phase": { "elementId": "86961", "name": "Nouvelle construction" },
+      "designOption": null,
+      "sharedParameters": {
+        "codeLocal": { "guid": "3f2b8c1e-6d4a-4b7e-9a51-2c0d8e7f4a10", "value": "A-002" }
+      },
+      "qualityFlags": []
+    },
+    {
+      "elementId": "415002",
+      "uniqueId": "5b1e2f8a-1c3d-4e5f-8a9b-0c1d2e3f4a5b-0006551a",
+      "name": "Réserve",
+      "number": "001",
+      "areaM2": 0,
+      "unboundedHeightM": 2.7,
+      "level": { "elementId": "311", "uniqueId": "8d2c4f6a-0b1e-4c3d-9e8f-7a6b5c4d3e2f-00000137", "name": "R+0" },
+      "occupancy": "Stockage",
+      "volumeM3": null,
+      "volumeStatus": "notComputed",
+      "finishes": { "floor": null, "wall": null, "ceiling": null, "base": null },
+      "phase": { "elementId": "86961", "name": "Nouvelle construction" },
+      "designOption": null,
+      "sharedParameters": {
+        "codeLocal": { "guid": "3f2b8c1e-6d4a-4b7e-9a51-2c0d8e7f4a10", "value": null }
+      },
+      "qualityFlags": ["UNPLACED", "DUPLICATE_NUMBER"]
+    }
+  ],
+  "anomalies": [
+    {
+      "code": "VOLUME_NOT_COMPUTED",
+      "severity": "info",
+      "scope": "document",
+      "elementId": null,
+      "message": "Calcul des volumes désactivé dans le document ; volumeM3 exporté à null (mode preserve).",
+      "details": { "volumeMode": "preserve", "roomsAffected": 3 }
+    },
+    {
+      "code": "DUPLICATE_NUMBER",
+      "severity": "warning",
+      "scope": "room",
+      "elementId": "412345",
+      "message": "Numéro 001 partagé par 2 pièces.",
+      "details": { "number": "001", "elementIds": ["412345", "415002"] }
+    },
+    {
+      "code": "UNPLACED",
+      "severity": "warning",
+      "scope": "room",
+      "elementId": "415002",
+      "message": "Pièce non placée (Location absente) ; surface 0 conservée.",
+      "details": { "locationIsNull": true }
+    },
+    {
+      "code": "DUPLICATE_NUMBER",
+      "severity": "warning",
+      "scope": "room",
+      "elementId": "415002",
+      "message": "Numéro 001 partagé par 2 pièces.",
+      "details": { "number": "001", "elementIds": ["412345", "415002"] }
+    }
+  ]
+}
