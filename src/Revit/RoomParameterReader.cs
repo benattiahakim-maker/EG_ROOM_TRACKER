@@ -12,22 +12,21 @@ namespace EgRoomTracker.Revit;
 /// EGR-08 : identité (<c>ElementId.Value</c>, <c>UniqueId</c>), nom (<c>ROOM_NAME</c>, sans concaténation du numéro),
 /// numéro (<c>ROOM_NUMBER</c>, chaîne avec zéros initiaux), niveau, occupation textuelle (<c>ROOM_OCCUPANCY</c>),
 /// phase, variante, placement. Paramètres natifs par <see cref="BuiltInParameter"/>, jamais par libellé.
-/// Quantités (EGR-09), finitions et paramètres partagés (EGR-10) : à compléter ; null en attendant.
+/// EGR-09 : <c>SpatialElement.Area</c>, <c>Room.UnboundedHeight</c>, <c>Room.Volume</c> convertis par UnitUtils
+/// (<see cref="RoomQuantities"/>). Finitions et paramètres partagés (EGR-10) : à compléter.
 /// </summary>
 public sealed class RoomParameterReader(RevitExecutionContext context, IUnitConversionService units) : IRoomParameterReader
 {
     public RoomReadResult Read(CollectedRoom room, IReadOnlyList<SharedParameterMapping> sharedParameters, VolumeComputationState volumeState)
     {
-        _ = units;
         var document = context.RequireDocument();
         if (document.GetElement(new ElementId(room.ElementId)) is not Room element)
         {
             throw new InvalidOperationException($"Pièce {room.ElementId} introuvable dans le document.");
         }
 
-        // Volume : statut provisoire en attendant EGR-09 (jamais 0 présenté comme calculé).
-        var volumeStatus = volumeState.VolumesComputed ? VolumeStatus.NotAvailable : VolumeStatus.NotComputed;
-        var builder = new RoomReadBuilder(room.ElementId, element.UniqueId, volumeStatus);
+        // volumeStatus définitif fixé par Quantities (EGR-09).
+        var builder = new RoomReadBuilder(room.ElementId, element.UniqueId, VolumeStatus.NotAvailable);
 
         builder.Identity(
             name: builder.Text(ReadText(element, BuiltInParameter.ROOM_NAME), nameof(BuiltInParameter.ROOM_NAME)),
@@ -40,7 +39,15 @@ public sealed class RoomParameterReader(RevitExecutionContext context, IUnitConv
             level is null ? null : new LevelRef(Id(level.Id), level.UniqueId, level.Name),
             levelId is null || levelId == ElementId.InvalidElementId ? null : levelId.Value);
 
-        builder.Placement(element.Location is not null);
+        var isPlaced = element.Location is not null;
+        builder.Placement(isPlaced);
+        builder.Quantities(RoomQuantities.Convert(
+            rawArea: element.Area,
+            rawUnboundedHeight: element.UnboundedHeight,
+            readVolume: () => element.Volume,
+            volumesComputed: volumeState.VolumesComputed,
+            isPlaced: isPlaced,
+            units: units));
         builder.Phase(ReadPhase(document, element));
         builder.DesignOption(element.DesignOption is { } option ? new ElementRef(Id(option.Id), option.Name) : null);
 

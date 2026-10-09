@@ -76,6 +76,19 @@ public sealed class RoomReadBuilder
         return this;
     }
 
+    /// <summary>Quantités converties et état du volume (EGR-09).</summary>
+    public RoomReadBuilder Quantities(RoomQuantityValues quantities)
+    {
+        _room = _room with
+        {
+            AreaM2 = quantities.AreaM2,
+            UnboundedHeightM = quantities.UnboundedHeightM,
+            VolumeM3 = quantities.VolumeM3,
+            VolumeStatus = quantities.VolumeStatus,
+        };
+        return this;
+    }
+
     public RoomReadBuilder Phase(ElementRef? phase)
     {
         _room = _room with { Phase = phase };
@@ -88,7 +101,7 @@ public sealed class RoomReadBuilder
         return this;
     }
 
-    /// <summary>Complète les champs relevant d'autres cartes (quantités EGR-09, finitions et paramètres partagés EGR-10).</summary>
+    /// <summary>Complète les champs relevant d'autres cartes (finitions et paramètres partagés EGR-10).</summary>
     public RoomReadBuilder With(Func<RoomDto, RoomDto> update)
     {
         _room = update(_room);
