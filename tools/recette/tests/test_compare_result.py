@@ -220,12 +220,12 @@ class CompareTests(unittest.TestCase):
 
     def test_ignore_selectors_with_dotted_field_and_wildcard(self):
         for a in self.actual["anomalies"]:
-            if a["code"] == "DUPLICATE_NUMBER" and a["details"]["number"] == "010":
+            if a["code"] == "DUPLICATE_NUMBER" and a["details"]["number"] == "011":
                 a["severity"] = "error"
         self.assertFalse(self.check().ok)
-        self.assertTrue(self.check(cr.Options(ignores=["anomalies[details.number=010]"])).ok)
+        self.assertTrue(self.check(cr.Options(ignores=["anomalies[details.number=011]"])).ok)
         room(self.actual, "Placard")["areaM2"] = 2.0
-        self.assertTrue(self.check(cr.Options(ignores=["anomalies[details.number=010]", "rooms[*].areaM2"])).ok)
+        self.assertTrue(self.check(cr.Options(ignores=["anomalies[details.number=011]", "rooms[*].areaM2"])).ok)
 
     def test_null_selector(self):
         room(self.actual, "Sans attributs")["areaM2"] = 6.0
@@ -342,6 +342,47 @@ class ManifestTests(unittest.TestCase):
                 self.assertTrue((RECETTE / case["expected"]).is_file())
                 self.assertTrue(set(case["years"]) <= {"2025", "2026", "2027"})
                 self.assertTrue(case["zip"])
+                # Années non applicables : hors de "years", avec un motif (R09 en 2027).
+                for year, reason in case.get("notApplicable", {}).items():
+                    self.assertNotIn(year, case["years"])
+                    self.assertTrue(reason)
+                self.assertIsInstance(case.get("optional", False), bool)
+        self.assertEqual({"2027"}, set(next(c for c in MANIFEST["cases"] if c["id"] == "R09")["notApplicable"]))
+
+    def test_duplicate_numbers_follow_the_context_rule(self):
+        """Règle du lead (EGR-18) : doublon si même phase et même numéro non vide, et même variante ou l'une des deux
+        pièces dans le modèle principal ; variantes différentes jamais en doublon. Implémentation EGR Dev en attente
+        (cas marqués pendingImplementation)."""
+        def option(r):
+            return (r["designOption"] or {}).get("elementId")
+
+        def conflict(a, b):
+            return (a is not b and bool(a["number"]) and a["number"] == b["number"]
+                    and (a["phase"] or {}).get("elementId") == (b["phase"] or {}).get("elementId")
+                    and (option(a) is None or option(b) is None or option(a) == option(b)))
+
+        checked = set()
+        for case in MANIFEST["cases"]:
+            expected = json.loads((RECETTE / case["expected"]).read_text(encoding="utf-8"))
+            rooms = expected["rooms"]
+            duplicates = {a["elementId"]: a for a in expected["anomalies"] if a["code"] == "DUPLICATE_NUMBER"}
+            with self.subTest(case=case["id"]):
+                for r in rooms:
+                    group = sorted([r["elementId"]] + [o["elementId"] for o in rooms if conflict(r, o)], key=int)
+                    if len(group) > 1:
+                        self.assertEqual(group, duplicates[r["elementId"]]["details"]["elementIds"])
+                        self.assertIn("DUPLICATE_NUMBER", r["qualityFlags"])
+                    else:
+                        self.assertNotIn(r["elementId"], duplicates)
+                        self.assertNotIn("DUPLICATE_NUMBER", r["qualityFlags"])
+                names = {r["name"]: r for r in rooms}
+                if {"Bureau variante A", "Bureau variante B", "Accueil commun"} <= set(names):
+                    checked.add(case["id"])
+                    self.assertNotIn("DUPLICATE_NUMBER", names["Bureau variante A"]["qualityFlags"])
+                    self.assertNotIn("DUPLICATE_NUMBER", names["Bureau variante B"]["qualityFlags"])
+                    self.assertIn("DUPLICATE_NUMBER", names["Accueil commun"]["qualityFlags"])
+                    self.assertIn("pendingImplementation", case)
+        self.assertEqual({"R01", "R02", "R06", "R11"}, checked)
 
     def test_options_reflect_the_settings_when_they_are_loaded(self):
         for case in MANIFEST["cases"]:

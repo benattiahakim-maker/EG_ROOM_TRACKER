@@ -1,0 +1,397 @@
+using System.Collections.ObjectModel;
+using System.Globalization;
+using EgRoomTracker.Aps;
+using EgRoomTracker.Aps.DesignAutomation;
+using EgRoomTracker.Aps.Packaging;
+using EgRoomTracker.DaManager.Mvvm;
+using EgRoomTracker.DaManager.Services;
+using EgRoomTracker.Logging;
+
+namespace EgRoomTracker.DaManager.ViewModels;
+
+/// <summary>
+/// Fenêtre principale de DaManager (EGR-19). Toute écriture APS suit le même parcours : plan construit par lectures seules,
+/// affiché par <see cref="IConfirmationService"/>, exécution uniquement après confirmation, puis relecture de l'état.
+/// Le journal est masqué par <see cref="SecretRedactor"/> ; aucun secret ni URL signée n'y est écrit.
+/// </summary>
+public sealed class MainViewModel : ObservableObject
+{
+    private readonly DaManagerOptions _options;
+    private readonly HttpClient _httpClient;
+    private readonly IConfirmationService _confirmation;
+    private readonly IFileDialogService? _files;
+    private readonly TimeProvider _time;
+    private readonly SynchronizationContext? _uiContext;
+    private DaManagerService? _service;
+    private string _nickname;
+    private string _repositoryRoot;
+    private string _bundleDirectory;
+    private ResourceItemViewModel? _selectedResource;
+    private string _aliasName = DeploymentService.TestAlias;
+    private string _aliasVersion = string.Empty;
+    private int _keepLatest = 10;
+    private string _protectedVersions = string.Empty;
+    private bool _isBusy;
+    private string _status = "Prêt.";
+
+    public MainViewModel(DaManagerOptions options, HttpClient httpClient, IConfirmationService confirmation, IFileDialogService? files = null, TimeProvider? time = null)
+    {
+        _options = options;
+        _httpClient = httpClient;
+        _confirmation = confirmation;
+        _files = files;
+        _time = time ?? TimeProvider.System;
+        _uiContext = SynchronizationContext.Current;
+        _nickname = options.Aps.Nickname ?? string.Empty;
+        _repositoryRoot = options.RepositoryRoot ?? string.Empty;
+        _bundleDirectory = options.BundleDirectory ?? string.Empty;
+        foreach (var version in DeploymentService.SupportedVersions)
+        {
+            RevitVersions.Add(new RevitVersionOption(version, options.RevitVersions.Contains(version)));
+        }
+
+        RefreshCommand = new AsyncRelayCommand(() => RunAsync("Actualisation", RefreshCoreAsync), () => !IsBusy);
+        PublishCommand = new AsyncRelayCommand(() => RunAsync("Publication en test", PublishCoreAsync), () => !IsBusy);
+        PromoteCommand = new AsyncRelayCommand(() => RunAsync("Promotion en prod", PromoteCoreAsync), () => !IsBusy);
+        SetAliasCommand = new AsyncRelayCommand(() => RunAsync("Alias", SetAliasCoreAsync), () => !IsBusy && SelectedResource is { State.Exists: true });
+        CleanupCommand = new AsyncRelayCommand(() => RunAsync("Nettoyage des versions", CleanupCoreAsync), () => !IsBusy && SelectedResource is { State.Exists: true });
+        BrowseBundleDirectoryCommand = new AsyncRelayCommand(() =>
+        {
+            BundleDirectory = _files?.PickFolder("Dossier des ZIP d'AppBundles", BundleDirectory) ?? BundleDirectory;
+            return Task.CompletedTask;
+        });
+        BrowseRepositoryCommand = new AsyncRelayCommand(() =>
+        {
+            RepositoryRoot = _files?.PickFolder("Racine du dépôt EG_ROOM_TRACKER", RepositoryRoot) ?? RepositoryRoot;
+            return Task.CompletedTask;
+        });
+    }
+
+    public string CredentialSource => _options.CredentialSource;
+
+    public string DaBaseUrl => _options.Aps.DaBaseUrl;
+
+    public string? Commit => GitHead.Read(string.IsNullOrWhiteSpace(RepositoryRoot) ? null : RepositoryRoot);
+
+    public ObservableCollection<RevitVersionOption> RevitVersions { get; } = [];
+
+    public ObservableCollection<string> Engines { get; } = [];
+
+    public ObservableCollection<string> AllAppBundles { get; } = [];
+
+    public ObservableCollection<string> AllActivities { get; } = [];
+
+    public ObservableCollection<ResourceItemViewModel> Resources { get; } = [];
+
+    public ObservableCollection<LogEntry> Log { get; } = [];
+
+    public AsyncRelayCommand RefreshCommand { get; }
+
+    public AsyncRelayCommand PublishCommand { get; }
+
+    public AsyncRelayCommand PromoteCommand { get; }
+
+    public AsyncRelayCommand SetAliasCommand { get; }
+
+    public AsyncRelayCommand CleanupCommand { get; }
+
+    public AsyncRelayCommand BrowseBundleDirectoryCommand { get; }
+
+    public AsyncRelayCommand BrowseRepositoryCommand { get; }
+
+    public string Nickname
+    {
+        get => _nickname;
+        set => SetProperty(ref _nickname, value.Trim());
+    }
+
+    public string RepositoryRoot
+    {
+        get => _repositoryRoot;
+        set
+        {
+            if (SetProperty(ref _repositoryRoot, value.Trim()))
+            {
+                _service = null; // définitions relues depuis le nouveau dépôt
+                OnPropertyChanged(nameof(Commit));
+            }
+        }
+    }
+
+    public string BundleDirectory
+    {
+        get => _bundleDirectory;
+        set => SetProperty(ref _bundleDirectory, value.Trim());
+    }
+
+    public ResourceItemViewModel? SelectedResource
+    {
+        get => _selectedResource;
+        set
+        {
+            if (SetProperty(ref _selectedResource, value))
+            {
+                if (value?.State.AliasVersion(AliasName) is { } current)
+                {
+                    AliasVersion = current.ToString(CultureInfo.InvariantCulture);
+                }
+
+                RaiseCanExecuteChanged();
+            }
+        }
+    }
+
+    /// <summary>Alias à créer ou déplacer (test, prod…).</summary>
+    public string AliasName
+    {
+        get => _aliasName;
+        set => SetProperty(ref _aliasName, value.Trim());
+    }
+
+    /// <summary>Version cible de l'alias (retour arrière : version antérieure).</summary>
+    public string AliasVersion
+    {
+        get => _aliasVersion;
+        set => SetProperty(ref _aliasVersion, value.Trim());
+    }
+
+    /// <summary>Nombre de versions récentes conservées par le nettoyage (au moins 1).</summary>
+    public int KeepLatest
+    {
+        get => _keepLatest;
+        set => SetProperty(ref _keepLatest, Math.Max(1, value));
+    }
+
+    /// <summary>Versions protégées par le journal de publication, séparées par des virgules ou des espaces.</summary>
+    public string ProtectedVersions
+    {
+        get => _protectedVersions;
+        set => SetProperty(ref _protectedVersions, value);
+    }
+
+    public bool IsBusy
+    {
+        get => _isBusy;
+        private set
+        {
+            if (SetProperty(ref _isBusy, value))
+            {
+                RaiseCanExecuteChanged();
+            }
+        }
+    }
+
+    public string Status
+    {
+        get => _status;
+        private set => SetProperty(ref _status, value);
+    }
+
+    // ---- Opérations ----------------------------------------------------------------------------------------------
+
+    private async Task RefreshCoreAsync()
+    {
+        var service = Service();
+        var engines = await service.GetEnginesAsync();
+        var bundles = await service.ListAsync(DaResourceKind.AppBundle);
+        var activities = await service.ListAsync(DaResourceKind.Activity);
+        var states = await service.ReadAllAsync(DeploymentService.SupportedVersions);
+        var selected = SelectedResource?.Id;
+
+        Replace(Engines, engines.Where(e => e.StartsWith("Autodesk.Revit+", StringComparison.Ordinal)).Order(StringComparer.Ordinal));
+        Replace(AllAppBundles, bundles.Order(StringComparer.Ordinal));
+        Replace(AllActivities, activities.Order(StringComparer.Ordinal));
+        Replace(Resources, states.Select(s => new ResourceItemViewModel(s)));
+        SelectedResource = Resources.FirstOrDefault(r => r.Id == selected);
+
+        var missing = SelectedVersions().Select(DesignAutomationClient.RevitEngine).Where(e => !engines.Contains(e)).ToList();
+        AddLog("info", $"{Engines.Count} engine(s) Revit, {Resources.Count(r => r.State.Exists)}/{Resources.Count} ressource(s) du dépôt publiées.");
+        if (missing.Count > 0)
+        {
+            AddLog("warning", $"engine(s) indisponible(s) : {string.Join(", ", missing)} : décocher ces versions (docs/PUBLISHING.md section 4).");
+        }
+
+        foreach (var near in Resources.Where(r => r.IsNearQuota))
+        {
+            AddLog("warning", $"{near.Id} : {near.VersionCount} versions (quota {ResourceState.VersionQuota}) : nettoyer les anciennes versions.");
+        }
+    }
+
+    private async Task PublishCoreAsync()
+    {
+        var nickname = RequireNickname();
+        var versions = RequireVersions();
+        var service = Service();
+        var plan = await service.PlanPublishAsync(nickname, versions, BundleDirectory, Commit);
+        if (await ConfirmAsync(plan))
+        {
+            await service.PublishAsync(nickname, versions, BundleDirectory);
+            await RefreshCoreAsync();
+        }
+    }
+
+    private async Task PromoteCoreAsync()
+    {
+        var nickname = RequireNickname();
+        var versions = RequireVersions();
+        var service = Service();
+        var plan = await service.PlanPromoteAsync(nickname, versions, Commit);
+        if (await ConfirmAsync(plan))
+        {
+            await service.PromoteAsync(nickname, versions);
+            await RefreshCoreAsync();
+        }
+    }
+
+    private async Task SetAliasCoreAsync()
+    {
+        var resource = SelectedResource?.State ?? throw new InvalidOperationException("Sélectionner une ressource.");
+        if (string.IsNullOrEmpty(AliasName))
+        {
+            throw new InvalidOperationException("Nom d'alias obligatoire.");
+        }
+
+        if (!int.TryParse(AliasVersion, NumberStyles.None, CultureInfo.InvariantCulture, out var version))
+        {
+            throw new InvalidOperationException("Version cible invalide (entier attendu).");
+        }
+
+        var plan = PlanBuilder.SetAlias(resource, AliasName, version);
+        if (await ConfirmAsync(plan))
+        {
+            await Service().SetAliasAsync(resource, AliasName, version);
+            await RefreshCoreAsync();
+        }
+    }
+
+    private async Task CleanupCoreAsync()
+    {
+        var resource = SelectedResource?.State ?? throw new InvalidOperationException("Sélectionner une ressource.");
+        var service = Service();
+        var cleanup = await service.PlanCleanupAsync(resource, KeepLatest, ParseVersions(ProtectedVersions));
+        if (cleanup.IsEmpty)
+        {
+            AddLog("info", $"{resource.Id} : aucune version à supprimer ({cleanup.Kept.Count} conservée(s)).");
+            return;
+        }
+
+        if (await ConfirmAsync(PlanBuilder.Cleanup(cleanup)))
+        {
+            var deleted = await service.CleanupAsync(cleanup);
+            AddLog("info", $"{resource.Id} : {deleted.Count} version(s) supprimée(s).");
+            await RefreshCoreAsync();
+        }
+    }
+
+    // ---- Interne -------------------------------------------------------------------------------------------------
+
+    private async Task<bool> ConfirmAsync(OperationPlan plan)
+    {
+        AddLog("plan", plan.Title + Environment.NewLine + plan.Text);
+        var confirmed = await _confirmation.ConfirmAsync(plan);
+        AddLog("info", confirmed ? $"Confirmé : {plan.Title}" : $"Annulé : {plan.Title} (rien n'a été écrit)");
+        return confirmed;
+    }
+
+    private async Task RunAsync(string operation, Func<Task> action)
+    {
+        IsBusy = true;
+        Status = operation + "…";
+        try
+        {
+            await action();
+            Status = operation + " : terminé.";
+        }
+        catch (Exception exception) when (exception is ApsException or InvalidOperationException or IOException or HttpRequestException or ArgumentException or TaskCanceledException)
+        {
+            AddLog("error", $"{operation} : {exception.Message}");
+            Status = operation + " : échec (voir le journal).";
+        }
+        finally
+        {
+            IsBusy = false;
+        }
+    }
+
+    private DaManagerService Service()
+    {
+        if (_service is not null)
+        {
+            return _service;
+        }
+
+        if (string.IsNullOrWhiteSpace(RepositoryRoot) || !Directory.Exists(Path.Combine(RepositoryRoot, "src", "Packaging", "definitions")))
+        {
+            throw new InvalidOperationException("Racine du dépôt introuvable (src/Packaging/definitions) : la choisir ou définir EGR_REPO_ROOT.");
+        }
+
+        var tokens = _options.Aps.CreateTokenProvider(_httpClient, ApsScopes.DesignAutomation);
+        var client = new DesignAutomationClient(_httpClient, tokens, _options.Aps.DaBaseUrl);
+        _service = new DaManagerService(client, DefinitionLoader.ForRepository(RepositoryRoot), message => AddLog("info", message));
+        return _service;
+    }
+
+    private string RequireNickname() =>
+        string.IsNullOrEmpty(Nickname) ? throw new InvalidOperationException("APS_NICKNAME est obligatoire (champ Nickname).") : Nickname;
+
+    private List<string> SelectedVersions() => RevitVersions.Where(v => v.IsSelected).Select(v => v.Version).ToList();
+
+    private List<string> RequireVersions()
+    {
+        var versions = SelectedVersions();
+        return versions.Count == 0 ? throw new InvalidOperationException("Cocher au moins une version Revit.") : versions;
+    }
+
+    internal static IReadOnlyList<int> ParseVersions(string text)
+    {
+        var result = new List<int>();
+        foreach (var part in text.Split([',', ';', ' '], StringSplitOptions.RemoveEmptyEntries))
+        {
+            var value = part.TrimStart('v', 'V');
+            if (!int.TryParse(value, NumberStyles.None, CultureInfo.InvariantCulture, out var version) || version < 1)
+            {
+                throw new InvalidOperationException($"Version protégée invalide : « {part} ».");
+            }
+
+            result.Add(version);
+        }
+
+        return result;
+    }
+
+    /// <summary>Ajoute une entrée masquée au journal, sur le thread de l'interface s'il existe.</summary>
+    private void AddLog(string level, string message)
+    {
+        var entry = new LogEntry(_time.GetUtcNow(), level, SecretRedactor.Redact(message));
+        OnUi(() => Log.Add(entry));
+    }
+
+    private void OnUi(Action action)
+    {
+        if (_uiContext is null || SynchronizationContext.Current == _uiContext)
+        {
+            action();
+        }
+        else
+        {
+            _uiContext.Post(_ => action(), null);
+        }
+    }
+
+    private static void Replace<T>(ObservableCollection<T> target, IEnumerable<T> items)
+    {
+        target.Clear();
+        foreach (var item in items)
+        {
+            target.Add(item);
+        }
+    }
+
+    private void RaiseCanExecuteChanged()
+    {
+        foreach (var command in new[] { RefreshCommand, PublishCommand, PromoteCommand, SetAliasCommand, CleanupCommand })
+        {
+            command?.RaiseCanExecuteChanged();
+        }
+    }
+}

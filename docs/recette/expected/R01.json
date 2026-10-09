@@ -35,8 +35,8 @@
       "transactionRolledBack": null
     },
     "counts": {
-      "roomsCollected": 13,
-      "roomsExported": 13,
+      "roomsCollected": 15,
+      "roomsExported": 15,
       "roomsWithAnomalies": 5
     },
     "status": "succeededWithWarnings",
@@ -733,9 +733,7 @@
           "value": null
         }
       },
-      "qualityFlags": [
-        "DUPLICATE_NUMBER"
-      ]
+      "qualityFlags": []
     },
     {
       "elementId": "9000112",
@@ -800,9 +798,7 @@
           "value": null
         }
       },
-      "qualityFlags": [
-        "DUPLICATE_NUMBER"
-      ]
+      "qualityFlags": []
     },
     {
       "elementId": "9000113",
@@ -865,6 +861,137 @@
         }
       },
       "qualityFlags": []
+    },
+    {
+      "elementId": "9000114",
+      "uniqueId": "EGR18-P14",
+      "name": "Accueil commun",
+      "number": "011",
+      "areaM2": 6.0,
+      "unboundedHeightM": 2.7,
+      "level": {
+        "elementId": "9000001",
+        "uniqueId": "EGR18-NIVEAU-R+0",
+        "name": "R+0"
+      },
+      "occupancy": null,
+      "volumeM3": null,
+      "volumeStatus": "notComputed",
+      "finishes": {
+        "floor": null,
+        "wall": null,
+        "ceiling": null,
+        "base": null
+      },
+      "phase": {
+        "elementId": "9000012",
+        "name": "Nouvelle construction"
+      },
+      "designOption": null,
+      "sharedParameters": {
+        "texte": {
+          "guid": "cb4b0672-757b-4a76-87ae-7e37cc266035",
+          "value": null
+        },
+        "entier": {
+          "guid": "ae35a261-77c1-455b-8e4d-f65999306f6f",
+          "value": null
+        },
+        "nombre": {
+          "guid": "b747d301-23b1-47f7-bbb9-a09fa4147731",
+          "value": null
+        },
+        "longueur": {
+          "guid": "a1be583b-a4ea-4794-8151-1a9b115c5a8a",
+          "value": null
+        },
+        "surface": {
+          "guid": "bf1f9fc0-84f2-45a3-b7d1-bd70b04d445f",
+          "value": null
+        },
+        "volume": {
+          "guid": "90dd40a1-a42c-4daa-aac7-25200f273c50",
+          "value": null
+        },
+        "ouiNon": {
+          "guid": "49261c8b-d425-45e6-a969-bce44e9ae681",
+          "value": null
+        },
+        "angle": {
+          "guid": "bc7bf97e-4d2c-43e5-beb6-2cefd5617aa9",
+          "value": null
+        }
+      },
+      "qualityFlags": [
+        "DUPLICATE_NUMBER"
+      ]
+    },
+    {
+      "elementId": "9000115",
+      "uniqueId": "EGR18-P15",
+      "name": "Bureau variante B2",
+      "number": "011",
+      "areaM2": 4.5,
+      "unboundedHeightM": 2.7,
+      "level": {
+        "elementId": "9000001",
+        "uniqueId": "EGR18-NIVEAU-R+0",
+        "name": "R+0"
+      },
+      "occupancy": null,
+      "volumeM3": null,
+      "volumeStatus": "notComputed",
+      "finishes": {
+        "floor": null,
+        "wall": null,
+        "ceiling": null,
+        "base": null
+      },
+      "phase": {
+        "elementId": "9000012",
+        "name": "Nouvelle construction"
+      },
+      "designOption": {
+        "elementId": "9000022",
+        "name": "Option B"
+      },
+      "sharedParameters": {
+        "texte": {
+          "guid": "cb4b0672-757b-4a76-87ae-7e37cc266035",
+          "value": null
+        },
+        "entier": {
+          "guid": "ae35a261-77c1-455b-8e4d-f65999306f6f",
+          "value": null
+        },
+        "nombre": {
+          "guid": "b747d301-23b1-47f7-bbb9-a09fa4147731",
+          "value": null
+        },
+        "longueur": {
+          "guid": "a1be583b-a4ea-4794-8151-1a9b115c5a8a",
+          "value": null
+        },
+        "surface": {
+          "guid": "bf1f9fc0-84f2-45a3-b7d1-bd70b04d445f",
+          "value": null
+        },
+        "volume": {
+          "guid": "90dd40a1-a42c-4daa-aac7-25200f273c50",
+          "value": null
+        },
+        "ouiNon": {
+          "guid": "49261c8b-d425-45e6-a969-bce44e9ae681",
+          "value": null
+        },
+        "angle": {
+          "guid": "bc7bf97e-4d2c-43e5-beb6-2cefd5617aa9",
+          "value": null
+        }
+      },
+      "qualityFlags": [
+        "DUPLICATE_NUMBER"
+      ]
     }
   ],
   "anomalies": [
@@ -888,7 +1015,7 @@
       "message": "Calcul des volumes désactivé dans le document ; volumeM3 exporté à null (mode preserve).",
       "details": {
         "volumeMode": "preserve",
-        "roomsAffected": 13
+        "roomsAffected": 15
       }
     },
     {
@@ -943,13 +1070,13 @@
       "code": "DUPLICATE_NUMBER",
       "severity": "warning",
       "scope": "room",
-      "elementId": "9000111",
-      "message": "Numéro 010 partagé par 2 pièces.",
+      "elementId": "9000114",
+      "message": "Numéro 011 partagé par 2 pièces.",
       "details": {
-        "number": "010",
+        "number": "011",
         "elementIds": [
-          "9000111",
-          "9000112"
+          "9000114",
+          "9000115"
         ]
       }
     },
@@ -957,13 +1084,13 @@
       "code": "DUPLICATE_NUMBER",
       "severity": "warning",
       "scope": "room",
-      "elementId": "9000112",
-      "message": "Numéro 010 partagé par 2 pièces.",
+      "elementId": "9000115",
+      "message": "Numéro 011 partagé par 2 pièces.",
       "details": {
-        "number": "010",
+        "number": "011",
         "elementIds": [
-          "9000111",
-          "9000112"
+          "9000114",
+          "9000115"
         ]
       }
     }

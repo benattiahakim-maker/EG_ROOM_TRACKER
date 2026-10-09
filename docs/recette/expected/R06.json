@@ -29,9 +29,9 @@
       "transactionRolledBack": null
     },
     "counts": {
-      "roomsCollected": 13,
-      "roomsExported": 13,
-      "roomsWithAnomalies": 13
+      "roomsCollected": 15,
+      "roomsExported": 15,
+      "roomsWithAnomalies": 15
     },
     "status": "succeededWithWarnings",
     "errors": []
@@ -481,8 +481,7 @@
         }
       },
       "qualityFlags": [
-        "MISSING_PARAMETER",
-        "DUPLICATE_NUMBER"
+        "MISSING_PARAMETER"
       ]
     },
     {
@@ -525,8 +524,7 @@
         }
       },
       "qualityFlags": [
-        "MISSING_PARAMETER",
-        "DUPLICATE_NUMBER"
+        "MISSING_PARAMETER"
       ]
     },
     {
@@ -568,6 +566,91 @@
       "qualityFlags": [
         "MISSING_PARAMETER"
       ]
+    },
+    {
+      "elementId": "9000114",
+      "uniqueId": "EGR18-P14",
+      "name": "Accueil commun",
+      "number": "011",
+      "areaM2": 6.0,
+      "unboundedHeightM": 2.7,
+      "level": {
+        "elementId": "9000001",
+        "uniqueId": "EGR18-NIVEAU-R+0",
+        "name": "R+0"
+      },
+      "occupancy": null,
+      "volumeM3": null,
+      "volumeStatus": "notComputed",
+      "finishes": {
+        "floor": null,
+        "wall": null,
+        "ceiling": null,
+        "base": null
+      },
+      "phase": {
+        "elementId": "9000012",
+        "name": "Nouvelle construction"
+      },
+      "designOption": null,
+      "sharedParameters": {
+        "inconnu": {
+          "guid": "6f79aade-d799-4d28-8e69-c5d249693cbe",
+          "value": null
+        },
+        "murSeulement": {
+          "guid": "2fba96b5-25d5-47ba-8e60-df0e1ce6d86b",
+          "value": null
+        }
+      },
+      "qualityFlags": [
+        "MISSING_PARAMETER",
+        "DUPLICATE_NUMBER"
+      ]
+    },
+    {
+      "elementId": "9000115",
+      "uniqueId": "EGR18-P15",
+      "name": "Bureau variante B2",
+      "number": "011",
+      "areaM2": 4.5,
+      "unboundedHeightM": 2.7,
+      "level": {
+        "elementId": "9000001",
+        "uniqueId": "EGR18-NIVEAU-R+0",
+        "name": "R+0"
+      },
+      "occupancy": null,
+      "volumeM3": null,
+      "volumeStatus": "notComputed",
+      "finishes": {
+        "floor": null,
+        "wall": null,
+        "ceiling": null,
+        "base": null
+      },
+      "phase": {
+        "elementId": "9000012",
+        "name": "Nouvelle construction"
+      },
+      "designOption": {
+        "elementId": "9000022",
+        "name": "Option B"
+      },
+      "sharedParameters": {
+        "inconnu": {
+          "guid": "6f79aade-d799-4d28-8e69-c5d249693cbe",
+          "value": null
+        },
+        "murSeulement": {
+          "guid": "2fba96b5-25d5-47ba-8e60-df0e1ce6d86b",
+          "value": null
+        }
+      },
+      "qualityFlags": [
+        "MISSING_PARAMETER",
+        "DUPLICATE_NUMBER"
+      ]
     }
   ],
   "anomalies": [
@@ -590,7 +673,7 @@
       "message": "Calcul des volumes désactivé dans le document ; volumeM3 exporté à null (mode preserve).",
       "details": {
         "volumeMode": "preserve",
-        "roomsAffected": 13
+        "roomsAffected": 15
       }
     },
     {
@@ -763,20 +846,6 @@
       }
     },
     {
-      "code": "DUPLICATE_NUMBER",
-      "severity": "warning",
-      "scope": "room",
-      "elementId": "9000111",
-      "message": "Numéro 010 partagé par 2 pièces.",
-      "details": {
-        "number": "010",
-        "elementIds": [
-          "9000111",
-          "9000112"
-        ]
-      }
-    },
-    {
       "code": "MISSING_PARAMETER",
       "severity": "warning",
       "scope": "room",
@@ -785,20 +854,6 @@
       "details": {
         "parameter": "murSeulement",
         "guid": "2fba96b5-25d5-47ba-8e60-df0e1ce6d86b"
-      }
-    },
-    {
-      "code": "DUPLICATE_NUMBER",
-      "severity": "warning",
-      "scope": "room",
-      "elementId": "9000112",
-      "message": "Numéro 010 partagé par 2 pièces.",
-      "details": {
-        "number": "010",
-        "elementIds": [
-          "9000111",
-          "9000112"
-        ]
       }
     },
     {
@@ -810,6 +865,56 @@
       "details": {
         "parameter": "murSeulement",
         "guid": "2fba96b5-25d5-47ba-8e60-df0e1ce6d86b"
+      }
+    },
+    {
+      "code": "MISSING_PARAMETER",
+      "severity": "warning",
+      "scope": "room",
+      "elementId": "9000114",
+      "message": "Paramètre partagé murSeulement absent de la pièce.",
+      "details": {
+        "parameter": "murSeulement",
+        "guid": "2fba96b5-25d5-47ba-8e60-df0e1ce6d86b"
+      }
+    },
+    {
+      "code": "DUPLICATE_NUMBER",
+      "severity": "warning",
+      "scope": "room",
+      "elementId": "9000114",
+      "message": "Numéro 011 partagé par 2 pièces.",
+      "details": {
+        "number": "011",
+        "elementIds": [
+          "9000114",
+          "9000115"
+        ]
+      }
+    },
+    {
+      "code": "MISSING_PARAMETER",
+      "severity": "warning",
+      "scope": "room",
+      "elementId": "9000115",
+      "message": "Paramètre partagé murSeulement absent de la pièce.",
+      "details": {
+        "parameter": "murSeulement",
+        "guid": "2fba96b5-25d5-47ba-8e60-df0e1ce6d86b"
+      }
+    },
+    {
+      "code": "DUPLICATE_NUMBER",
+      "severity": "warning",
+      "scope": "room",
+      "elementId": "9000115",
+      "message": "Numéro 011 partagé par 2 pièces.",
+      "details": {
+        "number": "011",
+        "elementIds": [
+          "9000114",
+          "9000115"
+        ]
       }
     }
   ]

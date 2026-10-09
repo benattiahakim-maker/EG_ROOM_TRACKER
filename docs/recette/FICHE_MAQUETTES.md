@@ -7,19 +7,22 @@ est connue).
 
 ## 0. Préparation
 
-- Une maquette par année : soit construire les maquettes dans chaque version (recommandé pour la première année),
-  soit construire en 2025 puis ouvrir et **enregistrer sous** dans 2026 et 2027 (mise à niveau). Noter la méthode
-  retenue dans la matrice EGR-14 (question Q3 de RECETTE.md).
-- Dossier de travail : `EGR18_<année>/` contenant `EGR_Ref.rvt`, `EGR_Ref_Volumes.rvt`, `EGR_Collab.rvt`,
-  `EGR_Futur.rvt` (sauf 2027) et `Projet/` (`EGR_Liens.rvt`, `Liens/EGR_Lien_A.rvt`, `Liens/EGR_Lien_B.rvt`,
-  `Liens/EGR_Lien_C.rvt`).
+- **Toutes les maquettes sont construites dans Revit 2025** (décision du lead). Pour les engines 2026 et 2027, on
+  soumet les mêmes RVT 2025 : l'engine les met à niveau à l'ouverture, ce qui teste aussi ce chemin. Variante admise :
+  ouvrir chaque RVT dans Revit 2026 / 2027 et l'enregistrer (Save As, même nom) dans `EGR18_2026/` / `EGR18_2027/` ;
+  noter la méthode utilisée dans la matrice EGR-14.
+- Exceptions : `EGR_Futur.rvt` (R09) est enregistré avec la version **suivante** (§5), et `EGR_Collab_Natif.rvt`
+  (R12, facultatif) est créé nativement dans chaque version (§4 bis).
+- Dossier de travail : `EGR18_2025/` contenant `EGR_Ref.rvt`, `EGR_Ref_Volumes.rvt`, `EGR_Collab.rvt` et `Projet/`
+  (`EGR_Liens.rvt`, `Liens/EGR_Lien_A.rvt`, `Liens/EGR_Lien_B.rvt`, `Liens/EGR_Lien_C.rvt`) ; `EGR_Futur.rvt` et
+  `EGR_Collab_Natif.rvt` dans le dossier de l'année concernée.
 - Gabarit : gabarit architectural **métrique** fourni (unités mm / m²). Vérifier Manage → Project Units : longueur
   en mm, surface en m², volume en m³ (les unités d'affichage n'influent pas sur le résultat, mais facilitent la
   saisie).
 - Les pièces sont délimitées par des **lignes de séparation de pièce** (Architecture → Room Separator), pas par des
   murs : la surface vaut exactement le rectangle dessiné, sans dépendre de l'épaisseur des murs ni de la règle de
   calcul « à la face de finition ».
-- Créer les pièces **dans l'ordre P01 → P13** (les ElementId croissent en principe dans l'ordre de création ; le
+- Créer les pièces **dans l'ordre P01 → P15** (les ElementId croissent en principe dans l'ordre de création ; le
   résultat est trié par ElementId, `bind` recalcule l'ordre de toute façon).
 
 ## 1. EGR_Ref.rvt (cas R01, R03, R04, R06, R10, R11)
@@ -98,17 +101,29 @@ Upper Limit `R+0`, Limit Offset 2700 mm. Vérifier dans les propriétés que la 
    placer une pièce `Bureau variante A`, Number `010`, Limit Offset 2700 mm. Finish.
 3. Edit Option `Option B` : au même endroit, rectangle 3,000 × 2,500, pièce `Bureau variante B`, Number `010`,
    Limit Offset 2700 mm. Finish. **Ne pas** accepter la variante principale (pas de « Accept Primary »).
+4. Ne pas renommer les variantes après coup : le nom est exporté **brut**, tel que Revit le donne (décision du lead).
+   Le noter tel qu'il apparaît dans Revit (avec ou sans « (primary) ») pour le comparer au premier WorkItem.
 
 ### 1.6 Niveau R+1 (P13)
 
 Vue `R+1`, phase Nouvelle construction : rectangle 5,000 × 4,000, pièce `Combles aménagés`, Number `101`, Upper
 Limit `R+1`, Limit Offset 2700 mm.
 
+### 1.6 bis Doublon modèle principal / variante (P14, P15)
+
+1. Hors édition de variante (modèle principal), vue `R+0`, phase Nouvelle construction : rectangle 3,000 × 2,000,
+   pièce `Accueil commun`, Number `011`, Limit Offset 2700 mm.
+2. Edit Option `Option B` : rectangle 3,000 × 1,500 à un autre endroit (ni sur P12 ni sur P14), pièce
+   `Bureau variante B2`, Number `011`, Limit Offset 2700 mm. Finish.
+
+Attendu : P14/P15 en doublon (modèle principal comparé à toutes les variantes) ; P11/P12 (`010`, variantes A et B)
+**pas** en doublon (règle du lead, implémentation EGR Dev en attente).
+
 ### 1.7 Contrôle et enregistrement
 
 - Schedule de pièces (Name, Number, Area, Volume, Level, Phase, Design Option, Occupancy, finitions, paramètres
-  EGR_*) : vérifier les 13 pièces et les surfaces (20 ; 12 ; 6 ; Not Placed ; Not Enclosed ; 4 ; 3 ; 1 ; 5 ; 9 ;
-  7,5 ; 7,5 ; 20). La pièce de phase Existant n'apparaît que dans un schedule de cette phase.
+  EGR_*) : vérifier les 15 pièces et les surfaces (20 ; 12 ; 6 ; Not Placed ; Not Enclosed ; 4 ; 3 ; 1 ; 5 ; 9 ;
+  7,5 ; 7,5 ; 20 ; 6 ; 4,5). La pièce de phase Existant n'apparaît que dans un schedule de cette phase.
 - Purge facultative, puis Save As `EGR_Ref.rvt` (fichier non collaboratif). Fermer Revit sans autre modification.
 
 ## 2. EGR_Ref_Volumes.rvt (cas R02)
@@ -143,10 +158,16 @@ variantes. Le volume de Couloir (non fermée) est à relever.
 4. ZIP : uniquement `EGR_Collab.rvt` (le central, pas la copie locale ni le dossier `EGR_Collab_backup`).
    Attendu : `isWorkshared: true` et les deux pièces (l'extracteur ouvre tous les worksets).
 
-## 5. EGR_Futur.rvt (cas R09, années 2025 et 2026)
+## 4 bis. EGR_Collab_Natif.rvt (cas R12, facultatif, une par version)
+
+Si le porteur dispose de Revit 2026 et 2027 : refaire §4 **dans chaque version** (2025, 2026, 2027) sous le nom
+`EGR_Collab_Natif.rvt`, dans le dossier de l'année. Ce central n'est pas issu d'une mise à niveau ; il est soumis à
+l'engine de la même version. Attendu identique à R07 (source `EGR_Collab_Natif.rvt`).
+
+## 5. EGR_Futur.rvt (cas R09, années 2025 et 2026 ; non applicable en 2027)
 
 Pour l'engine N, enregistrer une copie de `EGR_Ref.rvt` avec Revit **N + 1** sous `EGR_Futur.rvt` (ex. 2026 pour
-l'engine 2025, 2027 pour l'engine 2026).
+l'engine 2025, 2027 pour l'engine 2026). En 2027 : non applicable tant qu'aucune version plus récente n'existe.
 
 ## 6. ZIP et settings
 
@@ -160,9 +181,10 @@ l'engine 2025, 2027 pour l'engine 2026).
 | R06 | `EGR_Ref.rvt` | `R06.json` |
 | R07 | `EGR_Collab.rvt` | `R07.json` |
 | R08 | `EGR_Ref.rvt`, `EGR_Ref_Volumes.rvt` | `R08.json` |
-| R09 | `EGR_Futur.rvt` | `R09.json` |
+| R09 | `EGR_Futur.rvt` | `R09.json` (2025, 2026 ; non applicable en 2027) |
 | R10 | `EGR_Ref.rvt` | `R10.json` |
 | R11 | `EGR_Ref.rvt` | `R11.json` (`volumeMode: compute`) |
+| R12 (facultatif) | `EGR_Collab_Natif.rvt` | `R12.json` |
 
 - Créer les ZIP de façon que les fichiers soient **à la racine** (zipper le contenu, pas le dossier parent), avec
   des noms en UTF-8 : 7-Zip est recommandé (`7z a -tzip R05.zip Projet`, UTF-8 pour les noms non ASCII). Pour des
@@ -173,12 +195,12 @@ l'engine 2025, 2027 pour l'engine 2026).
 
 1. Publier en test et lancer un WorkItem par cas ([PUBLISHING.md](../PUBLISHING.md) §5-6), avec le ZIP et le
    `settings.json` du cas. Télécharger `result.json` (→ `resultats/<année>/<cas>.json`) et le rapport.
-2. Première exécution de l'année : `bind` de chaque gabarit de succès (R01-R03, R05-R07, R11), puis relecture du journal
-   (appariement des 13 pièces, phases, variantes). Les cas d'échec (R04, R08-R10) n'ont pas d'identifiants :
+2. Première exécution de l'année : `bind` de chaque gabarit de succès (R01-R03, R05-R07, R11, R12), puis relecture du journal
+   (appariement des 15 pièces, phases, variantes). Les cas d'échec (R04, R08-R10) n'ont pas d'identifiants :
    `bind` les recopie avec seulement `revit.version`.
 
    ```bash
-   for c in R01 R02 R03 R04 R05 R06 R07 R08 R09 R10 R11; do
+   for c in R01 R02 R03 R04 R05 R06 R07 R08 R09 R10 R11 R12; do   # R09 : pas en 2027 ; R12 : si construite
      python3 tools/recette/compare_result.py bind docs/recette/expected/$c.json resultats/2026/$c.json \
          --year 2026 -o docs/recette/expected/2026/$c.json
    done
@@ -190,6 +212,8 @@ l'engine 2025, 2027 pour l'engine 2026).
    python3 tools/recette/compare_result.py compare docs/recette/expected/2026/R01.json resultats/2026/R01.json --case R01
    ```
 
+   Tant que la règle des doublons par variante n'est pas implémentée (EGR Dev), R01, R02, R06 et R11 montrent des
+   `ÉCART` `DUPLICATE_NUMBER` sur Bureau variante A/B : c'est attendu, à noter dans la matrice.
 4. Pour chaque `À CONFIRMER`, noter la valeur réelle dans la matrice ; la décision (corriger l'attendu ou le code)
    se prend avec l'équipe (RECETTE.md §5).
 5. Contrôles manuels : la source du ZIP n'est pas modifiée, aucun dialogue (rapport), `result.json` présent même en

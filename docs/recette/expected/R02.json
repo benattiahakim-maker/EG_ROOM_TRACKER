@@ -26,8 +26,8 @@
       "transactionRolledBack": null
     },
     "counts": {
-      "roomsCollected": 13,
-      "roomsExported": 13,
+      "roomsCollected": 15,
+      "roomsExported": 15,
       "roomsWithAnomalies": 5
     },
     "status": "succeededWithWarnings",
@@ -361,9 +361,7 @@
         "name": "Option A"
       },
       "sharedParameters": {},
-      "qualityFlags": [
-        "DUPLICATE_NUMBER"
-      ]
+      "qualityFlags": []
     },
     {
       "elementId": "9000112",
@@ -395,9 +393,7 @@
         "name": "Option B"
       },
       "sharedParameters": {},
-      "qualityFlags": [
-        "DUPLICATE_NUMBER"
-      ]
+      "qualityFlags": []
     },
     {
       "elementId": "9000113",
@@ -427,6 +423,71 @@
       "designOption": null,
       "sharedParameters": {},
       "qualityFlags": []
+    },
+    {
+      "elementId": "9000114",
+      "uniqueId": "EGR18-P14",
+      "name": "Accueil commun",
+      "number": "011",
+      "areaM2": 6.0,
+      "unboundedHeightM": 2.7,
+      "level": {
+        "elementId": "9000001",
+        "uniqueId": "EGR18-NIVEAU-R+0",
+        "name": "R+0"
+      },
+      "occupancy": null,
+      "volumeM3": 16.2,
+      "volumeStatus": "computed",
+      "finishes": {
+        "floor": null,
+        "wall": null,
+        "ceiling": null,
+        "base": null
+      },
+      "phase": {
+        "elementId": "9000012",
+        "name": "Nouvelle construction"
+      },
+      "designOption": null,
+      "sharedParameters": {},
+      "qualityFlags": [
+        "DUPLICATE_NUMBER"
+      ]
+    },
+    {
+      "elementId": "9000115",
+      "uniqueId": "EGR18-P15",
+      "name": "Bureau variante B2",
+      "number": "011",
+      "areaM2": 4.5,
+      "unboundedHeightM": 2.7,
+      "level": {
+        "elementId": "9000001",
+        "uniqueId": "EGR18-NIVEAU-R+0",
+        "name": "R+0"
+      },
+      "occupancy": null,
+      "volumeM3": 12.15,
+      "volumeStatus": "computed",
+      "finishes": {
+        "floor": null,
+        "wall": null,
+        "ceiling": null,
+        "base": null
+      },
+      "phase": {
+        "elementId": "9000012",
+        "name": "Nouvelle construction"
+      },
+      "designOption": {
+        "elementId": "9000022",
+        "name": "Option B"
+      },
+      "sharedParameters": {},
+      "qualityFlags": [
+        "DUPLICATE_NUMBER"
+      ]
     }
   ],
   "anomalies": [
@@ -482,13 +543,13 @@
       "code": "DUPLICATE_NUMBER",
       "severity": "warning",
       "scope": "room",
-      "elementId": "9000111",
-      "message": "Numéro 010 partagé par 2 pièces.",
+      "elementId": "9000114",
+      "message": "Numéro 011 partagé par 2 pièces.",
       "details": {
-        "number": "010",
+        "number": "011",
         "elementIds": [
-          "9000111",
-          "9000112"
+          "9000114",
+          "9000115"
         ]
       }
     },
@@ -496,13 +557,13 @@
       "code": "DUPLICATE_NUMBER",
       "severity": "warning",
       "scope": "room",
-      "elementId": "9000112",
-      "message": "Numéro 010 partagé par 2 pièces.",
+      "elementId": "9000115",
+      "message": "Numéro 011 partagé par 2 pièces.",
       "details": {
-        "number": "010",
+        "number": "011",
         "elementIds": [
-          "9000111",
-          "9000112"
+          "9000114",
+          "9000115"
         ]
       }
     }

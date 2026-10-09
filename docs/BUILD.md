@@ -17,6 +17,11 @@
 | `EgRoomTracker.Revit` | `src/Revit` | par version | oui — implémentations Revit API |
 | `EgRoomTracker.EntryPoint` | `src/EntryPoint` | par version | oui — `AutomationApplication`, assembly `EgRoomTracker.dll` |
 | `EgRoomTracker.Tests` | `src/Tests` | `net8.0` | non — tests unitaires hors Revit/APS |
+| `EgRoomTracker.Aps` | `tools/EgRoomTracker.Aps` | `net8.0` | non — client APS des outils développeur (EGR-19/EGR-20, voir [`tools/EgRoomTracker.Aps/README.md`](../tools/EgRoomTracker.Aps/README.md)) |
+| `EgRoomTracker.Aps.Tests` | `tools/EgRoomTracker.Aps.Tests` | `net8.0` | non — tests sur HTTP simulé |
+| `EgRoomTracker.DaManager` | `tools/EgRoomTracker.DaManager` | `net8.0-windows` (WPF) | non — outil de gestion APS, lancement sous Windows (voir [`tools/EgRoomTracker.DaManager/README.md`](../tools/EgRoomTracker.DaManager/README.md)) |
+| `EgRoomTracker.DaManager.Core` | `tools/EgRoomTracker.DaManager.Core` | `net8.0` | non — ViewModels et services de DaManager, sans WPF |
+| `EgRoomTracker.DaManager.Tests` | `tools/EgRoomTracker.DaManager.Tests` | `net8.0` | non — tests sur Automation API simulée |
 | — | `src/Packaging` | — | manifestes, définitions d'AppBundle et d'Activity, scripts d'assemblage, de contrôle et de publication (EGR-13, voir [`src/Packaging/README.md`](../src/Packaging/README.md)) |
 
 Dépendances : `Contracts` ← `Export` ← `Application` (← `Logging`) ← `Revit` ← `EntryPoint`. Le cœur ne référence jamais
@@ -44,7 +49,7 @@ Sorties séparées : `src/<Projet>/bin/<RevitVersion>/<Configuration>/`, `obj/<R
 
 ```bash
 dotnet build EgRoomTracker.sln                      # cœur + Revit 2027
-dotnet test EgRoomTracker.sln                       # tests du cœur
+dotnet test EgRoomTracker.sln                       # tests du cœur et de la bibliothèque APS
 for v in 2025 2026 2027; do
   dotnet build src/EntryPoint/EgRoomTracker.EntryPoint.csproj -c Release -p:RevitVersion=$v
 done
@@ -77,4 +82,4 @@ ni déploiement.
 | `Application/` | Orchestration et bilan (`RoomExtractionService`) : anomalies, statut, compteurs, erreurs globales |
 | `Units/` | Quantités converties via une doublure d'`IUnitConversionService` : précision complète, 0 et null distincts (UnitUtils n'est testable que dans Revit) |
 | `Export/` | `ResultExportService` (EGR-12) : fichier conforme au schéma dans les trois statuts, UTF-8 sans BOM, octets identiques d'une exécution et d'une culture à l'autre, fins de ligne `\n`, ordre reçu conservé, publication atomique sans fichier temporaire résiduel, exemple de la documentation reproduit à l'identique |
-| `Pending/` | Spécification exécutable de `QualityCheckService` (EGR-11), ignorée (`Skip`) tant que ce service est un squelette ; un garde-fou échoue dès qu'il est implémenté pour rappeler de l'activer |
+| `Pending/` | Spécification exécutable de `QualityCheckService` (EGR-11), active depuis #38 (aucun test ignoré) |

@@ -34,6 +34,36 @@ public class RecetteFixturesTests
         return data;
     }
 
+    /// <summary>
+    /// Raison du saut des tests qui rejouent le vrai contrôle qualité sur les cas marqués <c>pendingImplementation</c>
+    /// dans le manifeste : règle DUPLICATE_NUMBER par contexte (phase, variante) décidée par le lead en EGR-18, dont
+    /// l'implémentation dans <c>QualityCheckService</c> est confiée à EGR Dev. Retirer le saut quand elle est fusionnée.
+    /// </summary>
+    private const string PendingDuplicateRule =
+        "En attente d'EGR Dev : règle DUPLICATE_NUMBER par contexte (phase, variante) décidée en EGR-18 " +
+        "(variantes différentes non doublons, modèle principal comparé à tout) ; QualityCheckService signale encore " +
+        "Bureau variante A/B en doublon. Cas concernés : pendingImplementation dans docs/recette/cases.json.";
+
+    /// <summary>Cas dont l'attendu suit une règle pas encore implémentée (champ <c>pendingImplementation</c>).</summary>
+    public static TheoryData<string> CasesPendingImplementation() => Filter(pending: true);
+
+    /// <summary>Cas dont l'attendu suit le code actuel.</summary>
+    public static TheoryData<string> CasesMatchingCurrentCode() => Filter(pending: false);
+
+    private static TheoryData<string> Filter(bool pending)
+    {
+        var data = new TheoryData<string>();
+        foreach (var c in Manifest().RootElement.GetProperty("cases").EnumerateArray())
+        {
+            if (c.TryGetProperty("pendingImplementation", out _) == pending)
+            {
+                data.Add(c.GetProperty("id").GetString()!);
+            }
+        }
+
+        return data;
+    }
+
     [Fact]
     public void Manifest_ListsEveryExpectedFile()
     {
@@ -64,8 +94,23 @@ public class RecetteFixturesTests
     }
 
     [Theory]
-    [MemberData(nameof(Cases))]
-    public void Expected_ReproducesQualityCheck_AndStatus(string id)
+    [MemberData(nameof(CasesMatchingCurrentCode))]
+    public void Expected_ReproducesQualityCheck_AndStatus(string id) => AssertQualityCheckReproduces(id);
+
+    [Theory(Skip = PendingDuplicateRule)]
+    [MemberData(nameof(CasesPendingImplementation))]
+    public void Expected_ReproducesQualityCheck_PendingDuplicateRule(string id) => AssertQualityCheckReproduces(id);
+
+    [Fact]
+    public void PendingImplementation_IsDeclaredOnlyForTheDuplicateRule()
+    {
+        var pending = Manifest().RootElement.GetProperty("cases").EnumerateArray()
+            .Where(c => c.TryGetProperty("pendingImplementation", out _)).ToList();
+        Assert.NotEmpty(pending);
+        Assert.All(pending, c => Assert.Equal(QualityFlagCodes.DuplicateNumber, c.GetProperty("pendingImplementation").GetProperty("code").GetString()));
+    }
+
+    private static void AssertQualityCheckReproduces(string id)
     {
         var expected = ContractJson.Deserialize(File.ReadAllText(ExpectedPath(id)));
         if (expected.Summary.Status == ExtractionStatus.Failed)

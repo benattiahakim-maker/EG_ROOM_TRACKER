@@ -39,6 +39,7 @@
         "rooms[name=Couloir].unboundedHeightM",
         "rooms[name=Bureau variante A].designOption.name",
         "rooms[name=Bureau variante B].designOption.name",
+        "rooms[name=Bureau variante B2].designOption.name",
         "rooms[name=Local technique].sharedParameters.texte.value",
         "rooms[name=Local technique].sharedParameters.ouiNon.value",
         "rooms[name=Réserve].sharedParameters.ouiNon.value",
@@ -51,8 +52,16 @@
         "rooms[name=Bureau variante A].sharedParameters.ouiNon.value",
         "rooms[name=Bureau variante B].sharedParameters.ouiNon.value",
         "rooms[name=Combles aménagés].sharedParameters.ouiNon.value",
+        "rooms[name=Accueil commun].sharedParameters.ouiNon.value",
+        "rooms[name=Bureau variante B2].sharedParameters.ouiNon.value",
         "anomalies[code=UNSUPPORTED_PARAMETER_TYPE].details.typeId"
       ],
+      "pendingImplementation": {
+        "code": "DUPLICATE_NUMBER",
+        "rule": "Comparaison par contexte (phase, variante) : deux pièces de variantes différentes ne sont pas en doublon ; une pièce du modèle principal est comparée à toutes les pièces de sa phase.",
+        "owner": "EGR Dev",
+        "status": "Décision du lead (EGR-18), implémentation en attente : le contrôle qualité actuel signale encore Bureau variante A / B en doublon."
+      },
       "allowExtraAnomalies": [
         "REVIT_WARNING_ON_OPEN"
       ]
@@ -81,9 +90,16 @@
         "rooms[name=Couloir].unboundedHeightM",
         "rooms[name=Bureau variante A].designOption.name",
         "rooms[name=Bureau variante B].designOption.name",
+        "rooms[name=Bureau variante B2].designOption.name",
         "rooms[name=Couloir].volumeM3",
         "rooms[name=Couloir].volumeStatus"
       ],
+      "pendingImplementation": {
+        "code": "DUPLICATE_NUMBER",
+        "rule": "Comparaison par contexte (phase, variante) : deux pièces de variantes différentes ne sont pas en doublon ; une pièce du modèle principal est comparée à toutes les pièces de sa phase.",
+        "owner": "EGR Dev",
+        "status": "Décision du lead (EGR-18), implémentation en attente : le contrôle qualité actuel signale encore Bureau variante A / B en doublon."
+      },
       "allowExtraAnomalies": [
         "REVIT_WARNING_ON_OPEN"
       ]
@@ -175,8 +191,15 @@
         "rooms[name=Réserve].unboundedHeightM",
         "rooms[name=Couloir].unboundedHeightM",
         "rooms[name=Bureau variante A].designOption.name",
-        "rooms[name=Bureau variante B].designOption.name"
+        "rooms[name=Bureau variante B].designOption.name",
+        "rooms[name=Bureau variante B2].designOption.name"
       ],
+      "pendingImplementation": {
+        "code": "DUPLICATE_NUMBER",
+        "rule": "Comparaison par contexte (phase, variante) : deux pièces de variantes différentes ne sont pas en doublon ; une pièce du modèle principal est comparée à toutes les pièces de sa phase.",
+        "owner": "EGR Dev",
+        "status": "Décision du lead (EGR-18), implémentation en attente : le contrôle qualité actuel signale encore Bureau variante A / B en doublon."
+      },
       "allowExtraAnomalies": [
         "REVIT_WARNING_ON_OPEN"
       ]
@@ -231,7 +254,9 @@
         "2025",
         "2026"
       ],
-      "notes": "Sans objet en 2027 tant qu'aucune version postérieure n'existe.",
+      "notApplicable": {
+        "2027": "non applicable tant qu'aucune version plus récente n'existe"
+      },
       "pending": [],
       "allowExtraAnomalies": []
     },
@@ -277,9 +302,37 @@
         "rooms[name=Couloir].unboundedHeightM",
         "rooms[name=Bureau variante A].designOption.name",
         "rooms[name=Bureau variante B].designOption.name",
+        "rooms[name=Bureau variante B2].designOption.name",
         "rooms[name=Couloir].volumeM3",
         "rooms[name=Couloir].volumeStatus"
       ],
+      "pendingImplementation": {
+        "code": "DUPLICATE_NUMBER",
+        "rule": "Comparaison par contexte (phase, variante) : deux pièces de variantes différentes ne sont pas en doublon ; une pièce du modèle principal est comparée à toutes les pièces de sa phase.",
+        "owner": "EGR Dev",
+        "status": "Décision du lead (EGR-18), implémentation en attente : le contrôle qualité actuel signale encore Bureau variante A / B en doublon."
+      },
+      "allowExtraAnomalies": [
+        "REVIT_WARNING_ON_OPEN"
+      ]
+    },
+    {
+      "id": "R12",
+      "title": "Facultatif : maquette collaborative native de l'année (central créé dans la version de l'engine, sans mise à niveau)",
+      "model": "EGR_Collab_Natif.rvt",
+      "zip": [
+        "EGR_Collab_Natif.rvt"
+      ],
+      "settings": "settings/R12.json",
+      "expected": "expected/R12.json",
+      "years": [
+        "2025",
+        "2026",
+        "2027"
+      ],
+      "optional": true,
+      "notes": "Construite dans chaque version (2025, 2026, 2027) si le porteur le peut ; même contenu que EGR_Collab.rvt.",
+      "pending": [],
       "allowExtraAnomalies": [
         "REVIT_WARNING_ON_OPEN"
       ]
