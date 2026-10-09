@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Manifeste Revit de l'AppBundle EG_ROOM_TRACKER (EGR-13). Identique pour 2025, 2026 et 2027.
+     Type DBApplication et chemin d'assembly relatif : exigences APS (Execute a Revit Add-in, Task 4). -->
+<RevitAddIns>
+  <AddIn Type="DBApplication">
+    <Name>EgRoomTracker</Name>
+    <Assembly>.\EgRoomTracker.dll</Assembly>
+    <AddInId>0a89fb2f-5979-4fe8-95ec-8ee000439e0b</AddInId>
+    <FullClassName>EgRoomTracker.EntryPoint.AutomationApplication</FullClassName>
+    <Description>Extraction des pièces Revit vers result.json (Automation API).</Description>
+    <VendorId>EG</VendorId>
+    <VendorDescription>EG</VendorDescription>
+  </AddIn>
+</RevitAddIns>

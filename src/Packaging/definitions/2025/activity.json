@@ -1,0 +1,37 @@
+{
+  "id": "ExtractRooms_R2025",
+  "engine": "Autodesk.Revit+2025",
+  "commandLine": [
+    "$(engine.path)\\\\revitcoreconsole.exe /al \"$(appbundles[EgRoomTracker_R2025].path)\""
+  ],
+  "appbundles": [
+    "{{NICKNAME}}.EgRoomTracker_R2025+{{APPBUNDLE_ALIAS}}"
+  ],
+  "parameters": {
+    "inputZip": {
+      "zip": true,
+      "ondemand": false,
+      "verb": "get",
+      "description": "ZIP de la maquette : RVT principal et liens (docs/INPUTS.md), décompressé dans input/",
+      "required": true,
+      "localName": "input"
+    },
+    "settings": {
+      "zip": false,
+      "ondemand": false,
+      "verb": "get",
+      "description": "Configuration de l'extraction (settings.json, section 2 des spécifications)",
+      "required": true,
+      "localName": "settings.json"
+    },
+    "result": {
+      "zip": false,
+      "ondemand": false,
+      "verb": "put",
+      "description": "Résultat unique result.json (docs/schema/result.schema.json)",
+      "required": true,
+      "localName": "result.json"
+    }
+  },
+  "description": "EG_ROOM_TRACKER : extraction des pièces (Revit 2025), sans /i (décision D1)"
+}

@@ -6,3 +6,5 @@ obj/
 *.rvt
 *.rfa
 *.zip
+artifacts/
+__pycache__/
