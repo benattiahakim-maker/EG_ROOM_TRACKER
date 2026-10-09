@@ -1,3 +1,4 @@
+using System.Security.Cryptography;
 using System.Text;
 using EgRoomTracker.Aps;
 using EgRoomTracker.Aps.Packaging;
@@ -14,6 +15,7 @@ public sealed class RunnerOptions
     public const string RepositoryRootVariable = "EGR_REPO_ROOT";
     public const string BucketVariable = "APS_BUCKET";
     public const string DataDirectoryVariable = "EGR_RUNNER_DATA";
+    public const string BucketPrefix = "egr-workitems-";
 
     public required ApsSettings Aps { get; init; }
     public string? RepositoryRoot { get; init; }
@@ -33,7 +35,7 @@ public sealed class RunnerOptions
         {
             Aps = aps,
             RepositoryRoot = Get(RepositoryRootVariable) ?? FindRepositoryRoot(startDirectory ?? AppContext.BaseDirectory),
-            BucketKey = Get(BucketVariable) ?? DefaultBucketKey(aps.Nickname),
+            BucketKey = Get(BucketVariable) ?? DefaultBucketKey(aps.ClientId, aps.Nickname),
             DataDirectory = Get(DataDirectoryVariable) ?? Path.Combine(
                 Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "EgRoomTracker", "WorkItemRunner"),
         };
@@ -55,18 +57,26 @@ public sealed class RunnerOptions
     }
 
     /// <summary>
-    /// Bucket par défaut <c>egr-workitems-&lt;nickname&gt;</c> (caractères OSS autorisés : <c>[-_.a-z0-9]</c>, 3 à 128).
-    /// Les clés de bucket sont globales chez APS : <c>APS_BUCKET</c> est recommandé.
+    /// Bucket par défaut quand <c>APS_BUCKET</c> est absent. Les clés de bucket sont globales chez APS
+    /// (<c>[-_.a-z0-9]{3,128}</c>, POST /oss/v2/buckets) : la clé est dérivée de façon déterministe de l'ID client,
+    /// <c>egr-workitems-</c> suivi des 20 premiers caractères hexadécimaux du SHA-256 de l'ID client (l'ID lui-même
+    /// n'apparaît pas). Sans ID client (APS_TOKEN seul), elle dérive du nickname. <c>APS_BUCKET</c> reste recommandé.
     /// </summary>
-    public static string? DefaultBucketKey(string? nickname)
+    public static string? DefaultBucketKey(string? clientId, string? nickname = null)
     {
+        if (!string.IsNullOrWhiteSpace(clientId))
+        {
+            var hash = SHA256.HashData(Encoding.UTF8.GetBytes(clientId.Trim()));
+            return BucketPrefix + Convert.ToHexString(hash).ToLowerInvariant()[..20];
+        }
+
         if (string.IsNullOrWhiteSpace(nickname))
         {
             return null;
         }
 
-        var builder = new StringBuilder("egr-workitems-");
-        foreach (var c in nickname.ToLowerInvariant())
+        var builder = new StringBuilder(BucketPrefix);
+        foreach (var c in nickname.Trim().ToLowerInvariant())
         {
             builder.Append(c is (>= 'a' and <= 'z') or (>= '0' and <= '9') or '-' or '_' or '.' ? c : '-');
         }
@@ -74,6 +84,10 @@ public sealed class RunnerOptions
         var key = builder.ToString();
         return key.Length > 128 ? key[..128] : key;
     }
+
+    /// <summary>Règle OSS des clés de bucket : <c>[-_.a-z0-9]</c>, 3 à 128 caractères.</summary>
+    public static bool IsValidBucketKey(string? key) =>
+        key is { Length: >= 3 and <= 128 } && key.All(c => c is (>= 'a' and <= 'z') or (>= '0' and <= '9') or '-' or '_' or '.');
 
     /// <summary>Source des identifiants, sans jamais leur valeur.</summary>
     public string CredentialSource =>

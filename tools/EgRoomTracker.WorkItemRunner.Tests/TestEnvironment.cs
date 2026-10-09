@@ -14,6 +14,7 @@ internal sealed class TestEnvironment : IDisposable
     public const string Bucket = "egr-test-bucket";
 
     private readonly TempDirectory _temp = new();
+    private readonly RunnerOptions _options;
 
     public TestEnvironment(bool withCredentials = true)
     {
@@ -29,14 +30,14 @@ internal sealed class TestEnvironment : IDisposable
         Server.ActivityAliases["ExtractRooms_R2026"] = new() { ["test"] = 3, ["prod"] = 2 };
         Server.ResultJson = ExampleResult;
 
-        var options = new RunnerOptions
+        _options = new RunnerOptions
         {
             Aps = new ApsSettings { Token = withCredentials ? Token : null, Nickname = "nick", DaBaseUrl = FakeAps.Da, OssBaseUrl = FakeAps.Oss },
             RepositoryRoot = Root,
             BucketKey = Bucket,
             DataDirectory = DataDirectory,
         };
-        ViewModel = new MainViewModel(options, new HttpClient(Server), Confirmation, Files)
+        ViewModel = new MainViewModel(_options, new HttpClient(Server), Confirmation, Files)
         {
             ZipPath = ZipPath,
             PollIntervalSeconds = 0,
@@ -59,7 +60,14 @@ internal sealed class TestEnvironment : IDisposable
 
     public FakeFiles Files { get; } = new();
 
-    public MainViewModel ViewModel { get; }
+    public MainViewModel ViewModel { get; private set; }
+
+    /// <summary>Simule un redémarrage de l'application : nouveau ViewModel, même historique local, journal vide.</summary>
+    public void Restart()
+    {
+        ViewModel = new MainViewModel(_options, new HttpClient(Server), Confirmation, Files);
+        ViewModel.Initialize();
+    }
 
     public string LogText => string.Join("\n", ViewModel.Log.Select(l => $"{l.Level} {l.Message}"));
 

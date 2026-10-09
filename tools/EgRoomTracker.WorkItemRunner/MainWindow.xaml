@@ -105,6 +105,7 @@
             <TextBlock DockPanel.Dock="Top" Text="Historique" Style="{StaticResource Heading}" />
             <WrapPanel DockPanel.Dock="Bottom" Margin="0,8,0,0">
               <Button Content="Actualiser" Style="{StaticResource Secondary}" Command="{Binding RefreshHistoryCommand}" />
+              <Button Content="Récupérer" ToolTip="Relit le statut du WorkItem sélectionné et télécharge rapport et result.json (même après un redémarrage)" Command="{Binding RecoverCommand}" />
               <Button Content="Exporter…" Command="{Binding ExportRunCommand}" />
             </WrapPanel>
             <ListBox ItemsSource="{Binding History}" SelectedItem="{Binding SelectedRun}" DisplayMemberPath="Summary" BorderThickness="0" />

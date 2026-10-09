@@ -22,14 +22,12 @@ public sealed record PreparedRun(
     OperationPlan Plan);
 
 /// <summary>
-/// WorkItem soumis : les clés de finalisation des sorties OSS restent en mémoire (jamais écrites sur disque ni
-/// journalisées) jusqu'à la récupération des sorties.
+/// WorkItem soumis. Tout ce qu'il faut pour récupérer les sorties (bucket, clés d'objets, clés de finalisation) est
+/// dans <see cref="Record"/>, enregistré sur disque avant la soumission : « Récupérer » fonctionne après un redémarrage.
 /// </summary>
-public sealed class ActiveRun(RunRecord record, IReadOnlyDictionary<string, (string ObjectKey, string UploadKey, string LocalName)> outputs)
+public sealed class ActiveRun(RunRecord record)
 {
     public RunRecord Record { get; internal set; } = record;
-
-    internal IReadOnlyDictionary<string, (string ObjectKey, string UploadKey, string LocalName)> Outputs { get; } = outputs;
 }
 
 /// <summary>
@@ -61,7 +59,12 @@ public sealed class WorkItemRunnerService(
     {
         if (string.IsNullOrWhiteSpace(bucketKey))
         {
-            throw new InvalidOperationException("Bucket OSS inconnu : définir APS_BUCKET (ou APS_NICKNAME).");
+            throw new InvalidOperationException("Bucket OSS inconnu : définir APS_BUCKET (ou APS_CLIENT_ID).");
+        }
+
+        if (!RunnerOptions.IsValidBucketKey(bucketKey))
+        {
+            throw new InvalidOperationException($"Bucket « {bucketKey} » invalide : caractères [-_.a-z0-9], 3 à 128 (règle OSS).");
         }
 
         var zipCheck = InputChecks.CheckZip(request.ZipPath);
@@ -114,6 +117,7 @@ public sealed class WorkItemRunnerService(
         steps.Add("POST /workitems : exécution facturée en crédits APS.");
         steps.Add($"Suivi GET /workitems/{{id}} toutes les {pollInterval.TotalSeconds.ToString(CultureInfo.InvariantCulture)} s, puis rapport (valable 24 h) et sorties dans l'historique local ({runId}).");
         steps.Add("Les URL signées expirent après 60 min : un WorkItem plus long ne pourrait plus écrire result.json.");
+        steps.Add("Historique local : bucket, clés d'objets et identifiant du WorkItem (jamais d'URL signée ni de jeton) ; « Récupérer » relit le statut et télécharge les sorties plus tard, même après un redémarrage.");
         steps.AddRange(zipCheck.Warnings.Concat(settingsCheck.Warnings).Select(w => "ATTENTION : " + w));
         return new PreparedRun(request, runId, activityId, bucketKey, parameters, zipCheck, settingsCheck, new OperationPlan("Lancer un WorkItem", steps));
     }
@@ -144,31 +148,37 @@ public sealed class WorkItemRunnerService(
 
             var inputUrls = new Dictionary<string, string>();
             var outputUrls = new Dictionary<string, string>();
-            var outputs = new Dictionary<string, (string, string, string)>();
+            var objects = new List<RunObject>();
             foreach (var parameter in prepared.Parameters)
             {
                 var objectKey = ObjectKey(record.RunId, parameter);
+                var localName = parameter.LocalName ?? parameter.Name;
                 if (parameter.IsInput)
                 {
                     await using var content = InputFor(parameter, request);
                     await oss.UploadObjectAsync(prepared.BucketKey, objectKey, content, content.Length, cancellationToken: cancellationToken).ConfigureAwait(false);
                     progress($"Téléversé : {objectKey}");
                     inputUrls[parameter.Name] = await oss.GetSignedDownloadUrlAsync(prepared.BucketKey, objectKey, cancellationToken: cancellationToken).ConfigureAwait(false);
+                    objects.Add(new RunObject(parameter.Name, objectKey, true, localName));
                 }
                 else
                 {
                     var upload = await oss.GetSignedUploadAsync(prepared.BucketKey, objectKey, cancellationToken: cancellationToken).ConfigureAwait(false);
                     outputUrls[parameter.Name] = upload.Urls[0];
-                    outputs[parameter.Name] = (objectKey, upload.UploadKey, parameter.LocalName ?? parameter.Name);
+                    objects.Add(new RunObject(parameter.Name, objectKey, false, localName, upload.UploadKey));
                 }
             }
+
+            // Clés enregistrées avant la soumission : la récupération reste possible si l'application est fermée.
+            record = record with { Objects = objects };
+            history.Save(record);
 
             var workItem = WorkItemArguments.Build(prepared.ActivityId, prepared.Parameters, inputUrls, outputUrls);
             var status = await designAutomation.SubmitWorkItemAsync(workItem, cancellationToken).ConfigureAwait(false);
             record = record with { WorkItemId = status.Id, WorkItemStatus = status.Status };
             history.Save(record);
             progress($"WorkItem {status.Id} soumis ({status.Status}).");
-            return new ActiveRun(record, outputs);
+            return new ActiveRun(record);
         }
         catch (Exception exception) when (exception is ApsException or IOException or HttpRequestException)
         {
@@ -192,14 +202,57 @@ public sealed class WorkItemRunnerService(
         designAutomation.CancelWorkItemAsync(run.Record.WorkItemId ?? throw new InvalidOperationException("WorkItem non soumis."), cancellationToken);
 
     /// <summary>
-    /// Rapport et sorties : chaque sortie est finalisée puis téléchargée ; une sortie absente est notée (D6) sans erreur.
-    /// <c>result.json</c> est lu et validé contre le schéma.
+    /// Rapport et sorties : chaque sortie est finalisée puis téléchargée par une URL signée de lecture demandée à
+    /// l'instant ; une sortie absente est notée (D6) sans erreur. <c>result.json</c> est lu et validé contre le schéma.
     /// </summary>
     public async Task<(RunRecord Record, ResultView? Result, string? Report)> CollectAsync(ActiveRun run, WorkItemStatus status, Action<string> progress, CancellationToken cancellationToken = default)
     {
-        var directory = history.DirectoryOf(run.Record.RunId);
+        var (record, result, report) = await CollectAsync(run.Record, status, progress, cancellationToken).ConfigureAwait(false);
+        run.Record = record;
+        return (record, result, report);
+    }
+
+    /// <summary>
+    /// « Récupérer » : relit le statut du WorkItem d'un lancement de l'historique (même après un redémarrage), puis,
+    /// s'il est terminé, télécharge le rapport et les sorties. Un WorkItem encore en cours est seulement mis à jour.
+    /// </summary>
+    public async Task<(RunRecord Record, ResultView? Result, string? Report)> RecoverAsync(RunRecord record, Action<string> progress, CancellationToken cancellationToken = default)
+    {
+        var id = record.WorkItemId ?? throw new InvalidOperationException($"Lancement {record.RunId} : aucun WorkItem soumis.");
+        if (!record.Objects.Any(o => !o.IsInput))
+        {
+            throw new InvalidOperationException($"Lancement {record.RunId} : clés d'objets OSS absentes de l'historique (lancement antérieur à cette version) : récupération impossible.");
+        }
+
+        WorkItemStatus? status;
+        try
+        {
+            status = await designAutomation.GetWorkItemAsync(id, cancellationToken).ConfigureAwait(false);
+            progress($"WorkItem {id} : {status.Status}.");
+        }
+        catch (ApsException exception)
+        {
+            // Statut conservé 3 jours par APS : au-delà, on tente quand même les sorties (bucket transient, 24 h).
+            status = null;
+            progress($"Statut du WorkItem {id} indisponible ({exception.Message}) : récupération des sorties seulement.");
+        }
+
+        if (status is { IsCompleted: false })
+        {
+            record = record with { WorkItemStatus = status.Status };
+            history.Save(record);
+            progress($"WorkItem {id} toujours {status.Status} : réessayer « Récupérer » plus tard.");
+            return (record, null, null);
+        }
+
+        return await CollectAsync(record, status, progress, cancellationToken).ConfigureAwait(false);
+    }
+
+    private async Task<(RunRecord Record, ResultView? Result, string? Report)> CollectAsync(RunRecord record, WorkItemStatus? status, Action<string> progress, CancellationToken cancellationToken)
+    {
+        var directory = Directory.CreateDirectory(history.DirectoryOf(record.RunId)).FullName;
         string? report = null;
-        if (status.ReportUrl is not null)
+        if (status?.ReportUrl is not null)
         {
             try
             {
@@ -215,43 +268,55 @@ public sealed class WorkItemRunnerService(
 
         var present = new Dictionary<string, bool>();
         ResultView? result = null;
-        foreach (var (name, (objectKey, uploadKey, localName)) in run.Outputs)
+        foreach (var output in record.Objects.Where(o => !o.IsInput))
         {
+            string? completion = null;
+            if (output.UploadKey is not null)
+            {
+                try
+                {
+                    await oss.CompleteUploadAsync(record.BucketKey, output.ObjectKey, output.UploadKey, cancellationToken).ConfigureAwait(false);
+                }
+                catch (ApsException exception)
+                {
+                    completion = exception.Message; // déjà finalisé (récupération répétée) ou jamais écrit : le téléchargement tranche
+                }
+            }
+
             try
             {
-                await oss.CompleteUploadAsync(run.Record.BucketKey, objectKey, uploadKey, cancellationToken).ConfigureAwait(false);
-                var bytes = await oss.DownloadObjectAsync(run.Record.BucketKey, objectKey, cancellationToken).ConfigureAwait(false);
-                await File.WriteAllBytesAsync(Path.Combine(directory, localName), bytes, cancellationToken).ConfigureAwait(false);
-                present[localName] = true;
-                progress($"Sortie {name} récupérée : {localName} ({Size(bytes.Length)}).");
-                if (localName == ResultLocalName)
+                var bytes = await oss.DownloadObjectAsync(record.BucketKey, output.ObjectKey, cancellationToken).ConfigureAwait(false);
+                await File.WriteAllBytesAsync(Path.Combine(directory, output.LocalName), bytes, cancellationToken).ConfigureAwait(false);
+                present[output.LocalName] = true;
+                progress($"Sortie {output.Parameter} récupérée : {output.LocalName} ({Size(bytes.Length)}).");
+                if (output.LocalName == ResultLocalName)
                 {
                     result = results.Read(Encoding.UTF8.GetString(bytes));
                 }
             }
             catch (ApsException exception)
             {
-                present[localName] = false;
-                progress($"Sortie {name} absente ({localName}) : {exception.Message}");
+                present[output.LocalName] = false;
+                progress($"Sortie {output.Parameter} absente ({output.LocalName}) : {completion ?? exception.Message}");
             }
         }
 
-        run.Record = run.Record with
+        record = record with
         {
-            WorkItemStatus = status.Status,
+            WorkItemStatus = status?.Status ?? record.WorkItemStatus,
             CompletedAtUtc = _time.GetUtcNow(),
-            Stats = status.Stats?.ToJsonString(),
+            Stats = status?.Stats?.ToJsonString() ?? record.Stats,
             Outputs = present,
             ResultStatus = result?.Status,
             SchemaErrorCount = result?.SchemaErrors.Count,
-            ReportDownloaded = report is not null,
+            ReportDownloaded = report is not null || record.ReportDownloaded,
         };
-        history.Save(run.Record);
+        history.Save(record);
 
         // Relevé D6 (src/Packaging/README.md) : statut du WorkItem et présence de result.json.
         var resultPresence = present.GetValueOrDefault(ResultLocalName) ? $"présent (status {result?.Status ?? "?"})" : "absent";
-        progress($"Relevé : WorkItem {status.Status}, result.json {resultPresence}.");
-        return (run.Record, result, report);
+        progress($"Relevé : WorkItem {record.WorkItemStatus ?? "?"}, result.json {resultPresence}.");
+        return (record, result, report);
     }
 
     /// <summary>Relit un lancement de l'historique (result.json et rapport locaux).</summary>

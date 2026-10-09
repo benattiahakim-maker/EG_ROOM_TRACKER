@@ -64,6 +64,7 @@ public sealed class MainViewModel : ObservableObject
         CancelWorkItemCommand = new AsyncRelayCommand(CancelWorkItemAsync, () => _activeRun is not null && _follow is not null);
         RefreshHistoryCommand = new AsyncRelayCommand(() => RunAsync("Historique", () => { ReloadHistory(); return Task.CompletedTask; }), () => !IsBusy);
         ExportRunCommand = new AsyncRelayCommand(() => RunAsync("Export", ExportCoreAsync), () => !IsBusy && SelectedRun is not null);
+        RecoverCommand = new AsyncRelayCommand(() => RunAsync("Récupération", RecoverCoreAsync), () => !IsBusy && _follow is null && SelectedRun is { WorkItemId: not null });
         BrowseZipCommand = new AsyncRelayCommand(() =>
         {
             ZipPath = _files?.OpenFile("ZIP de la maquette", "ZIP (*.zip)|*.zip", null) ?? ZipPath;
@@ -104,6 +105,9 @@ public sealed class MainViewModel : ObservableObject
     public AsyncRelayCommand RefreshHistoryCommand { get; }
 
     public AsyncRelayCommand ExportRunCommand { get; }
+
+    /// <summary>« Récupérer » : relit le statut du WorkItem sélectionné et télécharge rapport et sorties (après redémarrage aussi).</summary>
+    public AsyncRelayCommand RecoverCommand { get; }
 
     public AsyncRelayCommand BrowseZipCommand { get; }
 
@@ -195,6 +199,7 @@ public sealed class MainViewModel : ObservableObject
             {
                 ShowRun(value);
                 ExportRunCommand.RaiseCanExecuteChanged();
+                RecoverCommand.RaiseCanExecuteChanged();
             }
         }
     }
@@ -328,6 +333,21 @@ public sealed class MainViewModel : ObservableObject
         }
     }
 
+    private async Task RecoverCoreAsync()
+    {
+        var run = SelectedRun ?? throw new InvalidOperationException("Sélectionner un lancement.");
+        AddLog("info", $"Récupération du lancement {run.RunId} (WorkItem {run.WorkItemId}) : statut, rapport et sorties ; URL signées de lecture redemandées à APS.");
+        var (record, result, _) = await Service().RecoverAsync(run, Progress);
+        WorkItemStatus = record.WorkItemStatus ?? "—";
+        ReloadHistory();
+        SelectedRun = History.FirstOrDefault(r => r.RunId == record.RunId);
+        ShowRun(SelectedRun);
+        if (result is { IsSchemaValid: false })
+        {
+            AddLog("warning", $"result.json non conforme au schéma : {result.SchemaErrors.Count} écart(s).");
+        }
+    }
+
     private Task ExportCoreAsync()
     {
         var run = SelectedRun ?? throw new InvalidOperationException("Sélectionner un lancement.");
@@ -435,7 +455,7 @@ public sealed class MainViewModel : ObservableObject
 
     private void RaiseCanExecuteChanged()
     {
-        foreach (var command in new[] { RunCommand, StopFollowingCommand, CancelWorkItemCommand, RefreshHistoryCommand, ExportRunCommand })
+        foreach (var command in new[] { RunCommand, StopFollowingCommand, CancelWorkItemCommand, RefreshHistoryCommand, ExportRunCommand, RecoverCommand })
         {
             command?.RaiseCanExecuteChanged();
         }
