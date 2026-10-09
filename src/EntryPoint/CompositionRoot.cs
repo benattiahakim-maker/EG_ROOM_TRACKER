@@ -17,7 +17,7 @@ internal static class CompositionRoot
 
         return new RoomExtractionService(
             new InputConfigurationService(),
-            new RevitDocumentService(context),
+            new RevitDocumentService(context, log),
             new VolumeCalculationService(context),
             new RoomCollectionService(context),
             new RoomParameterReader(context, new RevitUnitConversionService()),

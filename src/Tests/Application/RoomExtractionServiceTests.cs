@@ -16,7 +16,7 @@ public class RoomExtractionServiceTests
         var result = pipeline.CreateService().Run(Pipeline.Request);
 
         Assert.Equal(
-            ["config", "document", "volume", "collect", "read:412345", "read:415002", "quality", "export"],
+            ["config", "document", "volume", "collect", "read:412345", "read:415002", "quality", "close", "export"],
             pipeline.Calls);
         Assert.Equal(ExtractionStatus.Succeeded, result.Summary.Status);
         Assert.Equal(["412345", "415002"], result.Rooms.Select(r => r.ElementId));
@@ -62,7 +62,7 @@ public class RoomExtractionServiceTests
         Assert.Empty(result.Rooms);
         Assert.Empty(result.Anomalies);
         Assert.Null(result.Summary.Source);
-        Assert.Equal(["config", "export"], pipeline.Calls);
+        Assert.Equal(["config", "close", "export"], pipeline.Calls);
         Assert.Same(result, pipeline.Exported);
         var failure = Assert.Single(pipeline.Logs, l => l.Level == LogLevel.Error && l.EventCode == LogEventCodes.ExtractionFailed);
         Assert.Equal(ErrorCodes.ConfigInvalid, failure.Data?["errorCode"]);
@@ -167,4 +167,26 @@ public class RoomExtractionServiceTests
     [Fact]
     public void ExtractorVersion_HasNoBuildMetadata() =>
         Assert.DoesNotContain("+", RoomExtractionService.ExtractorVersion);
+
+    [Fact]
+    public void Run_DocumentOpenFailure_ClosesThenExportsFailedResult()
+    {
+        var pipeline = new Pipeline { OpenException = new ExtractionFailedException(ErrorCodes.RevitVersionIncompatible, Stages.Document, "RVT 2027.") };
+
+        var result = pipeline.CreateService().Run(Pipeline.Request);
+
+        Assert.Equal(["config", "document", "close", "export"], pipeline.Calls);
+        Assert.Equal(ErrorCodes.RevitVersionIncompatible, Assert.Single(result.Summary.Errors).Code);
+    }
+
+    [Fact]
+    public void Run_CloseFailure_IsLoggedWithoutChangingResult()
+    {
+        var pipeline = new Pipeline { CloseException = new InvalidOperationException("close") };
+
+        var result = pipeline.CreateService().Run(Pipeline.Request);
+
+        Assert.Equal(ExtractionStatus.Succeeded, result.Summary.Status);
+        Assert.Contains(pipeline.Logs, l => l.EventCode == LogEventCodes.DocumentCloseFailed && l.Level == LogLevel.Warning);
+    }
 }

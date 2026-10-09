@@ -27,6 +27,8 @@ internal sealed class Pipeline
     public IReadOnlyList<CollectedRoom> Rooms { get; set; } = [new(415002, "u-415002"), new(412345, "u-412345")];
     public Func<CollectedRoom, RoomReadResult>? ReadRoom { get; set; }
     public Exception? CollectException { get; set; }
+    public Exception? OpenException { get; set; }
+    public Exception? CloseException { get; set; }
     public ExtractionStatus QualityStatus { get; set; } = ExtractionStatus.Succeeded;
     public Exception? ExportException { get; set; }
 
@@ -62,7 +64,21 @@ internal sealed class Pipeline
         public DocumentDescriptor Open(ExtractionSettings settings, string inputDirectory)
         {
             p.Calls.Add("document");
+            if (p.OpenException is not null)
+            {
+                throw p.OpenException;
+            }
+
             return new DocumentDescriptor(new SourceInfo("A.rvt", "Projet/A.rvt", false), []);
+        }
+
+        public void Close()
+        {
+            p.Calls.Add("close");
+            if (p.CloseException is not null)
+            {
+                throw p.CloseException;
+            }
         }
 
         public VolumeComputationState Prepare(VolumeMode mode)
