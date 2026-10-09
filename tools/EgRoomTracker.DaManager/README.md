@@ -28,7 +28,7 @@ $env:APS_DA_BASE_URL   = "https://developer.api.autodesk.com/da/us-east/v3"
 $env:REVIT_VERSIONS    = "2025 2026 2027"      # versions cochées au démarrage
 $env:APPBUNDLE_DIR     = "artifacts\appbundles" # ZIP produits par build-appbundle.sh ou par la CI
 $env:EGR_REPO_ROOT     = "C:\src\EG_ROOM_TRACKER" # sinon recherché à partir du dossier de l'exécutable
-$env:EGR_PUBLICATION_JOURNAL = "\\partage\egr\publication-journal.json" # défaut : %LOCALAPPDATA%\EgRoomTracker\DaManager\publication-journal.json
+$env:EGR_PUBLICATION_JOURNAL = "$env:OneDrive\EG_ROOM_TRACKER\publication-journal.json" # recommandé : dossier OneDrive partagé ; défaut : %LOCALAPPDATA%\EgRoomTracker\DaManager\publication-journal.json
 
 dotnet run --project tools\EgRoomTracker.DaManager\EgRoomTracker.DaManager.csproj
 # ou
@@ -49,7 +49,7 @@ Lancé depuis le dépôt, DaManager trouve seul la racine (le dossier qui contie
 | **Promouvoir test → prod** : alias `prod` de l'AppBundle sur la version en `test`, nouvelle version d'Activity `+prod`, versions précédentes affichées pour le journal | oui | `deploy.py promote`, PUBLISHING section 7 |
 | **Alias / retour arrière** : créer ou déplacer un alias de la ressource sélectionnée vers une version existante | oui | `deploy.py rollback`, PUBLISHING section 8 |
 | **Nettoyage des versions** : voir ci-dessous | suppressions | PUBLISHING section 8, quotas |
-| **Journal de publication** : ligne ajoutée à chaque promotion, import et export JSON ou Markdown | aucune (fichier local) | PUBLISHING section 8 |
+| **Journal de publication** : ligne ajoutée à chaque publication en test et à chaque promotion, import et export JSON ou Markdown | aucune (fichier local) | PUBLISHING section 8 |
 
 **Plan et confirmation (#35)** : avant chaque écriture, DaManager construit le plan à partir de lectures seules. Ce
 plan donne les requêtes prévues, les versions actuelles et suivantes, ainsi que le commit du dépôt, car ZIP et
@@ -75,37 +75,63 @@ Une suppression est définitive : la version supprimée ne peut plus servir de r
 
 ## Journal de publication
 
-Le journal de [`docs/PUBLISHING.md`](../../docs/PUBLISHING.md) section 8 (Date | Commit | Revit | AppBundle test / prod |
-Activity test / prod | Prod précédente) est tenu dans un fichier lisible, choisi par `EGR_PUBLICATION_JOURNAL` ou
-dans le champ « Fichier » :
+Le journal de [`docs/PUBLISHING.md`](../../docs/PUBLISHING.md) section 8 (Date | Commit | Revit | Alias |
+AppBundle test / prod | Activity test / prod | Version précédente de l'alias) est tenu dans un fichier lisible.
+
+**Emplacement** : par défaut `%LOCALAPPDATA%\EgRoomTracker\DaManager\publication-journal.json`, local au poste.
+La variable `EGR_PUBLICATION_JOURNAL` (ou le champ « Fichier ») le remplace. **Un dossier OneDrive partagé est
+recommandé** : tous les postes qui publient lisent et complètent alors le même journal, et le nettoyage de chacun
+protège les versions publiées par les autres. Par exemple :
+
+```powershell
+$env:EGR_PUBLICATION_JOURNAL = "$env:OneDrive\EG_ROOM_TRACKER\publication-journal.json"
+```
+
+Deux postes qui publient au même instant peuvent se gêner (dernier enregistrement gagnant) : publier l'un après
+l'autre, ce qui est de toute façon la règle (PUBLISHING section 5).
+
+Format (version 2) :
 
 ```json
 {
   "format": "egr-publication-journal",
-  "version": 1,
+  "version": 2,
   "entries": [
     {
-      "date": "2026-10-09",
-      "commit": "a6d49e3",
+      "date": "2026-10-08",
+      "commit": "cb73e3d",
       "revit": "2026",
+      "alias": "test",
+      "appBundle": { "test": 4, "prod": 3 },
+      "activity": { "test": 7, "prod": 6 },
+      "previous": { "appBundle": 3, "activity": 5 }
+    },
+    {
+      "date": "2026-10-09",
+      "commit": "9b9a3fb",
+      "revit": "2026",
+      "alias": "prod",
       "appBundle": { "test": 4, "prod": 4 },
       "activity": { "test": 7, "prod": 8 },
-      "previousProd": { "appBundle": 3, "activity": 5 }
+      "previous": { "appBundle": 3, "activity": 6 }
     }
   ]
 }
 ```
 
-- Après chaque promotion confirmée, DaManager ajoute une ligne par version de Revit : alias relus après l'écriture,
-  prod précédente lue avant (`null` pour une première promotion).
+- Après chaque **publication en test** et chaque **promotion** confirmées, DaManager ajoute une ligne par version de
+  Revit. `alias` indique l'alias concerné (`test` ou `prod`), les versions des alias sont relues après l'écriture et
+  `previous` donne la version que cet alias pointait avant (`null` la première fois) : c'est la cible du retour arrière.
+- **Compatibilité** : un journal au format 1 (sans `alias`, avec `previousProd`) et l'ancienne table Markdown à
+  6 colonnes restent lisibles. Leurs lignes sont des promotions (`prod`). Le fichier est réécrit au format 2 à la
+  publication suivante.
 - **Importer…** lit un journal JSON ou une table Markdown (`.md`, par exemple copiée d'une description de PR ou d'une
   release) et le fusionne sans doublon. Un fichier invalide est refusé avec la ligne ou l'entrée fautive, sans toucher
   au journal.
 - **Exporter…** écrit le journal en JSON ou, avec l'extension `.md`, sous forme de la table de PUBLISHING, prête à coller.
-- Le nettoyage protège automatiquement toutes les versions citées (test, prod et prod précédente).
+- Le nettoyage protège automatiquement toutes les versions citées (test, prod et version précédente).
 
-Le fichier ne contient ni identifiant ni URL. Pour partager le journal entre développeurs, pointer
-`EGR_PUBLICATION_JOURNAL` sur un emplacement commun ou exporter la table dans la PR de publication.
+Le fichier ne contient ni identifiant ni URL.
 
 ## Secrets
 
@@ -127,6 +153,7 @@ une version référencée par un alias. Les tests couvrent les cas suivants :
 - ZIP refusé, arrêt avant la confirmation ;
 - nettoyage avec versions aliasées et protégées ;
 - journal : JSON et Markdown équivalents, aller-retour, erreurs explicites, versions protégées automatiquement,
-  journal illisible bloquant le nettoyage, ligne ajoutée à la promotion, import sans doublon et export ;
+  journal illisible bloquant le nettoyage, lignes ajoutées à la publication en test et à la promotion, lecture et
+  mise à niveau d'un journal au format 1, import sans doublon et export ;
 - erreurs journalisées sans secret ;
 - identifiants absents.

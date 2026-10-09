@@ -26,9 +26,9 @@ Desktop. Aucun Revit n'est nécessaire. L'Activity visée doit déjà être publ
 $env:APS_CLIENT_ID     = "<client id>"
 $env:APS_CLIENT_SECRET = "<client secret>"      # ou, à défaut : $env:APS_TOKEN = "<jeton 2-legged code:all data:read data:write data:create bucket:create bucket:read>"
 $env:APS_NICKNAME      = "<nickname>"
+$env:APS_BUCKET        = "egr-workitems-<suffixe>" # recommandé ; [-_.a-z0-9], 3 à 128 caractères, unique chez APS
 # Facultatif
 $env:APS_DA_BASE_URL   = "https://developer.api.autodesk.com/da/us-east/v3"
-$env:APS_BUCKET        = "<bucket OSS>"          # défaut : egr-workitems-<nickname> ; les clés de bucket sont globales chez APS
 $env:EGR_REPO_ROOT     = "C:\src\EG_ROOM_TRACKER" # sinon recherché à partir du dossier de l'exécutable
 $env:EGR_RUNNER_DATA   = "D:\egr-runs"           # historique ; défaut : %LOCALAPPDATA%\EgRoomTracker\WorkItemRunner
 
@@ -53,12 +53,22 @@ Lancé depuis le dépôt, WorkItemRunner trouve seul la racine (le dossier qui c
 | **Suivi** : interrogation de `GET /workitems/{id}` (intervalle réglable) | aucune | **Arrêter le suivi** laisse le WorkItem tourner côté APS |
 | **Annuler le WorkItem** : `DELETE /workitems/{id}` | oui | Confirmation renforcée : il faut saisir `CONFIRMER` |
 | **Résultats** : rapport APS, `result.json` (synthèse, locaux, anomalies, écarts au schéma) | aucune | Une sortie absente est notée, sans erreur (cas D6 de `src/Packaging/README.md`) |
+| **Récupérer** : pour le lancement sélectionné, relecture du statut du WorkItem puis, s'il est terminé, rapport et sorties | finalisation des sorties OSS | Fonctionne après un redémarrage ; URL signée de lecture redemandée à chaque fois |
 | **Historique** : un dossier par lancement, export ZIP | aucune | Voir ci-dessous |
 
 **Plan et confirmation** : avant tout téléversement et toute soumission, WorkItemRunner construit le plan à partir de
 lectures seules. Ce plan donne l'Activity et sa version, le bucket, chaque entrée (fichier, taille, clé d'objet), chaque
 sortie et les avertissements des contrôles. Il est affiché dans une fenêtre modale, et rien n'est écrit sans un clic
 sur « Confirmer ». Le plan et la décision sont aussi inscrits au journal.
+
+### Bucket OSS
+
+Les clés de bucket sont **globales** chez APS (toutes applications et régions confondues) et doivent respecter
+`[-_.a-z0-9]{3,128}` (POST `/oss/v2/buckets`). **Définir `APS_BUCKET` est recommandé.** À défaut, la clé est dérivée
+de façon déterministe de l'ID client : `egr-workitems-` suivi des 20 premiers caractères hexadécimaux du SHA-256 de
+`APS_CLIENT_ID` (l'ID lui-même n'apparaît pas). Le même poste, ou un autre avec la même application APS, retrouve donc
+le même bucket. Sans ID client (`APS_TOKEN` seul), elle dérive du nickname (`egr-workitems-<nickname>`). Une clé
+invalide est refusée avant toute écriture.
 
 ### Contrôles des entrées
 
@@ -74,11 +84,20 @@ sur « Confirmer ». Le plan et la décision sont aussi inscrits au journal.
 
 Chaque lancement est rangé dans `<EGR_RUNNER_DATA>/runs/<date>-<id>/` :
 
-- `run.json` : version, alias, Activity, bucket, identifiant et statut du WorkItem, statistiques, sorties présentes ou
-  absentes, statut de `result.json` et nombre d'écarts au schéma ;
+- `run.json` : date, version, alias, Activity, bucket, identifiant et statut du WorkItem, **clés des objets OSS**
+  (entrées et sorties, avec la clé de finalisation `uploadKey` des sorties), statistiques, sorties présentes ou
+  absentes, statut de `result.json` et nombre d'écarts au schéma. Ce fichier est écrit **avant** la soumission ;
+  il ne contient jamais d'URL signée ni de jeton ;
 - `settings.json` : copie de l'entrée envoyée ;
 - `report.txt` : rapport APS (valable 24 h côté APS) ;
 - `result.json` : sortie téléchargée.
+
+**Récupérer** relit ce `run.json` : `GET /workitems/{id}` (statut conservé 3 jours par APS), rapport si le WorkItem
+est terminé, puis pour chaque sortie finalisation (`uploadKey`, valable environ 24 h) et téléchargement par une URL
+signée de lecture demandée à l'instant. Un WorkItem encore en cours est seulement mis à jour ; la récupération peut
+être relancée sans risque (une sortie déjà finalisée est simplement téléchargée de nouveau). Elle fonctionne après
+« Arrêter le suivi » comme après la fermeture de l'application, tant que les objets existent (bucket `transient` :
+24 h). Les lancements enregistrés avant cette version n'ont pas les clés d'objets et ne sont pas récupérables.
 
 **Exporter** produit un ZIP de ce dossier, à joindre à un relevé de recette. Le journal donne en fin de lancement la
 ligne de relevé D6 : `Relevé : WorkItem <statut>, result.json présent (status …)` ou `… result.json absent.`.
@@ -87,8 +106,8 @@ ligne de relevé D6 : `Relevé : WorkItem <statut>, result.json présent (status
 
 - Les URL signées d'OSS expirent après 60 minutes au plus. Un WorkItem plus long ne pourrait plus écrire
   `result.json` ; le plan le rappelle.
-- Les clés de finalisation des sorties (`uploadKey`) restent en mémoire : si l'application est fermée pendant un
-  WorkItem, les sorties de ce lancement ne sont pas récupérées.
+- « Récupérer » dépend des délais APS : statut du WorkItem 3 jours, clé de finalisation et objets `transient` environ
+  24 heures.
 - Le bucket est créé en politique `transient` : les objets sont supprimés par APS après 24 heures.
 
 ## Secrets
@@ -115,4 +134,7 @@ exemples. Les tests couvrent les cas suivants :
 - WorkItem en échec sans `result.json` (relevé D6) et `result.json` non conforme au schéma ;
 - arrêt du suivi et annulation confirmée du WorkItem ;
 - alias absent ou ZIP refusé, arrêt avant le plan ;
-- aucune URL signée ni aucun jeton dans le journal, le plan ou l'historique.
+- « Récupérer » après redémarrage (résultat et rapport), WorkItem encore en cours, récupération répétée, échec sans
+  sortie, lancement ancien sans clés ;
+- bucket par défaut dérivé de l'ID client (déterministe, règle OSS), `APS_BUCKET` prioritaire, bucket invalide refusé ;
+- aucune URL signée ni aucun jeton dans le journal, le plan ou l'historique (fichiers sur disque vérifiés).

@@ -11,41 +11,49 @@ namespace EgRoomTracker.DaManager.Services;
 /// <summary>Versions pointées par les alias <c>test</c> et <c>prod</c> d'une ressource (null : alias absent).</summary>
 public sealed record AliasVersions(int? Test, int? Prod);
 
-/// <summary>Versions de production remplacées par la publication, cible du retour arrière (null : aucune).</summary>
-public sealed record PreviousProd(int? AppBundle, int? Activity);
+/// <summary>Versions que l'alias concerné pointait avant la publication, cible du retour arrière (null : aucune).</summary>
+public sealed record PreviousVersions(int? AppBundle, int? Activity);
 
 /// <summary>
-/// Ligne du journal de publication (docs/PUBLISHING.md section 8) :
-/// Date | Commit | Revit | AppBundle test / prod | Activity test / prod | Prod précédente (AppBundle / Activity).
+/// Ligne du journal de publication (docs/PUBLISHING.md section 8) : Date | Commit | Revit | Alias | AppBundle test / prod |
+/// Activity test / prod | Version précédente de l'alias (AppBundle / Activity). <see cref="Alias"/> vaut <c>test</c>
+/// (publication en test) ou <c>prod</c> (promotion).
 /// </summary>
-public sealed record JournalEntry(string Date, string? Commit, string Revit, AliasVersions AppBundle, AliasVersions Activity, PreviousProd? PreviousProd)
+public sealed record JournalEntry(string Date, string? Commit, string Revit, string Alias, AliasVersions AppBundle, AliasVersions Activity, PreviousVersions? Previous)
 {
     /// <summary>Toutes les versions citées par la ligne pour un type de ressource (à conserver pour le retour arrière).</summary>
     public IEnumerable<int> Versions(DaResourceKind kind)
     {
         var pair = kind == DaResourceKind.AppBundle ? AppBundle : Activity;
-        var previous = kind == DaResourceKind.AppBundle ? PreviousProd?.AppBundle : PreviousProd?.Activity;
+        var previous = kind == DaResourceKind.AppBundle ? Previous?.AppBundle : Previous?.Activity;
         return new[] { pair.Test, pair.Prod, previous }.OfType<int>();
     }
 
     public string Text =>
-        $"{Date} · {Commit ?? "—"} · Revit {Revit} · AppBundle {PublicationJournal.Pair(AppBundle.Test, AppBundle.Prod)} · " +
-        $"Activity {PublicationJournal.Pair(Activity.Test, Activity.Prod)} · prod précédente {(PreviousProd is null ? "—" : PublicationJournal.Pair(PreviousProd.AppBundle, PreviousProd.Activity))}";
+        $"{Date} · {Commit ?? "—"} · Revit {Revit} · {Alias} · AppBundle {PublicationJournal.Pair(AppBundle.Test, AppBundle.Prod)} · " +
+        $"Activity {PublicationJournal.Pair(Activity.Test, Activity.Prod)} · {Alias} précédent {(Previous is null ? "—" : PublicationJournal.Pair(Previous.AppBundle, Previous.Activity))}";
 }
 
 /// <summary>
-/// Journal de publication lisible : JSON indenté (une entrée par version Revit publiée) et table Markdown de
-/// docs/PUBLISHING.md section 8, en lecture comme en écriture. Le nettoyage des versions protège automatiquement toute
-/// version citée par le journal.
+/// Journal de publication lisible : JSON indenté (une entrée par version Revit et par publication, en test comme en
+/// prod) et table Markdown de docs/PUBLISHING.md section 8, en lecture comme en écriture. Le nettoyage des versions
+/// protège automatiquement toute version citée par le journal.
+/// Compatibilité : la version 1 (avant le journal des publications en test : pas d'« alias », « previousProd ») et
+/// l'ancienne table à 6 colonnes restent lisibles ; leurs lignes sont des promotions (alias <c>prod</c>).
 /// </summary>
 public sealed class PublicationJournal
 {
     public const string Format = "egr-publication-journal";
-    public const int FormatVersion = 1;
+    public const int FormatVersion = 2;
+
+    /// <summary>Format initial : promotions seulement, sans alias, prod précédente dans « previousProd ».</summary>
+    public const int LegacyFormatVersion = 1;
 
     private static readonly JsonSerializerOptions WriteOptions = new() { WriteIndented = true, Encoder = JavaScriptEncoder.UnsafeRelaxedJsonEscaping };
 
-    private static readonly string[] Header = ["Date", "Commit", "Revit", "AppBundle test / prod", "Activity test / prod", "Prod précédente (AppBundle / Activity)"];
+    private static readonly string[] Header = ["Date", "Commit", "Revit", "Alias", "AppBundle test / prod", "Activity test / prod", "Version précédente de l'alias (AppBundle / Activity)"];
+
+    private const int LegacyColumnCount = 6;
 
     public PublicationJournal(IEnumerable<JournalEntry>? entries = null)
     {
@@ -94,9 +102,10 @@ public sealed class PublicationJournal
                 ["date"] = entry.Date,
                 ["commit"] = entry.Commit,
                 ["revit"] = entry.Revit,
+                ["alias"] = entry.Alias,
                 ["appBundle"] = new JsonObject { ["test"] = entry.AppBundle.Test, ["prod"] = entry.AppBundle.Prod },
                 ["activity"] = new JsonObject { ["test"] = entry.Activity.Test, ["prod"] = entry.Activity.Prod },
-                ["previousProd"] = entry.PreviousProd is null ? null : new JsonObject { ["appBundle"] = entry.PreviousProd.AppBundle, ["activity"] = entry.PreviousProd.Activity },
+                ["previous"] = entry.Previous is null ? null : new JsonObject { ["appBundle"] = entry.Previous.AppBundle, ["activity"] = entry.Previous.Activity },
             });
         }
 
@@ -121,10 +130,13 @@ public sealed class PublicationJournal
             throw new InvalidOperationException($"Journal JSON : « format » doit valoir « {Format} ».");
         }
 
-        if (Number(obj["version"], "version") != FormatVersion)
+        var version = Number(obj["version"], "version");
+        if (version is not (FormatVersion or LegacyFormatVersion))
         {
-            throw new InvalidOperationException($"Journal JSON : version {obj["version"]} non prise en charge (attendue : {FormatVersion}).");
+            throw new InvalidOperationException($"Journal JSON : version {version} non prise en charge (attendues : {LegacyFormatVersion} ou {FormatVersion}).");
         }
+
+        var legacy = version == LegacyFormatVersion;
 
         var entries = new List<JournalEntry>();
         var index = 0;
@@ -134,11 +146,12 @@ public sealed class PublicationJournal
             try
             {
                 var e = node as JsonObject ?? throw new InvalidOperationException("objet attendu");
-                var previous = e["previousProd"] is JsonObject p ? new PreviousProd(Version(p["appBundle"]), Version(p["activity"])) : null;
+                var previous = e[legacy ? "previousProd" : "previous"] is JsonObject p ? new PreviousVersions(Version(p["appBundle"]), Version(p["activity"])) : null;
                 entries.Add(Validate(new JournalEntry(
                     Text(e["date"]) ?? throw new InvalidOperationException("« date » manquante"),
                     Text(e["commit"]),
                     Text(e["revit"]) ?? throw new InvalidOperationException("« revit » manquant"),
+                    legacy ? DeploymentService.ProdAlias : Text(e["alias"]) ?? throw new InvalidOperationException("« alias » manquant"),
                     ReadPair(e["appBundle"], "appBundle"),
                     ReadPair(e["activity"], "activity"),
                     previous)));
@@ -162,15 +175,18 @@ public sealed class PublicationJournal
         builder.Append(string.Concat(Enumerable.Repeat("| --- ", Header.Length))).Append("|\n");
         foreach (var e in Entries)
         {
-            builder.Append($"| {e.Date} | {e.Commit ?? "—"} | {e.Revit} | {Pair(e.AppBundle.Test, e.AppBundle.Prod)} | {Pair(e.Activity.Test, e.Activity.Prod)} | ")
-                .Append(e.PreviousProd is null ? "—" : Pair(e.PreviousProd.AppBundle, e.PreviousProd.Activity))
+            builder.Append($"| {e.Date} | {e.Commit ?? "—"} | {e.Revit} | {e.Alias} | {Pair(e.AppBundle.Test, e.AppBundle.Prod)} | {Pair(e.Activity.Test, e.Activity.Prod)} | ")
+                .Append(e.Previous is null ? "—" : Pair(e.Previous.AppBundle, e.Previous.Activity))
                 .Append(" |\n");
         }
 
         return builder.ToString();
     }
 
-    /// <summary>Lit les lignes de la table (en-tête et séparateur ignorés ; le texte autour de la table aussi).</summary>
+    /// <summary>
+    /// Lit les lignes de la table (en-tête et séparateur ignorés ; le texte autour de la table aussi). Une ligne à
+    /// 6 colonnes (ancienne table, sans « Alias ») est une promotion.
+    /// </summary>
     public static PublicationJournal ParseMarkdown(string markdown)
     {
         var entries = new List<JournalEntry>();
@@ -192,24 +208,27 @@ public sealed class PublicationJournal
 
             try
             {
-                if (cells.Length != Header.Length)
+                if (cells.Length != Header.Length && cells.Length != LegacyColumnCount)
                 {
-                    throw new InvalidOperationException($"{Header.Length} colonnes attendues, {cells.Length} trouvée(s)");
+                    throw new InvalidOperationException($"{Header.Length} colonnes attendues ({LegacyColumnCount} pour l'ancienne table), {cells.Length} trouvée(s)");
                 }
 
-                var (bundleTest, bundleProd) = ParsePair(cells[3]);
-                var (activityTest, activityProd) = ParsePair(cells[4]);
-                PreviousProd? previous = null;
-                if (!IsEmpty(cells[5]))
+                var legacy = cells.Length == LegacyColumnCount;
+                var offset = legacy ? 0 : 1;
+                var (bundleTest, bundleProd) = ParsePair(cells[3 + offset]);
+                var (activityTest, activityProd) = ParsePair(cells[4 + offset]);
+                PreviousVersions? previous = null;
+                if (!IsEmpty(cells[5 + offset]))
                 {
-                    var (previousBundle, previousActivity) = ParsePair(cells[5]);
-                    previous = new PreviousProd(previousBundle, previousActivity);
+                    var (previousBundle, previousActivity) = ParsePair(cells[5 + offset]);
+                    previous = new PreviousVersions(previousBundle, previousActivity);
                 }
 
                 entries.Add(Validate(new JournalEntry(
                     cells[0],
                     IsEmpty(cells[1]) ? null : cells[1],
                     cells[2],
+                    legacy ? DeploymentService.ProdAlias : cells[3],
                     new AliasVersions(bundleTest, bundleProd),
                     new AliasVersions(activityTest, activityProd),
                     previous)));
@@ -237,6 +256,11 @@ public sealed class PublicationJournal
         if (!DeploymentService.SupportedVersions.Contains(entry.Revit))
         {
             throw new InvalidOperationException($"version Revit « {entry.Revit} » inconnue ({string.Join(", ", DeploymentService.SupportedVersions)})");
+        }
+
+        if (entry.Alias is not (DeploymentService.TestAlias or DeploymentService.ProdAlias))
+        {
+            throw new InvalidOperationException($"alias « {entry.Alias} » inconnu ({DeploymentService.TestAlias} ou {DeploymentService.ProdAlias})");
         }
 
         return entry;

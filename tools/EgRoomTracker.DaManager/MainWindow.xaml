@@ -134,7 +134,7 @@
             <StackPanel>
               <TextBlock Text="Journal de publication" Style="{StaticResource Heading}" />
               <TextBlock Style="{StaticResource Hint}" TextWrapping="Wrap"
-                         Text="docs/PUBLISHING.md section 8. Une ligne est ajoutée à chaque promotion ; le nettoyage protège toutes les versions citées. Import et export en JSON ou en table Markdown." />
+                         Text="docs/PUBLISHING.md section 8. Une ligne est ajoutée à chaque publication en test et à chaque promotion ; le nettoyage protège toutes les versions citées. Import et export en JSON ou en table Markdown." />
               <TextBlock Text="Fichier" Style="{StaticResource Hint}" Margin="0,6,0,0" />
               <TextBox Text="{Binding JournalPath, UpdateSourceTrigger=LostFocus}" />
               <TextBlock Text="{Binding JournalStatus}" Style="{StaticResource Hint}" Margin="0,4,0,0" />

@@ -8,6 +8,13 @@ namespace EgRoomTracker.WorkItemRunner.Services;
 /// Lancement enregistré dans l'historique local (<c>runs/&lt;runId&gt;/run.json</c>). Aucune URL signée ni aucun
 /// secret : seulement des identifiants, des noms de fichiers et des statuts.
 /// </summary>
+/// <summary>
+/// Objet OSS d'un lancement (entrée ou sortie). <see cref="UploadKey"/> (sorties seulement) sert à finaliser l'objet
+/// écrit par le moteur, y compris après un redémarrage (« Récupérer ») ; ce n'est ni un jeton ni une URL signée, il
+/// n'est utilisable qu'avec un jeton APS valide. Les URL signées ne sont jamais enregistrées : elles sont redemandées.
+/// </summary>
+public sealed record RunObject(string Parameter, string ObjectKey, bool IsInput, string LocalName, string? UploadKey = null);
+
 public sealed record RunRecord
 {
     public required string RunId { get; init; }
@@ -17,6 +24,9 @@ public sealed record RunRecord
     public required string ActivityId { get; init; }
     public required string ZipFileName { get; init; }
     public required string BucketKey { get; init; }
+
+    /// <summary>Objets OSS du lancement (clés seulement), enregistrés avant la soumission.</summary>
+    public IReadOnlyList<RunObject> Objects { get; init; } = [];
     public string? WorkItemId { get; init; }
     public string? WorkItemStatus { get; init; }
     public DateTimeOffset? CompletedAtUtc { get; init; }

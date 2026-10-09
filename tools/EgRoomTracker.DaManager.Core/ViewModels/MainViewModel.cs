@@ -259,8 +259,10 @@ public sealed class MainViewModel : ObservableObject
         var plan = await service.PlanPublishAsync(nickname, versions, BundleDirectory, Commit);
         if (await ConfirmAsync(plan))
         {
+            var before = await ReadStatesAsync(service, versions);
             await service.PublishAsync(nickname, versions, BundleDirectory);
             await RefreshCoreAsync();
+            RecordPublication(DeploymentService.TestAlias, versions, before);
         }
     }
 
@@ -272,24 +274,33 @@ public sealed class MainViewModel : ObservableObject
         var plan = await service.PlanPromoteAsync(nickname, versions, Commit);
         if (await ConfirmAsync(plan))
         {
-            var before = new Dictionary<string, (ResourceState Bundle, ResourceState Activity)>();
-            foreach (var version in versions)
-            {
-                before[version] = (await service.ReadAsync(version, DaResourceKind.AppBundle), await service.ReadAsync(version, DaResourceKind.Activity));
-            }
-
+            var before = await ReadStatesAsync(service, versions);
             await service.PromoteAsync(nickname, versions);
             await RefreshCoreAsync();
-            RecordPromotion(versions, before);
+            RecordPublication(DeploymentService.ProdAlias, versions, before);
         }
     }
 
-    /// <summary>Ajoute au journal une ligne par version promue : nouveaux alias et prod précédente (retour arrière).</summary>
-    private void RecordPromotion(IReadOnlyList<string> versions, Dictionary<string, (ResourceState Bundle, ResourceState Activity)> before)
+    private static async Task<Dictionary<string, (ResourceState Bundle, ResourceState Activity)>> ReadStatesAsync(DaManagerService service, IReadOnlyList<string> versions)
+    {
+        var states = new Dictionary<string, (ResourceState Bundle, ResourceState Activity)>();
+        foreach (var version in versions)
+        {
+            states[version] = (await service.ReadAsync(version, DaResourceKind.AppBundle), await service.ReadAsync(version, DaResourceKind.Activity));
+        }
+
+        return states;
+    }
+
+    /// <summary>
+    /// Ajoute au journal une ligne par version publiée (<paramref name="alias"/> : test pour une publication, prod pour
+    /// une promotion) : alias relus après l'écriture et version précédente de cet alias (retour arrière).
+    /// </summary>
+    private void RecordPublication(string alias, IReadOnlyList<string> versions, Dictionary<string, (ResourceState Bundle, ResourceState Activity)> before)
     {
         if (string.IsNullOrEmpty(JournalPath))
         {
-            AddLog("warning", "Aucun journal de publication configuré : recopier la prod précédente à la main (docs/PUBLISHING.md section 8).");
+            AddLog("warning", $"Aucun journal de publication configuré : noter la ligne {alias} à la main (docs/PUBLISHING.md section 8).");
             return;
         }
 
@@ -301,13 +312,14 @@ public sealed class MainViewModel : ObservableObject
             var bundle = Resources.Single(r => r.State.RevitVersion == version && r.State.Kind == DaResourceKind.AppBundle).State;
             var activity = Resources.Single(r => r.State.RevitVersion == version && r.State.Kind == DaResourceKind.Activity).State;
             var (oldBundle, oldActivity) = before[version];
-            var previous = oldBundle.AliasVersion(DeploymentService.ProdAlias) is null && oldActivity.AliasVersion(DeploymentService.ProdAlias) is null
+            var previous = oldBundle.AliasVersion(alias) is null && oldActivity.AliasVersion(alias) is null
                 ? null
-                : new PreviousProd(oldBundle.AliasVersion(DeploymentService.ProdAlias), oldActivity.AliasVersion(DeploymentService.ProdAlias));
+                : new PreviousVersions(oldBundle.AliasVersion(alias), oldActivity.AliasVersion(alias));
             entries.Add(new JournalEntry(
                 date,
                 commit,
                 version,
+                alias,
                 new AliasVersions(bundle.AliasVersion(DeploymentService.TestAlias), bundle.AliasVersion(DeploymentService.ProdAlias)),
                 new AliasVersions(activity.AliasVersion(DeploymentService.TestAlias), activity.AliasVersion(DeploymentService.ProdAlias)),
                 previous));

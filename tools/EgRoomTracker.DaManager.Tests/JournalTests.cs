@@ -7,6 +7,7 @@ namespace EgRoomTracker.DaManager.Tests;
 
 public sealed class JournalTests
 {
+    /// <summary>Journal au format 1 (promotions seulement), tel qu'écrit avant le journal des publications en test.</summary>
     private const string Json = """
         {
           "format": "egr-publication-journal",
@@ -32,6 +33,7 @@ public sealed class JournalTests
         }
         """;
 
+    /// <summary>Ancienne table à 6 colonnes (sans « Alias »).</summary>
     private const string Markdown = """
         Publication du 2 octobre :
 
@@ -40,6 +42,81 @@ public sealed class JournalTests
         | 2026-10-02 | `9a9bbb2` | 2026 | v3 / v3 | 5 / 6 | v2 / v4 |
         | 2026-09-20 | — | 2025 | v1 / v1 | v1 / v2 | — |
         """;
+
+    /// <summary>Format courant : publications en test et promotions.</summary>
+    private const string JsonV2 = """
+        {
+          "format": "egr-publication-journal",
+          "version": 2,
+          "entries": [
+            {
+              "date": "2026-10-08",
+              "commit": "cb73e3d",
+              "revit": "2026",
+              "alias": "test",
+              "appBundle": { "test": 4, "prod": 3 },
+              "activity": { "test": 7, "prod": 6 },
+              "previous": { "appBundle": 3, "activity": 5 }
+            },
+            {
+              "date": "2026-10-09",
+              "commit": "9b9a3fb",
+              "revit": "2026",
+              "alias": "prod",
+              "appBundle": { "test": 4, "prod": 4 },
+              "activity": { "test": 7, "prod": 8 },
+              "previous": { "appBundle": 3, "activity": 6 }
+            }
+          ]
+        }
+        """;
+
+    private const string MarkdownV2 = """
+        | Date | Commit | Revit | Alias | AppBundle test / prod | Activity test / prod | Version précédente de l'alias (AppBundle / Activity) |
+        | --- | --- | --- | --- | --- | --- | --- |
+        | 2026-10-08 | cb73e3d | 2026 | test | v4 / v3 | v7 / v6 | v3 / v5 |
+        | 2026-10-09 | 9b9a3fb | 2026 | prod | v4 / v4 | v7 / v8 | v3 / v6 |
+        """;
+
+    [Fact]
+    public void Legacy_journal_still_loads_as_promotions()
+    {
+        var fromJson = PublicationJournal.ParseJson(Json);
+        var fromMarkdown = PublicationJournal.ParseMarkdown(Markdown);
+
+        Assert.All(fromJson.Entries, e => Assert.Equal("prod", e.Alias));
+        Assert.Equal(fromJson.Entries, fromMarkdown.Entries);
+        Assert.Equal(new PreviousVersions(2, 4), fromJson.Entries[1].Previous);
+
+        // Réécrit au format courant, puis relu à l'identique.
+        Assert.Contains("\"version\": 2", fromJson.ToJson(), StringComparison.Ordinal);
+        Assert.Equal(fromJson.Entries, PublicationJournal.ParseJson(fromJson.ToJson()).Entries);
+        Assert.Equal(fromJson.Entries, PublicationJournal.ParseMarkdown(fromJson.ToMarkdown()).Entries);
+    }
+
+    [Fact]
+    public void Current_format_records_test_and_prod_publications()
+    {
+        var journal = PublicationJournal.ParseJson(JsonV2);
+
+        Assert.Equal(["test", "prod"], journal.Entries.Select(e => e.Alias));
+        Assert.Equal(journal.Entries, PublicationJournal.ParseMarkdown(MarkdownV2).Entries);
+        Assert.Equal(MarkdownV2.Replace("\r", string.Empty, StringComparison.Ordinal).Trim(), journal.ToMarkdown().Trim());
+        Assert.Contains("\"alias\": \"test\"", journal.ToJson(), StringComparison.Ordinal);
+        Assert.Contains("\"previous\": {", journal.ToJson(), StringComparison.Ordinal);
+        Assert.DoesNotContain("previousProd", journal.ToJson(), StringComparison.Ordinal);
+        Assert.Equal([3, 4], journal.ProtectedVersions("2026", DaResourceKind.AppBundle));
+        Assert.Equal([5, 6, 7, 8], journal.ProtectedVersions("2026", DaResourceKind.Activity));
+    }
+
+    [Fact]
+    public void Legacy_and_current_entries_merge()
+    {
+        var merged = PublicationJournal.ParseMarkdown(Markdown).Merge(PublicationJournal.ParseMarkdown(MarkdownV2).Entries);
+
+        Assert.Equal(4, merged.Entries.Count);
+        Assert.Equal(merged.Entries, PublicationJournal.ParseJson(merged.ToJson()).Entries);
+    }
 
     [Fact]
     public void Json_and_markdown_describe_the_same_journal()
@@ -51,9 +128,9 @@ public sealed class JournalTests
         Assert.Equal(["2025", "2026"], fromJson.Entries.Select(e => e.Revit)); // triées par date
         var entry = fromJson.Entries[1];
         Assert.Equal(new AliasVersions(5, 6), entry.Activity);
-        Assert.Equal(new PreviousProd(2, 4), entry.PreviousProd);
+        Assert.Equal(new PreviousVersions(2, 4), entry.Previous);
         Assert.Null(fromJson.Entries[0].Commit);
-        Assert.Null(fromJson.Entries[0].PreviousProd);
+        Assert.Null(fromJson.Entries[0].Previous);
     }
 
     [Fact]
@@ -67,9 +144,9 @@ public sealed class JournalTests
         Assert.Contains("\n  \"entries\": [\n", json, StringComparison.Ordinal); // indenté
         Assert.Contains("\"date\": \"2026-10-02\"", json, StringComparison.Ordinal);
         Assert.Equal(journal.Entries, PublicationJournal.ParseJson(json).Entries);
-        Assert.StartsWith("| Date | Commit | Revit | AppBundle test / prod | Activity test / prod | Prod précédente (AppBundle / Activity) |\n| --- |", markdown, StringComparison.Ordinal);
-        Assert.Contains("| 2026-10-02 | 9a9bbb2 | 2026 | v3 / v3 | v5 / v6 | v2 / v4 |", markdown, StringComparison.Ordinal);
-        Assert.Contains("| 2026-09-20 | — | 2025 | v1 / v1 | v1 / v2 | — |", markdown, StringComparison.Ordinal);
+        Assert.StartsWith("| Date | Commit | Revit | Alias | AppBundle test / prod | Activity test / prod | Version précédente de l'alias (AppBundle / Activity) |\n| --- |", markdown, StringComparison.Ordinal);
+        Assert.Contains("| 2026-10-02 | 9a9bbb2 | 2026 | prod | v3 / v3 | v5 / v6 | v2 / v4 |", markdown, StringComparison.Ordinal);
+        Assert.Contains("| 2026-09-20 | — | 2025 | prod | v1 / v1 | v1 / v2 | — |", markdown, StringComparison.Ordinal);
         Assert.Equal(journal.Entries, PublicationJournal.ParseMarkdown(markdown).Entries);
     }
 
@@ -115,7 +192,9 @@ public sealed class JournalTests
     [Theory]
     [InlineData("{ pas du json", "illisible")]
     [InlineData("""{ "format": "autre", "version": 1, "entries": [] }""", "format")]
-    [InlineData("""{ "format": "egr-publication-journal", "version": 2, "entries": [] }""", "non prise en charge")]
+    [InlineData("""{ "format": "egr-publication-journal", "version": 3, "entries": [] }""", "non prise en charge")]
+    [InlineData("""{ "format": "egr-publication-journal", "version": 2, "entries": [ { "date": "2026-10-02", "revit": "2026", "appBundle": {}, "activity": {} } ] }""", "« alias » manquant")]
+    [InlineData("""{ "format": "egr-publication-journal", "version": 2, "entries": [ { "date": "2026-10-02", "revit": "2026", "alias": "beta", "appBundle": {}, "activity": {} } ] }""", "alias « beta »")]
     [InlineData("""{ "format": "egr-publication-journal", "version": 1, "entries": [ { "date": "02/10/2026", "revit": "2026", "appBundle": {}, "activity": {} } ] }""", "entrée 1 : date")]
     [InlineData("""{ "format": "egr-publication-journal", "version": 1, "entries": [ { "date": "2026-10-02", "revit": "2019", "appBundle": {}, "activity": {} } ] }""", "Revit « 2019 »")]
     [InlineData("""{ "format": "egr-publication-journal", "version": 1, "entries": [ { "date": "2026-10-02", "revit": "2026", "appBundle": { "test": 0 }, "activity": {} } ] }""", "version 0")]
@@ -130,7 +209,8 @@ public sealed class JournalTests
     [Theory]
     [InlineData("| 2026-10-02 | abc | 2026 | v3 | v5 / v6 | — |", "ligne 1 : « v3 »")]
     [InlineData("| 2026-10-02 | abc | 2026 | v3 / x | v5 / v6 | — |", "version « x »")]
-    [InlineData("| 2026-10-02 | abc | 2026 | v3 / v3 |", "6 colonnes")]
+    [InlineData("| 2026-10-02 | abc | 2026 | v3 / v3 |", "7 colonnes")]
+    [InlineData("| 2026-10-02 | abc | 2026 | beta | v3 / v3 | v5 / v6 | — |", "alias « beta »")]
     public void Invalid_markdown_is_rejected_with_the_line(string markdown, string expected)
     {
         var exception = Assert.Throws<InvalidOperationException>(() => PublicationJournal.ParseMarkdown(markdown));
@@ -205,10 +285,66 @@ public sealed class JournalTests
         Assert.Equal("2026", entry.Revit);
         Assert.Equal(new AliasVersions(3, 3), entry.AppBundle);
         Assert.Equal(new AliasVersions(3, 4), entry.Activity);
-        Assert.Equal(new PreviousProd(2, 2), entry.PreviousProd);
+        Assert.Equal("prod", entry.Alias);
+        Assert.Equal(new PreviousVersions(2, 2), entry.Previous);
         Assert.Equal(DateTimeOffset.Now.ToString("yyyy-MM-dd", System.Globalization.CultureInfo.InvariantCulture), entry.Date);
         Assert.Equal(entry, Assert.Single(env.ViewModel.Journal));
         Assert.Contains("Journal de publication : ", env.LogText, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public async Task Test_publication_is_recorded_with_its_alias()
+    {
+        using var env = new TestEnvironment();
+        env.Server.AppBundles["EgRoomTracker_R2026"] = Resource.With([1, 2], ("test", 2), ("prod", 1));
+        env.Server.Activities["ExtractRooms_R2026"] = Resource.With([1, 2], ("test", 2), ("prod", 1));
+        env.Confirmation.Answer = true;
+
+        await env.ViewModel.PublishCommand.ExecuteAsync();
+
+        var entry = Assert.Single(PublicationJournal.Load(env.JournalPath).Entries);
+        Assert.Equal("test", entry.Alias);
+        Assert.Equal(new AliasVersions(3, 1), entry.AppBundle);
+        Assert.Equal(new AliasVersions(3, 1), entry.Activity);
+        Assert.Equal(new PreviousVersions(2, 2), entry.Previous);
+        Assert.Contains("· test ·", env.LogText, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public async Task First_test_publication_has_no_previous_version_and_is_protected()
+    {
+        using var env = new TestEnvironment();
+        env.Confirmation.Answer = true;
+
+        await env.ViewModel.PublishCommand.ExecuteAsync();
+        await env.ViewModel.PromoteCommand.ExecuteAsync();
+
+        var entries = PublicationJournal.Load(env.JournalPath).Entries;
+        Assert.Equal(["prod", "test"], entries.Select(e => e.Alias).Order(StringComparer.Ordinal));
+        var test = entries.Single(e => e.Alias == "test");
+        Assert.Null(test.Previous);
+        Assert.Equal(new AliasVersions(1, null), test.AppBundle);
+        Assert.Equal([1], PublicationJournal.Load(env.JournalPath).ProtectedVersions("2026", DaResourceKind.AppBundle));
+    }
+
+    [Fact]
+    public async Task Legacy_journal_file_is_upgraded_on_next_publication()
+    {
+        using var env = new TestEnvironment();
+        Directory.CreateDirectory(Path.GetDirectoryName(env.JournalPath)!);
+        File.WriteAllText(env.JournalPath, Json);
+        env.Server.AppBundles["EgRoomTracker_R2026"] = Resource.With([1, 2, 3], ("test", 3), ("prod", 3));
+        env.Server.Activities["ExtractRooms_R2026"] = Resource.With([1, 2, 3, 4, 5, 6], ("test", 5), ("prod", 6));
+        env.Confirmation.Answer = true;
+
+        await env.ViewModel.PublishCommand.ExecuteAsync();
+
+        var text = File.ReadAllText(env.JournalPath);
+        Assert.Contains("\"version\": 2", text, StringComparison.Ordinal);
+        var journal = PublicationJournal.Load(env.JournalPath);
+        Assert.Equal(3, journal.Entries.Count);
+        Assert.Equal(2, journal.Entries.Count(e => e.Alias == "prod"));
+        Assert.Equal(3, env.ViewModel.Journal.Count);
     }
 
     [Fact]
