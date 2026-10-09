@@ -1,6 +1,6 @@
 # Tableau Trello proposé : EG_ROOM_TRACKER — Design Automation for Revit
 
-État : cartes préparées, tableau non créé ; intégration Trello à connecter.
+État : suivi transféré aux issues GitHub. Voir [le backlog GitHub](BACKLOG.md). Ce document conserve la préparation initiale.
 
 Listes : Cadrage → À faire → En cours → À vérifier → Terminé. Liste complémentaire : Bloqué.
 
@@ -145,3 +145,4 @@ Implémenter volumeMode=compute avec transaction, régénération et absence de 
 Acceptation : réglage et calcul traçables ; volumes vérifiés sur trois moteurs ; mode preserve conserve son comportement.
 
 Dépendances : EGR-09, EGR-14.
+

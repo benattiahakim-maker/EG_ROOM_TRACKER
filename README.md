@@ -7,12 +7,13 @@ Extraction des pièces d’une maquette RVT reçue dans un ZIP : identité, nom,
 ## Documentation
 
 - [Spécifications techniques](docs/SPECIFICATIONS.md)
-- [Cartes Trello préparées](docs/TRELLO_BACKLOG.md)
+- [Backlog et issues GitHub](docs/BACKLOG.md)
 
 ## État
 
-Phase de spécification. Le composant Revit et les AppBundles ne sont pas encore implémentés. Le tableau Trello n’est pas encore créé.
+Phase de spécification. Le composant Revit et les AppBundles ne sont pas encore implémentés. Les 16 cartes sont disponibles dans les issues GitHub.
 
 ## Principes
 
 Exécution sans interface utilisateur, architecture par services, logs structurés et responsabilités séparées.
+
