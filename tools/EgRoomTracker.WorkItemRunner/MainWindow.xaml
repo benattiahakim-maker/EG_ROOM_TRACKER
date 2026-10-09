@@ -2,6 +2,9 @@
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         Title="EG_ROOM_TRACKER · WorkItemRunner" Width="1360" Height="900" WindowStartupLocation="CenterScreen">
+  <Window.Resources>
+    <BooleanToVisibilityConverter x:Key="BoolToVisibility" />
+  </Window.Resources>
   <DockPanel>
     <Border DockPanel.Dock="Top" Background="#0F172A" Padding="20,14">
       <StackPanel>
@@ -11,6 +14,11 @@
           <Run Text="   ·   WorkItem en cours : " /><Run Text="{Binding WorkItemStatus, Mode=OneWay}" />
         </TextBlock>
       </StackPanel>
+    </Border>
+
+    <Border DockPanel.Dock="Top" Background="#FEF3C7" BorderBrush="#F59E0B" BorderThickness="0,0,0,1" Padding="20,8"
+            Visibility="{Binding HasConfigurationBanner, Converter={StaticResource BoolToVisibility}}">
+      <TextBlock Text="{Binding ConfigurationBanner, Mode=OneWay}" Foreground="#78350F" TextWrapping="Wrap" />
     </Border>
 
     <Border DockPanel.Dock="Bottom" Background="#E2E8F0" Padding="12,6">

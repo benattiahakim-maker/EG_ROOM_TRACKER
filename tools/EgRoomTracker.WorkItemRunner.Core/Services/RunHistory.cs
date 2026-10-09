@@ -87,8 +87,9 @@ public sealed class RunHistory(string dataDirectory)
                     records.Add(record);
                 }
             }
-            catch (JsonException)
+            catch (Exception exception) when (exception is JsonException or IOException or UnauthorizedAccessException or NotSupportedException)
             {
+                // run.json illisible, verrouillé ou incomplet : ignoré, les autres lancements restent affichés.
             }
         }
 

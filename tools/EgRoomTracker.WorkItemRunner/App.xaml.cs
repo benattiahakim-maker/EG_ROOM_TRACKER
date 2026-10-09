@@ -13,12 +13,22 @@ public partial class App : System.Windows.Application
     protected override void OnStartup(StartupEventArgs e)
     {
         base.OnStartup(e);
-        _httpClient = new HttpClient { Timeout = TimeSpan.FromMinutes(30) };
-        var window = new MainWindow();
-        var viewModel = new MainViewModel(RunnerOptions.FromEnvironment(), _httpClient, new WpfConfirmationService(window), new WpfFileDialogService());
-        window.DataContext = viewModel;
-        window.Show();
-        viewModel.Initialize();
+        GlobalErrorHandler.Install(this);
+        try
+        {
+            _httpClient = new HttpClient { Timeout = TimeSpan.FromMinutes(30) };
+            var window = new MainWindow();
+            var viewModel = new MainViewModel(RunnerOptions.FromEnvironment(), _httpClient, new WpfConfirmationService(window), new WpfFileDialogService());
+            window.DataContext = viewModel;
+            window.Show();
+            viewModel.Initialize(); // historique local seulement : aucun client APS au démarrage
+        }
+        catch (Exception exception)
+        {
+            // Démarrage impossible : message (masqué) plutôt qu'une fermeture silencieuse.
+            GlobalErrorHandler.Show(exception, "Démarrage de WorkItemRunner");
+            Shutdown(1);
+        }
     }
 
     protected override void OnExit(ExitEventArgs e)
