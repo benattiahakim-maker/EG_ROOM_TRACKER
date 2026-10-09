@@ -19,4 +19,10 @@ public interface IConfirmationService
 public interface IFileDialogService
 {
     string? PickFolder(string title, string? initialDirectory);
+
+    /// <summary>Fichier à lire (filtre au format WPF, par exemple <c>JSON (*.json)|*.json</c>) ; null si annulé.</summary>
+    string? OpenFile(string title, string filter);
+
+    /// <summary>Fichier à écrire ; null si annulé.</summary>
+    string? SaveFile(string title, string filter, string defaultFileName);
 }

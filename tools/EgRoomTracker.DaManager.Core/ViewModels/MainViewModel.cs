@@ -16,6 +16,8 @@ namespace EgRoomTracker.DaManager.ViewModels;
 /// </summary>
 public sealed class MainViewModel : ObservableObject
 {
+    private const string JournalFilter = "Journal JSON (*.json)|*.json|Table Markdown (*.md)|*.md";
+
     private readonly DaManagerOptions _options;
     private readonly HttpClient _httpClient;
     private readonly IConfirmationService _confirmation;
@@ -31,6 +33,8 @@ public sealed class MainViewModel : ObservableObject
     private string _aliasVersion = string.Empty;
     private int _keepLatest = 10;
     private string _protectedVersions = string.Empty;
+    private string _journalPath;
+    private string _journalStatus = string.Empty;
     private bool _isBusy;
     private string _status = "Prêt.";
 
@@ -45,6 +49,7 @@ public sealed class MainViewModel : ObservableObject
         _nickname = options.Aps.Nickname ?? string.Empty;
         _repositoryRoot = options.RepositoryRoot ?? string.Empty;
         _bundleDirectory = options.BundleDirectory ?? string.Empty;
+        _journalPath = options.JournalPath ?? string.Empty;
         foreach (var version in DeploymentService.SupportedVersions)
         {
             RevitVersions.Add(new RevitVersionOption(version, options.RevitVersions.Contains(version)));
@@ -65,6 +70,9 @@ public sealed class MainViewModel : ObservableObject
             RepositoryRoot = _files?.PickFolder("Racine du dépôt EG_ROOM_TRACKER", RepositoryRoot) ?? RepositoryRoot;
             return Task.CompletedTask;
         });
+        ImportJournalCommand = new AsyncRelayCommand(() => RunAsync("Import du journal", ImportJournalCoreAsync), () => !IsBusy);
+        ExportJournalCommand = new AsyncRelayCommand(() => RunAsync("Export du journal", ExportJournalCoreAsync), () => !IsBusy);
+        ReloadJournal();
     }
 
     public string CredentialSource => _options.CredentialSource;
@@ -98,6 +106,32 @@ public sealed class MainViewModel : ObservableObject
     public AsyncRelayCommand BrowseBundleDirectoryCommand { get; }
 
     public AsyncRelayCommand BrowseRepositoryCommand { get; }
+
+    public AsyncRelayCommand ImportJournalCommand { get; }
+
+    public AsyncRelayCommand ExportJournalCommand { get; }
+
+    /// <summary>Lignes du journal de publication (docs/PUBLISHING.md section 8).</summary>
+    public ObservableCollection<JournalEntry> Journal { get; } = [];
+
+    /// <summary>Fichier du journal (JSON, ou table Markdown si <c>.md</c>) ; vide : pas de journal.</summary>
+    public string JournalPath
+    {
+        get => _journalPath;
+        set
+        {
+            if (SetProperty(ref _journalPath, value.Trim()))
+            {
+                ReloadJournal();
+            }
+        }
+    }
+
+    public string JournalStatus
+    {
+        get => _journalStatus;
+        private set => SetProperty(ref _journalStatus, value);
+    }
 
     public string Nickname
     {
@@ -238,9 +272,118 @@ public sealed class MainViewModel : ObservableObject
         var plan = await service.PlanPromoteAsync(nickname, versions, Commit);
         if (await ConfirmAsync(plan))
         {
+            var before = new Dictionary<string, (ResourceState Bundle, ResourceState Activity)>();
+            foreach (var version in versions)
+            {
+                before[version] = (await service.ReadAsync(version, DaResourceKind.AppBundle), await service.ReadAsync(version, DaResourceKind.Activity));
+            }
+
             await service.PromoteAsync(nickname, versions);
             await RefreshCoreAsync();
+            RecordPromotion(versions, before);
         }
+    }
+
+    /// <summary>Ajoute au journal une ligne par version promue : nouveaux alias et prod précédente (retour arrière).</summary>
+    private void RecordPromotion(IReadOnlyList<string> versions, Dictionary<string, (ResourceState Bundle, ResourceState Activity)> before)
+    {
+        if (string.IsNullOrEmpty(JournalPath))
+        {
+            AddLog("warning", "Aucun journal de publication configuré : recopier la prod précédente à la main (docs/PUBLISHING.md section 8).");
+            return;
+        }
+
+        var date = _time.GetLocalNow().ToString("yyyy-MM-dd", CultureInfo.InvariantCulture);
+        var commit = Commit?.Split(' ')[0];
+        var entries = new List<JournalEntry>();
+        foreach (var version in versions)
+        {
+            var bundle = Resources.Single(r => r.State.RevitVersion == version && r.State.Kind == DaResourceKind.AppBundle).State;
+            var activity = Resources.Single(r => r.State.RevitVersion == version && r.State.Kind == DaResourceKind.Activity).State;
+            var (oldBundle, oldActivity) = before[version];
+            var previous = oldBundle.AliasVersion(DeploymentService.ProdAlias) is null && oldActivity.AliasVersion(DeploymentService.ProdAlias) is null
+                ? null
+                : new PreviousProd(oldBundle.AliasVersion(DeploymentService.ProdAlias), oldActivity.AliasVersion(DeploymentService.ProdAlias));
+            entries.Add(new JournalEntry(
+                date,
+                commit,
+                version,
+                new AliasVersions(bundle.AliasVersion(DeploymentService.TestAlias), bundle.AliasVersion(DeploymentService.ProdAlias)),
+                new AliasVersions(activity.AliasVersion(DeploymentService.TestAlias), activity.AliasVersion(DeploymentService.ProdAlias)),
+                previous));
+        }
+
+        try
+        {
+            var journal = PublicationJournal.Load(JournalPath).Merge(entries);
+            journal.Save(JournalPath);
+            ShowJournal(journal);
+            foreach (var entry in entries)
+            {
+                AddLog("info", "Journal de publication : " + entry.Text);
+            }
+        }
+        catch (Exception exception) when (exception is InvalidOperationException or IOException or UnauthorizedAccessException)
+        {
+            AddLog("error", $"Journal de publication non mis à jour ({exception.Message}) : noter la ligne à la main.");
+        }
+    }
+
+    private Task ImportJournalCoreAsync()
+    {
+        var target = RequireJournalPath();
+        if (_files?.OpenFile("Importer un journal de publication", JournalFilter) is not { } source)
+        {
+            return Task.CompletedTask;
+        }
+
+        var imported = PublicationJournal.Import(source, File.ReadAllText(source));
+        var current = PublicationJournal.Load(target);
+        var merged = current.Merge(imported.Entries);
+        merged.Save(target);
+        ShowJournal(merged);
+        AddLog("info", $"Journal importé depuis {Path.GetFileName(source)} : {imported.Entries.Count} ligne(s) lue(s), {merged.Entries.Count - current.Entries.Count} nouvelle(s).");
+        return Task.CompletedTask;
+    }
+
+    private Task ExportJournalCoreAsync()
+    {
+        var journal = PublicationJournal.Load(RequireJournalPath());
+        if (_files?.SaveFile("Exporter le journal de publication", JournalFilter, "publication-journal.json") is { } path)
+        {
+            journal.Save(path);
+            AddLog("info", $"Journal exporté : {Path.GetFileName(path)} ({journal.Entries.Count} ligne(s)).");
+        }
+
+        return Task.CompletedTask;
+    }
+
+    private string RequireJournalPath() =>
+        string.IsNullOrEmpty(JournalPath) ? throw new InvalidOperationException("Aucun fichier de journal : renseigner le chemin ou EGR_PUBLICATION_JOURNAL.") : JournalPath;
+
+    private void ReloadJournal()
+    {
+        if (string.IsNullOrEmpty(JournalPath))
+        {
+            ShowJournal(new PublicationJournal(), "aucun journal configuré");
+            return;
+        }
+
+        try
+        {
+            ShowJournal(PublicationJournal.Load(JournalPath), File.Exists(JournalPath) ? null : "fichier absent, créé à la première promotion ou au premier import");
+        }
+        catch (Exception exception) when (exception is InvalidOperationException or IOException or UnauthorizedAccessException)
+        {
+            ShowJournal(new PublicationJournal(), "illisible : " + exception.Message);
+            AddLog("error", $"Journal de publication illisible : {exception.Message}");
+        }
+    }
+
+    private void ShowJournal(PublicationJournal journal, string? note = null)
+    {
+        Replace(Journal, journal.Entries.Reverse());
+        JournalStatus = $"{journal.Entries.Count} ligne(s)" + (note is null ? string.Empty : $" ({note})");
     }
 
     private async Task SetAliasCoreAsync()
@@ -268,14 +411,24 @@ public sealed class MainViewModel : ObservableObject
     {
         var resource = SelectedResource?.State ?? throw new InvalidOperationException("Sélectionner une ressource.");
         var service = Service();
-        var cleanup = await service.PlanCleanupAsync(resource, KeepLatest, ParseVersions(ProtectedVersions));
+        var manual = ParseVersions(ProtectedVersions);
+
+        // Journal relu à chaque nettoyage ; illisible : rien n'est supprimé.
+        var journal = string.IsNullOrEmpty(JournalPath) ? new PublicationJournal() : PublicationJournal.Load(JournalPath);
+        var journalVersions = journal.ProtectedVersions(resource.RevitVersion, resource.Kind);
+        if (string.IsNullOrEmpty(JournalPath) || !File.Exists(JournalPath))
+        {
+            AddLog("warning", "Aucun journal de publication : seules les versions saisies et les alias protègent les versions.");
+        }
+
+        var cleanup = await service.PlanCleanupAsync(resource, KeepLatest, manual.Concat(journalVersions));
         if (cleanup.IsEmpty)
         {
             AddLog("info", $"{resource.Id} : aucune version à supprimer ({cleanup.Kept.Count} conservée(s)).");
             return;
         }
 
-        if (await ConfirmAsync(PlanBuilder.Cleanup(cleanup)))
+        if (await ConfirmAsync(PlanBuilder.Cleanup(cleanup, journalVersions)))
         {
             var deleted = await service.CleanupAsync(cleanup);
             AddLog("info", $"{resource.Id} : {deleted.Count} version(s) supprimée(s).");
@@ -389,7 +542,7 @@ public sealed class MainViewModel : ObservableObject
 
     private void RaiseCanExecuteChanged()
     {
-        foreach (var command in new[] { RefreshCommand, PublishCommand, PromoteCommand, SetAliasCommand, CleanupCommand })
+        foreach (var command in new[] { RefreshCommand, PublishCommand, PromoteCommand, SetAliasCommand, CleanupCommand, ImportJournalCommand, ExportJournalCommand })
         {
             command?.RaiseCanExecuteChanged();
         }

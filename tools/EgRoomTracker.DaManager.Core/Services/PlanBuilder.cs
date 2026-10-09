@@ -86,8 +86,13 @@ public static class PlanBuilder
         return new OperationPlan($"Alias {resource.Id}+{alias}", steps);
     }
 
-    public static OperationPlan Cleanup(CleanupPlan plan) =>
-        new($"Supprimer {plan.ToDelete.Count} version(s) de {plan.Id}", [.. plan.Describe(), "Suppression définitive : une version supprimée ne peut plus servir de retour arrière."], IsDestructive: true);
+    public static OperationPlan Cleanup(CleanupPlan plan, IReadOnlyList<int>? journalVersions = null)
+    {
+        var journal = journalVersions is { Count: > 0 }
+            ? $"Journal de publication : {string.Join(", ", journalVersions.Select(v => $"v{v}"))} protégée(s) automatiquement."
+            : "Journal de publication : aucune version citée pour cette ressource.";
+        return new($"Supprimer {plan.ToDelete.Count} version(s) de {plan.Id}", [.. plan.Describe(), journal, "Suppression définitive : une version supprimée ne peut plus servir de retour arrière."], IsDestructive: true);
+    }
 
     private static string AliasStep(DaResourceKind kind, ResourceState state, string alias, string target) =>
         state.AliasVersion(alias) is { } current

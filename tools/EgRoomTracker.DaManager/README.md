@@ -28,6 +28,7 @@ $env:APS_DA_BASE_URL   = "https://developer.api.autodesk.com/da/us-east/v3"
 $env:REVIT_VERSIONS    = "2025 2026 2027"      # versions cochées au démarrage
 $env:APPBUNDLE_DIR     = "artifacts\appbundles" # ZIP produits par build-appbundle.sh ou par la CI
 $env:EGR_REPO_ROOT     = "C:\src\EG_ROOM_TRACKER" # sinon recherché à partir du dossier de l'exécutable
+$env:EGR_PUBLICATION_JOURNAL = "\\partage\egr\publication-journal.json" # défaut : %LOCALAPPDATA%\EgRoomTracker\DaManager\publication-journal.json
 
 dotnet run --project tools\EgRoomTracker.DaManager\EgRoomTracker.DaManager.csproj
 # ou
@@ -48,6 +49,7 @@ Lancé depuis le dépôt, DaManager trouve seul la racine (le dossier qui contie
 | **Promouvoir test → prod** : alias `prod` de l'AppBundle sur la version en `test`, nouvelle version d'Activity `+prod`, versions précédentes affichées pour le journal | oui | `deploy.py promote`, PUBLISHING section 7 |
 | **Alias / retour arrière** : créer ou déplacer un alias de la ressource sélectionnée vers une version existante | oui | `deploy.py rollback`, PUBLISHING section 8 |
 | **Nettoyage des versions** : voir ci-dessous | suppressions | PUBLISHING section 8, quotas |
+| **Journal de publication** : ligne ajoutée à chaque promotion, import et export JSON ou Markdown | aucune (fichier local) | PUBLISHING section 8 |
 
 **Plan et confirmation (#35)** : avant chaque écriture, DaManager construit le plan à partir de lectures seules. Ce
 plan donne les requêtes prévues, les versions actuelles et suivantes, ainsi que le commit du dépôt, car ZIP et
@@ -61,14 +63,49 @@ DaManager :
 
 1. lit les versions et les alias de la ressource sélectionnée ;
 2. conserve **toujours** les versions référencées par un alias (`test`, `prod` ou autre), les *N* plus récentes
-   (*N* ≥ 1, 10 par défaut) et les versions protégées saisies (celles du journal de publication, nécessaires au
-   retour arrière) ;
+   (*N* ≥ 1, 10 par défaut), **toutes les versions citées par le journal de publication** pour cette version de Revit
+   et ce type de ressource (relu à chaque nettoyage, nécessaires au retour arrière) et les versions saisies en plus ;
+   si le journal est illisible, rien n'est planifié ;
 3. affiche la liste complète des versions à supprimer, avec la raison de conservation de chacune des autres ;
 4. demande une confirmation explicite : il faut saisir `SUPPRIMER` dans la fenêtre ;
 5. relit les alias juste avant de supprimer. Si une version du plan est devenue référencée entre-temps, rien n'est
    supprimé.
 
 Une suppression est définitive : la version supprimée ne peut plus servir de retour arrière.
+
+## Journal de publication
+
+Le journal de [`docs/PUBLISHING.md`](../../docs/PUBLISHING.md) section 8 (Date | Commit | Revit | AppBundle test / prod |
+Activity test / prod | Prod précédente) est tenu dans un fichier lisible, choisi par `EGR_PUBLICATION_JOURNAL` ou
+dans le champ « Fichier » :
+
+```json
+{
+  "format": "egr-publication-journal",
+  "version": 1,
+  "entries": [
+    {
+      "date": "2026-10-09",
+      "commit": "a6d49e3",
+      "revit": "2026",
+      "appBundle": { "test": 4, "prod": 4 },
+      "activity": { "test": 7, "prod": 8 },
+      "previousProd": { "appBundle": 3, "activity": 5 }
+    }
+  ]
+}
+```
+
+- Après chaque promotion confirmée, DaManager ajoute une ligne par version de Revit : alias relus après l'écriture,
+  prod précédente lue avant (`null` pour une première promotion).
+- **Importer…** lit un journal JSON ou une table Markdown (`.md`, par exemple copiée d'une description de PR ou d'une
+  release) et le fusionne sans doublon. Un fichier invalide est refusé avec la ligne ou l'entrée fautive, sans toucher
+  au journal.
+- **Exporter…** écrit le journal en JSON ou, avec l'extension `.md`, sous forme de la table de PUBLISHING, prête à coller.
+- Le nettoyage protège automatiquement toutes les versions citées (test, prod et prod précédente).
+
+Le fichier ne contient ni identifiant ni URL. Pour partager le journal entre développeurs, pointer
+`EGR_PUBLICATION_JOURNAL` sur un emplacement commun ou exporter la table dans la PR de publication.
 
 ## Secrets
 
@@ -89,5 +126,7 @@ une version référencée par un alias. Les tests couvrent les cas suivants :
 - publication, promotion et retour arrière confirmés ;
 - ZIP refusé, arrêt avant la confirmation ;
 - nettoyage avec versions aliasées et protégées ;
+- journal : JSON et Markdown équivalents, aller-retour, erreurs explicites, versions protégées automatiquement,
+  journal illisible bloquant le nettoyage, ligne ajoutée à la promotion, import sans doublon et export ;
 - erreurs journalisées sans secret ;
 - identifiants absents.
