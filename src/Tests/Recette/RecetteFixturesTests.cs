@@ -84,7 +84,7 @@ public class RecetteFixturesTests
             .Where(a => a.Scope == AnomalyScope.Document ? a.Code != DocumentAnomalyCodes.VolumeNotComputed : ReadingCodes.Contains(a.Code))
             .ToList();
 
-        var report = new QualityCheckService().Evaluate(rooms, input, new VolumeComputationState(VolumeMode.Preserve, volumesComputed));
+        var report = new QualityCheckService().Evaluate(rooms, input, new VolumeComputationState(expected.Summary.Options.VolumeMode, volumesComputed));
 
         Assert.Equal(expected.Summary.Status, report.Status);
         AssertJsonEquivalent(JsonSerializer.Serialize(expected.Anomalies, ContractJson.Options), JsonSerializer.Serialize(report.Anomalies, ContractJson.Options));
@@ -149,6 +149,7 @@ public class RecetteFixturesTests
         }
 
         Assert.Equal(expected.Summary.Options.PhaseIds, settings.PhaseIds);
+        Assert.Equal(expected.Summary.Options.VolumeMode, settings.VolumeMode);
         Assert.Equal(expected.Summary.Options.SharedParameterKeys, settings.SharedParameters.Select(m => m.Key));
         using (var dir = ZipTree(id))
         {

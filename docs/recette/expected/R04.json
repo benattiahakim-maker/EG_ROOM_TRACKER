@@ -1,5 +1,5 @@
 {
-  "schemaVersion": "1.2",
+  "schemaVersion": "1.3",
   "summary": {
     "correlationId": "recette-R04",
     "extractorVersion": "0.1.0",
@@ -21,6 +21,11 @@
       ],
       "volumeMode": "preserve",
       "sharedParameterKeys": []
+    },
+    "volumeComputation": {
+      "documentComputeVolumes": false,
+      "computeApplied": false,
+      "transactionRolledBack": null
     },
     "counts": {
       "roomsCollected": 0,

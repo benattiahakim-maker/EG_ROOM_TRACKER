@@ -206,6 +206,12 @@ class CompareTests(unittest.TestCase):
         self.actual["summary"]["status"] = "succeeded"
         self.assertEqual(["summary.status : attendu \"succeededWithWarnings\", obtenu \"succeeded\""], self.check().mismatches)
 
+    def test_volume_computation_trace_is_compared(self):
+        self.actual["summary"]["volumeComputation"]["computeApplied"] = True
+        self.assertEqual(["summary.volumeComputation.computeApplied : attendu false, obtenu true"], self.check().mismatches)
+        self.actual["summary"]["volumeComputation"] = None
+        self.assertEqual(1, len(self.check().mismatches))
+
     def test_pending_paths_do_not_fail(self):
         room(self.actual, "Local technique")["finishes"]["wall"] = None
         report = self.check(cr.Options(pending=["rooms[name=Local technique].finishes.wall"]))

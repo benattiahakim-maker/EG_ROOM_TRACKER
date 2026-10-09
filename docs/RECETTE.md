@@ -18,7 +18,7 @@ Les maquettes `.rvt` ne sont pas versionnées dans le dépôt. Il faut les const
 
 ## 1. Principe
 
-1. Les résultats attendus décrivent ce que **le code actuel de `main`** doit produire (schéma `1.2`, messages,
+1. Les résultats attendus décrivent ce que **le code actuel de `main`** doit produire (schéma `1.3`, messages,
    ordre des anomalies, indicateurs, statut). Les tests .NET le vérifient sans Revit (§6).
 2. Les identifiants Revit (`elementId`, `uniqueId` des pièces, niveaux, phases et variantes) ne sont connus qu'une
    fois les maquettes construites. Les gabarits portent donc des identifiants provisoires : `9000101`…`9000113` et
@@ -47,6 +47,7 @@ Le `summary.revit.version` attendu est celui de l'engine (posé par `bind --year
 | R08 | `EGR_Ref.rvt` + `EGR_Ref_Volumes.rvt` à la racine | sans `mainModelPath` | `failed`, `RVT_AMBIGUOUS` étape `input`, `source: null`, options par défaut | 2025-2027 |
 | R09 | `EGR_Futur.rvt` (enregistré avec l'année + 1) | défaut | `failed`, `REVIT_VERSION_INCOMPATIBLE` étape `document`, `source: null` | 2025, 2026 |
 | R10 | `EGR_Ref.rvt` | `schemaVersion: "2.0"` | `failed`, `CONFIG_SCHEMA_UNSUPPORTED` étape `configuration` ; sert aussi au test D6 | 2025-2027 |
+| R11 | `EGR_Ref.rvt` (volumes désactivés) | `volumeMode: "compute"` | `succeededWithWarnings` ; volumes comme R02 (calcul temporaire, EGR-16), pas de `VOLUME_NOT_COMPUTED` ; `summary.volumeComputation` = `{documentComputeVolumes: false, computeApplied: true, transactionRolledBack: true}` | 2025-2027 |
 
 Notes :
 
@@ -54,7 +55,10 @@ Notes :
   (affiché par `bind` sur R01). Cette valeur est propre à chaque année : garder un fichier par année au besoin.
 - R09 : un RVT 2027 sur l'engine 2026, un RVT 2026 sur l'engine 2025. Le message attendu cite 2027/2026, mais les
   messages ne sont pas comparés par défaut. Sans objet en 2027 tant qu'aucune version postérieure n'existe.
-- R01-R03 et R05-R07 admettent un `REVIT_WARNING_ON_OPEN` supplémentaire (`allowExtraAnomalies`) : à l'ouverture,
+- `summary.volumeComputation` (schéma 1.3) est attendu à `{false, false, null}` sur `EGR_Ref`, `EGR_Liens` et
+  `EGR_Collab`, à `{true, false, null}` sur `EGR_Ref_Volumes`, et à `null` pour les échecs antérieurs à la préparation
+  des volumes (R08, R09, R10). R04 échoue à la collecte, donc après la préparation : la trace est présente.
+- R01-R03, R05-R07 et R11 admettent un `REVIT_WARNING_ON_OPEN` supplémentaire (`allowExtraAnomalies`) : à l'ouverture,
   Revit peut émettre des avertissements que l'on ne sait pas prévoir. Ils sont affichés en `NOTE` et doivent être
   relus.
 
@@ -93,7 +97,7 @@ P12, variantes exclusives : voir la question ouverte Q1). P10 (`001`, phase Exis
 | Non placées / surface nulle | P04 (non placée : `UNPLACED`, surface 0, pas de `ZERO_AREA`), P05 (non fermée : `ZERO_AREA`) |
 | Doublons de numéro | P01/P04 ; P11/P12 ; numéros vides P07/P08 non comptés ; P10 hors phase |
 | Plusieurs phases et variantes | P10 (Existant), R03 (filtre de phase), R04 (phase inconnue), P11/P12 (variantes) |
-| Calcul de volume désactivé / activé | R01 (`notComputed` + `VOLUME_NOT_COMPUTED`) / R02 (`computed`, `notAvailable` pour la non placée) |
+| Calcul de volume désactivé / activé | R01 (`notComputed` + `VOLUME_NOT_COMPUTED`) / R02 (`computed`, `notAvailable` pour la non placée) / R11 (mode `compute` : calcul temporaire, transaction annulée) |
 | Finitions | P01, P02, P03 |
 | Paramètres partagés de chaque type de stockage | R01 : texte (String), entier (Integer), nombre / longueur / surface / volume (Double, mesurables), oui/non (Integer), angle (Double non pris en charge : `UNSUPPORTED_PARAMETER_TYPE`) ; R06 : GUID inconnu, paramètre absent de la pièce |
 | Liens manquants / non chargés | R05 (`LINK_MISSING`, `LINK_NOT_LOADED`) |
@@ -103,8 +107,8 @@ P12, variantes exclusives : voir la question ouverte Q1). P10 (`001`, phase Exis
 | Échec en configuration, comportement de sortie en échec (D6) | R10 |
 
 Cas non reproductibles par une maquette, couverts par les tests unitaires : `LEVEL_NOT_FOUND`, `EXTRACTION_ERROR`,
-`MISSING_PARAMETER` d'un paramètre natif, `DOCUMENT_CORRUPTED`, `EXPORT_FAILED`, `INPUT_NOT_FOUND`, `volumeMode:
-compute` refusé. Le stockage `ElementId` d'un paramètre partagé n'existe pas dans la boîte de dialogue « Paramètres
+`MISSING_PARAMETER` d'un paramètre natif, `DOCUMENT_CORRUPTED`, `EXPORT_FAILED`, `INPUT_NOT_FOUND`,
+`VOLUME_COMPUTE_FAILED` (échec d'activation du calcul temporaire). Le stockage `ElementId` d'un paramètre partagé n'existe pas dans la boîte de dialogue « Paramètres
 partagés » (les types Matériau/URL/Devise non plus ne sont pas testés) : hors jeu.
 
 ## 4. Déroulement (EGR-14)
@@ -178,6 +182,7 @@ doc » des PR #29, #31, #33, #37 et #39.
 | C11 | `ROOM_FINISH_*` et occupation : paramètres texte | PR #31 | P01-P03. |
 | C12 | Numéro vide accepté par Revit (sinon renumérotation automatique) | — | P07/P08 `number` en pending. |
 | C13 | Calcul des volumes : désactivé → `notComputed` et `VOLUME_NOT_COMPUTED` ; activé → `computed` | Guide API « Rooms », `AreaVolumeSettings.ComputeVolumes` | R01 / R02. Volume de la non placée (`notAvailable`) et de la non fermée (pending). |
+| C13b | Mode `compute` (EGR-16) : transaction temporaire, `Regenerate`, lecture avant `RollBack`, annulation confirmée, RVT jamais sauvegardé ; « à valider sur les trois moteurs » (SPECIFICATIONS §3) | LECTURE.md, SPECIFICATIONS §3 | R11 : volumes identiques à R02 (tolérance D5), `volumeComputation` attendu, log `VOLUME_COMPUTATION` en Info (Warning si l'annulation n'est pas confirmée). |
 | C14 | Tolérances D5 (0,001 m, m², m³) | SPECIFICATIONS §8, D5 ; LECTURE.md | R02 : surfaces et volumes exacts par construction (rectangles cotés, hauteur 2,70). Un écart > 0,001 indique soit une erreur de construction, soit une conversion à revoir. Relever l'écart maximal observé par année pour fixer D5. |
 | C15 | D7, précision de sérialisation (valeur brute convertie) | SPECIFICATIONS D7, UnitConversionTests | Relever dans R02 la représentation réelle (ex. `20.000000000000004`) : elle reste dans la tolérance. |
 | C16 | Liens : nom (`linkName`), chemin (`linkPath`), statut `Unloaded` ; liens DWG ignorés | INPUTS.md, PR #29 | R05 : présence des deux anomalies bloquante ; détails en pending. |

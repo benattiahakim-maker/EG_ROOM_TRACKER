@@ -251,6 +251,38 @@
       ],
       "pending": [],
       "allowExtraAnomalies": []
+    },
+    {
+      "id": "R11",
+      "title": "volumeMode compute sur la maquette aux volumes désactivés : calcul temporaire, transaction annulée, source inchangée (EGR-16)",
+      "model": "EGR_Ref.rvt",
+      "zip": [
+        "EGR_Ref.rvt"
+      ],
+      "settings": "settings/R11.json",
+      "expected": "expected/R11.json",
+      "years": [
+        "2025",
+        "2026",
+        "2027"
+      ],
+      "notes": "Vérifier aussi que le RVT source n'est pas modifié et le log VOLUME_COMPUTATION (computeApplied, transactionRolledBack).",
+      "pending": [
+        "rooms[name=Local technique].finishes.wall",
+        "rooms[name=Dégagement].number",
+        "rooms[name=Placard].number",
+        "rooms[name=Réserve].areaM2",
+        "rooms[name=Réserve].level",
+        "rooms[name=Réserve].unboundedHeightM",
+        "rooms[name=Couloir].unboundedHeightM",
+        "rooms[name=Bureau variante A].designOption.name",
+        "rooms[name=Bureau variante B].designOption.name",
+        "rooms[name=Couloir].volumeM3",
+        "rooms[name=Couloir].volumeStatus"
+      ],
+      "allowExtraAnomalies": [
+        "REVIT_WARNING_ON_OPEN"
+      ]
     }
   ]
 }

@@ -22,7 +22,7 @@ est connue).
 - Créer les pièces **dans l'ordre P01 → P13** (les ElementId croissent en principe dans l'ordre de création ; le
   résultat est trié par ElementId, `bind` recalcule l'ordre de toute façon).
 
-## 1. EGR_Ref.rvt (cas R01, R03, R04, R06, R10)
+## 1. EGR_Ref.rvt (cas R01, R03, R04, R06, R10, R11)
 
 ### 1.1 Niveaux et phases
 
@@ -162,6 +162,7 @@ l'engine 2025, 2027 pour l'engine 2026).
 | R08 | `EGR_Ref.rvt`, `EGR_Ref_Volumes.rvt` | `R08.json` |
 | R09 | `EGR_Futur.rvt` | `R09.json` |
 | R10 | `EGR_Ref.rvt` | `R10.json` |
+| R11 | `EGR_Ref.rvt` | `R11.json` (`volumeMode: compute`) |
 
 - Créer les ZIP de façon que les fichiers soient **à la racine** (zipper le contenu, pas le dossier parent), avec
   des noms en UTF-8 : 7-Zip est recommandé (`7z a -tzip R05.zip Projet`, UTF-8 pour les noms non ASCII). Pour des
@@ -172,12 +173,12 @@ l'engine 2025, 2027 pour l'engine 2026).
 
 1. Publier en test et lancer un WorkItem par cas ([PUBLISHING.md](../PUBLISHING.md) §5-6), avec le ZIP et le
    `settings.json` du cas. Télécharger `result.json` (→ `resultats/<année>/<cas>.json`) et le rapport.
-2. Première exécution de l'année : `bind` de chaque gabarit de succès (R01-R03, R05-R07), puis relecture du journal
+2. Première exécution de l'année : `bind` de chaque gabarit de succès (R01-R03, R05-R07, R11), puis relecture du journal
    (appariement des 13 pièces, phases, variantes). Les cas d'échec (R04, R08-R10) n'ont pas d'identifiants :
    `bind` les recopie avec seulement `revit.version`.
 
    ```bash
-   for c in R01 R02 R03 R04 R05 R06 R07 R08 R09 R10; do
+   for c in R01 R02 R03 R04 R05 R06 R07 R08 R09 R10 R11; do
      python3 tools/recette/compare_result.py bind docs/recette/expected/$c.json resultats/2026/$c.json \
          --year 2026 -o docs/recette/expected/2026/$c.json
    done
@@ -192,4 +193,5 @@ l'engine 2025, 2027 pour l'engine 2026).
 4. Pour chaque `À CONFIRMER`, noter la valeur réelle dans la matrice ; la décision (corriger l'attendu ou le code)
    se prend avec l'équipe (RECETTE.md §5).
 5. Contrôles manuels : la source du ZIP n'est pas modifiée, aucun dialogue (rapport), `result.json` présent même en
-   échec (D6 : R04, R08, R09, R10), durée du WorkItem (D9).
+   échec (D6 : R04, R08, R09, R10), durée du WorkItem (D9) ; pour R11, événement de log `VOLUME_COMPUTATION`
+   (`computeApplied: true`, `transactionRolledBack: true`) dans le rapport.
