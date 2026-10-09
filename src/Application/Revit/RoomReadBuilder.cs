@@ -1,5 +1,6 @@
 using System.Globalization;
 using EgRoomTracker.Contracts.Codes;
+using EgRoomTracker.Contracts.Configuration;
 using EgRoomTracker.Contracts.Results;
 
 namespace EgRoomTracker.Application.Revit;
@@ -100,7 +101,42 @@ public sealed class RoomReadBuilder
         return this;
     }
 
-    /// <summary>Complète les champs relevant d'autres cartes (finitions et paramètres partagés EGR-10).</summary>
+    /// <summary>Finitions textuelles (EGR-10) : valeurs issues de <see cref="Text"/> (absent → MISSING_PARAMETER).</summary>
+    public RoomReadBuilder Finishes(string? floor, string? wall, string? ceiling, string? @base)
+    {
+        _room = _room with { Finishes = new RoomFinishes(floor, wall, ceiling, @base) };
+        return this;
+    }
+
+    /// <summary>
+    /// Paramètres partagés (EGR-10) : une entrée par clé de mapping, dans l'ordre de la configuration, avec le GUID
+    /// en provenance. Absent de la pièce → null et MISSING_PARAMETER (détails : clé et GUID) ; GUID inconnu du
+    /// document → null sans indicateur (anomalie document SHARED_PARAMETER_NOT_FOUND posée une seule fois).
+    /// </summary>
+    public RoomReadBuilder SharedParameters(IEnumerable<(SharedParameterMapping Mapping, SharedParameterRead Read)> values)
+    {
+        var result = new Dictionary<string, SharedParameterValue>();
+        foreach (var (mapping, read) in values)
+        {
+            if (read.State == SharedParameterState.Absent)
+            {
+                AddRoomAnomaly(QualityFlagCodes.MissingParameter, AnomalySeverity.Warning,
+                    $"Paramètre partagé {mapping.Key} absent de la pièce.",
+                    new Dictionary<string, object?>
+                    {
+                        ["parameter"] = mapping.Key,
+                        ["guid"] = mapping.Guid.ToString("D"),
+                    });
+            }
+
+            result[mapping.Key] = new SharedParameterValue(mapping.Guid, read.State == SharedParameterState.HasValue ? read.Value : null);
+        }
+
+        _room = _room with { SharedParameters = result };
+        return this;
+    }
+
+    /// <summary>Complète des champs du DTO non couverts par les méthodes dédiées.</summary>
     public RoomReadBuilder With(Func<RoomDto, RoomDto> update)
     {
         _room = update(_room);

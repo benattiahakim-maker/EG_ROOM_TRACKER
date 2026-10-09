@@ -91,6 +91,7 @@ public sealed class RoomExtractionService
                 roomsCollected = collected.Count;
                 var rooms = new List<RoomDto>(collected.Count);
                 var anomalies = new List<AnomalyDto>(document.Anomalies);
+                anomalies.AddRange(_reader.CheckSharedParameters(settings.SharedParameters));
                 var roomErrors = 0;
                 foreach (var room in collected.OrderBy(r => r.ElementId))
                 {
@@ -98,7 +99,7 @@ public sealed class RoomExtractionService
                     if (read is null)
                     {
                         roomErrors++;
-                        read = ExtractionErrorRoom(room);
+                        read = ExtractionErrorRoom(room, settings.SharedParameters);
                     }
 
                     rooms.Add(read.Room);
@@ -221,7 +222,8 @@ public sealed class RoomExtractionService
     }
 
     /// <summary>Pièce réduite à son identité, champs illisibles à null (section 6).</summary>
-    private static RoomReadResult ExtractionErrorRoom(CollectedRoom room)
+    /// <summary>Pièce en erreur : identité seule ; une entrée null par clé de mapping partagé (forme stable, EGR-10).</summary>
+    private static RoomReadResult ExtractionErrorRoom(CollectedRoom room, IReadOnlyList<SharedParameterMapping> sharedParameters)
     {
         var elementId = room.ElementId.ToString(CultureInfo.InvariantCulture);
         var dto = new RoomDto
@@ -229,6 +231,7 @@ public sealed class RoomExtractionService
             ElementId = elementId,
             UniqueId = room.UniqueId,
             VolumeStatus = VolumeStatus.NotAvailable,
+            SharedParameters = sharedParameters.ToDictionary(m => m.Key, m => new SharedParameterValue(m.Guid, null)),
             QualityFlags = [QualityFlagCodes.ExtractionError],
         };
         var anomaly = new AnomalyDto

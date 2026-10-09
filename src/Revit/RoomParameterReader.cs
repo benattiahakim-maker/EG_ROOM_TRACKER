@@ -2,6 +2,7 @@ using Autodesk.Revit.DB;
 using Autodesk.Revit.DB.Architecture;
 using EgRoomTracker.Application.Revit;
 using EgRoomTracker.Application.Units;
+using EgRoomTracker.Contracts.Codes;
 using EgRoomTracker.Contracts.Configuration;
 using EgRoomTracker.Contracts.Results;
 
@@ -13,10 +14,40 @@ namespace EgRoomTracker.Revit;
 /// numéro (<c>ROOM_NUMBER</c>, chaîne avec zéros initiaux), niveau, occupation textuelle (<c>ROOM_OCCUPANCY</c>),
 /// phase, variante, placement. Paramètres natifs par <see cref="BuiltInParameter"/>, jamais par libellé.
 /// EGR-09 : <c>SpatialElement.Area</c>, <c>Room.UnboundedHeight</c>, <c>Room.Volume</c> convertis par UnitUtils
-/// (<see cref="RoomQuantities"/>). Finitions et paramètres partagés (EGR-10) : à compléter.
+/// (<see cref="RoomQuantities"/>).
+/// EGR-10 : finitions textuelles (<c>ROOM_FINISH_FLOOR/WALL/CEILING/BASE</c>, aucune déduction géométrique) et
+/// paramètres partagés par GUID (<c>Element.get_Parameter(Guid)</c>, <c>SharedParameterElement.Lookup</c>),
+/// sans libellé localisé. Une exception de lecture non capturée donne EXTRACTION_ERROR (orchestration).
 /// </summary>
 public sealed class RoomParameterReader(RevitExecutionContext context, IUnitConversionService units) : IRoomParameterReader
 {
+    /// <summary>Présence des GUID dans le document (<c>SharedParameterElement.Lookup</c>), mémorisée pour le document courant.</summary>
+    private readonly Dictionary<Guid, bool> _knownGuids = [];
+    private Document? _knownGuidsDocument;
+
+    public IReadOnlyList<AnomalyDto> CheckSharedParameters(IReadOnlyList<SharedParameterMapping> sharedParameters)
+    {
+        var document = context.RequireDocument();
+        var anomalies = new List<AnomalyDto>();
+        foreach (var mapping in sharedParameters)
+        {
+            if (!IsKnown(document, mapping.Guid))
+            {
+                anomalies.Add(new AnomalyDto
+                {
+                    Code = DocumentAnomalyCodes.SharedParameterNotFound,
+                    Severity = AnomalySeverity.Warning,
+                    Scope = AnomalyScope.Document,
+                    ElementId = null,
+                    Message = $"Paramètre partagé {mapping.Key} ({mapping.Guid:D}) inconnu dans le document ; valeur null pour toutes les pièces.",
+                    Details = new Dictionary<string, object?> { ["key"] = mapping.Key, ["guid"] = mapping.Guid.ToString("D") },
+                });
+            }
+        }
+
+        return anomalies;
+    }
+
     public RoomReadResult Read(CollectedRoom room, IReadOnlyList<SharedParameterMapping> sharedParameters, VolumeComputationState volumeState)
     {
         var document = context.RequireDocument();
@@ -51,6 +82,13 @@ public sealed class RoomParameterReader(RevitExecutionContext context, IUnitConv
         builder.Phase(ReadPhase(document, element));
         builder.DesignOption(element.DesignOption is { } option ? new ElementRef(Id(option.Id), option.Name) : null);
 
+        builder.Finishes(
+            floor: builder.Text(ReadText(element, BuiltInParameter.ROOM_FINISH_FLOOR), nameof(BuiltInParameter.ROOM_FINISH_FLOOR)),
+            wall: builder.Text(ReadText(element, BuiltInParameter.ROOM_FINISH_WALL), nameof(BuiltInParameter.ROOM_FINISH_WALL)),
+            ceiling: builder.Text(ReadText(element, BuiltInParameter.ROOM_FINISH_CEILING), nameof(BuiltInParameter.ROOM_FINISH_CEILING)),
+            @base: builder.Text(ReadText(element, BuiltInParameter.ROOM_FINISH_BASE), nameof(BuiltInParameter.ROOM_FINISH_BASE)));
+        builder.SharedParameters(sharedParameters.Select(m => (m, ReadShared(document, element, m.Guid))));
+
         return builder.Build();
     }
 
@@ -70,6 +108,73 @@ public sealed class RoomParameterReader(RevitExecutionContext context, IUnitConv
 
         var text = value.AsString();
         return text is null ? ParameterReading.NoValue : ParameterReading.Of(text);
+    }
+
+    /// <summary>Paramètre partagé d'une pièce, selon son <see cref="StorageType"/> (jamais <c>AsValueString</c>).</summary>
+    private SharedParameterRead ReadShared(Document document, Element element, Guid guid)
+    {
+        if (!IsKnown(document, guid))
+        {
+            return SharedParameterRead.NotInDocument;
+        }
+
+        var parameter = element.get_Parameter(guid);
+        if (parameter is null)
+        {
+            return SharedParameterRead.Absent;
+        }
+
+        if (!parameter.HasValue)
+        {
+            return SharedParameterRead.NoValue;
+        }
+
+        return parameter.StorageType switch
+        {
+            StorageType.String => SharedParameterValues.FromText(parameter.AsString()),
+            StorageType.Integer => SharedParameterValues.FromInteger(parameter.AsInteger()),
+            StorageType.Double => SharedParameterValues.FromDouble(parameter.AsDouble(), MeasureOf(parameter.Definition), units),
+            StorageType.ElementId => SharedParameterValues.FromElementId(parameter.AsElementId()?.Value),
+            _ => SharedParameterRead.NoValue,
+        };
+    }
+
+    private static SharedParameterMeasure MeasureOf(Definition? definition)
+    {
+        var dataType = definition?.GetDataType();
+        if (dataType is null)
+        {
+            return SharedParameterMeasure.Other;
+        }
+
+        if (dataType == SpecTypeId.Length)
+        {
+            return SharedParameterMeasure.Length;
+        }
+
+        if (dataType == SpecTypeId.Area)
+        {
+            return SharedParameterMeasure.Area;
+        }
+
+        return dataType == SpecTypeId.Volume ? SharedParameterMeasure.Volume : SharedParameterMeasure.Other;
+    }
+
+    private bool IsKnown(Document document, Guid guid)
+    {
+        if (!ReferenceEquals(_knownGuidsDocument, document))
+        {
+            _knownGuids.Clear();
+            _knownGuidsDocument = document;
+        }
+
+        if (!_knownGuids.TryGetValue(guid, out var known))
+        {
+            known = SharedParameterElement.Lookup(document, guid) is not null;
+            _knownGuids[guid] = known;
+        }
+
+        return known;
     }
 
     private static ElementRef? ReadPhase(Document document, Room room)
