@@ -22,7 +22,7 @@ l'espace partagé du projet.
 1. Les résultats attendus décrivent ce que **le code actuel de `main`** doit produire (schéma `1.3`, messages,
    ordre des anomalies, indicateurs, statut). Les tests .NET le vérifient sans Revit (§6).
 2. Les identifiants Revit (`elementId`, `uniqueId` des pièces, niveaux, phases et variantes) ne sont connus qu'une
-   fois les maquettes construites. Les gabarits portent donc des identifiants provisoires : `9000101`…`9000115` et
+   fois les maquettes construites. Les gabarits portent donc des identifiants provisoires : `9000101`…`9000117` et
    `EGR18-P01`… pour les pièces, `9000001/2` pour les niveaux, `9000011/12` pour les phases, `9000021/22` pour les
    variantes. Au premier WorkItem de chaque année, `compare_result.py bind` recopie **uniquement ces identifiants**
    depuis le résultat réel. Il produit `docs/recette/expected/<année>/<cas>.json`, que le porteur relit puis
@@ -42,12 +42,12 @@ Le `summary.revit.version` attendu est celui de l'engine (posé par `bind --year
 
 | Id | Maquette (ZIP) | settings | Résultat attendu | Années |
 | --- | --- | --- | --- | --- |
-| R01 | `EGR_Ref.rvt` | 8 paramètres partagés (texte, entier, nombre, longueur, surface, volume, oui/non, angle), toutes phases, `preserve` | `succeededWithWarnings` ; 15 pièces, 5 avec indicateur ; `UNSUPPORTED_PARAMETER_TYPE` (angle), `VOLUME_NOT_COMPUTED` (15) ; `UNPLACED` + `DUPLICATE_NUMBER` sur Réserve, `DUPLICATE_NUMBER` sur Bureau d'étude, Accueil commun et Bureau variante B2 ; variantes A/B **sans** doublon (règle en attente d'implémentation, voir ci-dessous) ; `ZERO_AREA` sur Couloir | 2025-2027 |
+| R01 | `EGR_Ref.rvt` | 8 paramètres partagés (texte, entier, nombre, longueur, surface, volume, oui/non, angle), toutes phases, `preserve` | `succeededWithWarnings` ; 17 pièces, 7 avec indicateur ; `UNSUPPORTED_PARAMETER_TYPE` (angle), `VOLUME_NOT_COMPUTED` (17) ; `UNPLACED` + `DUPLICATE_NUMBER` sur Réserve, `DUPLICATE_NUMBER` sur Bureau d'étude, Accueil commun, Bureau variante B2, Bureau variante A2 et Salle aménagement C (jeux d'options différents) ; variantes A/B du même jeu **sans** doublon (règle en attente d'implémentation, voir ci-dessous) ; `ZERO_AREA` sur Couloir | 2025-2027 |
 | R02 | `EGR_Ref_Volumes.rvt` (volumes activés) | aucun paramètre partagé | `succeededWithWarnings` ; volumes = surface × 2,70 ; Réserve `null`/`notAvailable` ; Couloir `0`/`computed` ; pas d'anomalie document | 2025-2027 |
 | R03 | `EGR_Ref.rvt` | `phaseIds` = phase Existant | `succeeded` ; 1 pièce (Archives existantes, n° 001, sans doublon) ; `VOLUME_NOT_COMPUTED` (1) | 2025-2027 |
 | R04 | `EGR_Ref.rvt` | `phaseIds` = `999999999` | `failed`, `CONFIG_INVALID` étape `collection`, `source` renseignée | 2025-2027 |
 | R05 | `Projet/EGR_Liens.rvt` + `Projet/Liens/EGR_Lien_A.rvt` + `Projet/Liens/EGR_Lien_C.rvt` | `mainModelPath` | `succeededWithWarnings` ; Hall ; `LINK_MISSING` (Lien B absent du ZIP), `LINK_NOT_LOADED` (Lien C déchargé, `Unloaded`), `VOLUME_NOT_COMPUTED` | 2025-2027 |
-| R06 | `EGR_Ref.rvt` | GUID inconnu du document + paramètre lié aux murs seulement | `succeededWithWarnings` ; `SHARED_PARAMETER_NOT_FOUND` (inconnu), `MISSING_PARAMETER` (murSeulement) sur les 15 pièces | 2025-2027 |
+| R06 | `EGR_Ref.rvt` | GUID inconnu du document + paramètre lié aux murs seulement | `succeededWithWarnings` ; `SHARED_PARAMETER_NOT_FOUND` (inconnu), `MISSING_PARAMETER` (murSeulement) sur les 17 pièces | 2025-2027 |
 | R07 | `EGR_Collab.rvt` (central, 2 worksets) | défaut | `succeeded` ; `isWorkshared: true` ; 2 pièces, dont celle du workset fermé | 2025-2027 |
 | R08 | `EGR_Ref.rvt` + `EGR_Ref_Volumes.rvt` à la racine | sans `mainModelPath` | `failed`, `RVT_AMBIGUOUS` étape `input`, `source: null`, options par défaut | 2025-2027 |
 | R09 | `EGR_Futur.rvt` (enregistré avec l'année + 1) | défaut | `failed`, `REVIT_VERSION_INCOMPATIBLE` étape `document`, `source: null` | 2025, 2026 ; 2027 : non applicable tant qu'aucune version plus récente n'existe |
@@ -64,7 +64,7 @@ Notes :
   (`notApplicable` dans `cases.json`).
 - **Règle des doublons en attente d'implémentation** (R01, R02, R06, R11, champ `pendingImplementation` du
   manifeste) : l'attendu suit la règle décidée par le lead (§2, « Doublons »). Tant que la modification d'EGR Dev
-  n'est pas fusionnée, le résultat réel signalera encore Bureau variante A/B en doublon : la comparaison montrera ces
+  n'est pas fusionnée, le résultat réel signalera encore Bureau variante A/B (même jeu d'options) en doublon : la comparaison montrera ces
   `ÉCART`, attendus. Le test .NET qui rejoue le vrai contrôle qualité sur ces cas est **ignoré (skip)** avec ce motif.
   Il faudra retirer le saut et le champ `pendingImplementation` à la fusion.
 - `summary.volumeComputation` (schéma 1.3) est attendu à `{false, false, null}` sur `EGR_Ref`, `EGR_Liens` et
@@ -96,20 +96,27 @@ la pièce, avec un décalage de 2,70 m (hauteur non bornée 2,70 m). Les champs 
 | P13 | Combles aménagés | 101 | 20 | **R+1** / Nouvelle construction | — | — | — |
 | P14 | Accueil commun | 011 | 6 | R+0 / Nouvelle construction / modèle principal | — | — | — |
 | P15 | Bureau variante B2 | 011 | 4,5 | R+0 / Nouvelle construction / **Option B** | — | — | — |
+| P16 | Bureau variante A2 | 012 | 3 | R+0 / Nouvelle construction / **Option A** (jeu `Variantes`) | — | — | — |
+| P17 | Salle aménagement C | 012 | 4 | R+0 / Nouvelle construction / **Option C** (2ᵉ jeu `Aménagement`, principale) | — | — | — |
 
 **Doublons** (règle décidée par le lead en EGR-18, implémentation confiée à EGR Dev, en attente) : la comparaison se
-fait par contexte (phase, variante). Deux pièces de variantes différentes d'un même jeu d'options ne sont pas en
-doublon ; une pièce du modèle principal (sans variante) est comparée à toutes les pièces de sa phase, variantes
+fait par contexte (phase, variante). Seules deux pièces de variantes différentes d'un **même** jeu d'options sont
+exclues (elles ne coexistent jamais) ; des pièces de variantes de **jeux différents** peuvent coexister et sont
+comparées ; une pièce du modèle principal (sans variante) est comparée à toutes les pièces de sa phase, variantes
 comprises. Les numéros vides sont ignorés et la comparaison reste exacte (`001` ≠ `1`).
 
 - `001` : P01 et P04 (non placée) en doublon. P10 (`001`, phase Existant) n'en est pas un.
-- `010` : P11 (Option A) et P12 (Option B) **ne sont pas** en doublon (variantes différentes).
+- `010` : P11 (Option A) et P12 (Option B) **ne sont pas** en doublon (variantes différentes du même jeu `Variantes`).
 - `011` : P14 (modèle principal) et P15 (Option B) sont en doublon.
+- `012` : P16 (Option A, jeu `Variantes`) et P17 (Option C, jeu `Aménagement`) sont en doublon (jeux différents).
+
+Les jeux d'options des gabarits sont décrits par `designOptionSets` dans `cases.json` (identifiants provisoires),
+utilisé par le test Python qui vérifie la règle sur les attendus.
 - P07/P08 (numéros vides) ne sont pas comptés.
 
 `details.elementIds` d'une pièce = elle-même et les pièces avec lesquelles elle est en conflit (tri numérique) ;
 message « Numéro n partagé par k pièces. » avec k = taille de cette liste. Ce détail est une hypothèse de la recette,
-à aligner sur l'implémentation d'EGR Dev.
+convention confirmée par le lead.
 
 ## 3. Couverture de la section 8
 
@@ -119,7 +126,7 @@ message « Numéro n partagé par k pièces. » avec k = taille de cette liste. 
 | Accents / zéros initiaux | P02 (nom, texte partagé, finitions), P01 `001`, P02 `0010` vs P06 `1` ; noms accentués des ZIP (R05 « Liens », fiche §6) |
 | Champs vides (null vs `""`) | P03 (finition murale et texte partagé saisis puis effacés, plinthe jamais saisie), P09 (aucun attribut), P02 (valeurs numériques à 0 ≠ null) |
 | Non placées / surface nulle | P04 (non placée : `UNPLACED`, surface 0, pas de `ZERO_AREA`), P05 (non fermée : `ZERO_AREA`) |
-| Doublons de numéro | P01/P04 ; P14 (modèle principal) / P15 (variante) ; P11/P12 (variantes différentes, pas de doublon) ; numéros vides P07/P08 non comptés ; P10 hors phase |
+| Doublons de numéro | P01/P04 ; P14 (modèle principal) / P15 (variante) ; P16/P17 (variantes de jeux différents) ; P11/P12 (variantes différentes du même jeu, pas de doublon) ; numéros vides P07/P08 non comptés ; P10 hors phase |
 | Plusieurs phases et variantes | P10 (Existant), R03 (filtre de phase), R04 (phase inconnue), P11/P12 (variantes) |
 | Calcul de volume désactivé / activé | R01 (`notComputed` + `VOLUME_NOT_COMPUTED`) / R02 (`computed`, `notAvailable` pour la non placée) / R11 (mode `compute` : calcul temporaire, transaction annulée) |
 | Finitions | P01, P02, P03 |
@@ -201,7 +208,7 @@ doc » des PR #29, #31, #33, #37 et #39.
 | C6 | Oui/non : stockage entier 1/0 ; valeur d'un oui/non jamais touché (`HasValue`) | PR #33 | P01 = 1, P02 = 0 (bloquants) ; autres pièces en pending (`null` attendu). |
 | C7 | Paramètre lié à une autre catégorie : absent de la pièce → `MISSING_PARAMETER` ; GUID inconnu → `SHARED_PARAMETER_NOT_FOUND` | PR #33 | R06. |
 | C8 | `ROOM_PHASE_ID` et nom de phase ; filtre `phaseIds` | PR #31, COLLECTE.md | R01 (phases des pièces), R03, R04. |
-| C9 | Pièces des variantes secondaires présentes dans le collecteur ; nom de variante | COLLECTE.md ; décision du lead | P11/P12/P15 : présence bloquante. **Nom de variante exporté brut, tel que Revit le donne** (avec ou sans « (primary) ») : `designOption.name` en pending, valeur réelle relevée au premier WorkItem ; normalisation décidée ensuite si nécessaire. |
+| C9 | Pièces des variantes secondaires présentes dans le collecteur ; nom de variante | COLLECTE.md ; décision du lead | P11/P12/P15/P16/P17 : présence bloquante. **Nom de variante exporté brut, tel que Revit le donne** (avec ou sans « (primary) ») : `designOption.name` en pending, valeur réelle relevée au premier WorkItem ; normalisation décidée ensuite si nécessaire. |
 | C10 | Nombre de pièces conforme sur les trois engines | COLLECTE.md, TRELLO EGR-07 | `counts` et liste des pièces de chaque cas. |
 | C11 | `ROOM_FINISH_*` et occupation : paramètres texte | PR #31 | P01-P03. |
 | C12 | Numéro vide accepté par Revit (sinon renumérotation automatique) | — | P07/P08 `number` en pending. |
@@ -243,17 +250,12 @@ doc » des PR #29, #31, #33, #37 et #39.
 
 Réponses du lead (EGR-18) :
 
-- **Q1 (tranchée)** : doublons par contexte (phase, variante), modèle principal comparé à tout (§2). Implémentation
-  confiée à EGR Dev, en attente ; tests correspondants ignorés en attendant.
+- **Q1 (tranchée, précisée)** : doublons par contexte (phase, variante) ; seules les variantes différentes d'un même
+  jeu d'options sont exclues, les variantes de jeux différents sont comparées, le modèle principal est comparé à tout
+  (§2). `details.elementIds` = la pièce et toutes les pièces en conflit avec elle. Implémentation confiée à EGR Dev,
+  en attente ; tests correspondants ignorés en attendant.
 - **Q2 (tranchée)** : nom de variante exporté brut ; à confirmer au premier WorkItem (C9), normalisation ensuite si
   besoin.
 - **Q3 (tranchée)** : maquettes construites en 2025 puis mises à niveau (C25) ; maquette collaborative native par
   version en plus si possible (R12).
 - **R09** : non applicable en 2027 tant qu'aucune version plus récente n'existe.
-
-Encore ouvertes :
-
-- Deux pièces de variantes appartenant à **deux jeux d'options différents** : la règle « par contexte » les traite
-  comme non doublons (variantes différentes). À confirmer avec EGR Dev lors de l'implémentation.
-- Forme de `details.elementIds` quand une pièce du modèle principal est en conflit avec plusieurs variantes (liste
-  propre à chaque pièce, hypothèse de la recette) : à aligner sur l'implémentation.

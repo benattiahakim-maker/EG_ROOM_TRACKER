@@ -29,9 +29,9 @@
       "transactionRolledBack": null
     },
     "counts": {
-      "roomsCollected": 15,
-      "roomsExported": 15,
-      "roomsWithAnomalies": 15
+      "roomsCollected": 17,
+      "roomsExported": 17,
+      "roomsWithAnomalies": 17
     },
     "status": "succeededWithWarnings",
     "errors": []
@@ -651,6 +651,94 @@
         "MISSING_PARAMETER",
         "DUPLICATE_NUMBER"
       ]
+    },
+    {
+      "elementId": "9000116",
+      "uniqueId": "EGR18-P16",
+      "name": "Bureau variante A2",
+      "number": "012",
+      "areaM2": 3.0,
+      "unboundedHeightM": 2.7,
+      "level": {
+        "elementId": "9000001",
+        "uniqueId": "EGR18-NIVEAU-R+0",
+        "name": "R+0"
+      },
+      "occupancy": null,
+      "volumeM3": null,
+      "volumeStatus": "notComputed",
+      "finishes": {
+        "floor": null,
+        "wall": null,
+        "ceiling": null,
+        "base": null
+      },
+      "phase": {
+        "elementId": "9000012",
+        "name": "Nouvelle construction"
+      },
+      "designOption": {
+        "elementId": "9000021",
+        "name": "Option A"
+      },
+      "sharedParameters": {
+        "inconnu": {
+          "guid": "6f79aade-d799-4d28-8e69-c5d249693cbe",
+          "value": null
+        },
+        "murSeulement": {
+          "guid": "2fba96b5-25d5-47ba-8e60-df0e1ce6d86b",
+          "value": null
+        }
+      },
+      "qualityFlags": [
+        "MISSING_PARAMETER",
+        "DUPLICATE_NUMBER"
+      ]
+    },
+    {
+      "elementId": "9000117",
+      "uniqueId": "EGR18-P17",
+      "name": "Salle aménagement C",
+      "number": "012",
+      "areaM2": 4.0,
+      "unboundedHeightM": 2.7,
+      "level": {
+        "elementId": "9000001",
+        "uniqueId": "EGR18-NIVEAU-R+0",
+        "name": "R+0"
+      },
+      "occupancy": null,
+      "volumeM3": null,
+      "volumeStatus": "notComputed",
+      "finishes": {
+        "floor": null,
+        "wall": null,
+        "ceiling": null,
+        "base": null
+      },
+      "phase": {
+        "elementId": "9000012",
+        "name": "Nouvelle construction"
+      },
+      "designOption": {
+        "elementId": "9000023",
+        "name": "Option C"
+      },
+      "sharedParameters": {
+        "inconnu": {
+          "guid": "6f79aade-d799-4d28-8e69-c5d249693cbe",
+          "value": null
+        },
+        "murSeulement": {
+          "guid": "2fba96b5-25d5-47ba-8e60-df0e1ce6d86b",
+          "value": null
+        }
+      },
+      "qualityFlags": [
+        "MISSING_PARAMETER",
+        "DUPLICATE_NUMBER"
+      ]
     }
   ],
   "anomalies": [
@@ -673,7 +761,7 @@
       "message": "Calcul des volumes désactivé dans le document ; volumeM3 exporté à null (mode preserve).",
       "details": {
         "volumeMode": "preserve",
-        "roomsAffected": 15
+        "roomsAffected": 17
       }
     },
     {
@@ -914,6 +1002,56 @@
         "elementIds": [
           "9000114",
           "9000115"
+        ]
+      }
+    },
+    {
+      "code": "MISSING_PARAMETER",
+      "severity": "warning",
+      "scope": "room",
+      "elementId": "9000116",
+      "message": "Paramètre partagé murSeulement absent de la pièce.",
+      "details": {
+        "parameter": "murSeulement",
+        "guid": "2fba96b5-25d5-47ba-8e60-df0e1ce6d86b"
+      }
+    },
+    {
+      "code": "DUPLICATE_NUMBER",
+      "severity": "warning",
+      "scope": "room",
+      "elementId": "9000116",
+      "message": "Numéro 012 partagé par 2 pièces.",
+      "details": {
+        "number": "012",
+        "elementIds": [
+          "9000116",
+          "9000117"
+        ]
+      }
+    },
+    {
+      "code": "MISSING_PARAMETER",
+      "severity": "warning",
+      "scope": "room",
+      "elementId": "9000117",
+      "message": "Paramètre partagé murSeulement absent de la pièce.",
+      "details": {
+        "parameter": "murSeulement",
+        "guid": "2fba96b5-25d5-47ba-8e60-df0e1ce6d86b"
+      }
+    },
+    {
+      "code": "DUPLICATE_NUMBER",
+      "severity": "warning",
+      "scope": "room",
+      "elementId": "9000117",
+      "message": "Numéro 012 partagé par 2 pièces.",
+      "details": {
+        "number": "012",
+        "elementIds": [
+          "9000116",
+          "9000117"
         ]
       }
     }

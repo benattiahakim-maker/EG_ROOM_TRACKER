@@ -22,7 +22,7 @@ est connue).
 - Les pièces sont délimitées par des **lignes de séparation de pièce** (Architecture → Room Separator), pas par des
   murs : la surface vaut exactement le rectangle dessiné, sans dépendre de l'épaisseur des murs ni de la règle de
   calcul « à la face de finition ».
-- Créer les pièces **dans l'ordre P01 → P15** (les ElementId croissent en principe dans l'ordre de création ; le
+- Créer les pièces **dans l'ordre P01 → P17** (les ElementId croissent en principe dans l'ordre de création ; le
   résultat est trié par ElementId, `bind` recalcule l'ordre de toute façon).
 
 ## 1. EGR_Ref.rvt (cas R01, R03, R04, R06, R10, R11)
@@ -119,11 +119,23 @@ Limit `R+1`, Limit Offset 2700 mm.
 Attendu : P14/P15 en doublon (modèle principal comparé à toutes les variantes) ; P11/P12 (`010`, variantes A et B)
 **pas** en doublon (règle du lead, implémentation EGR Dev en attente).
 
+### 1.6 ter Deuxième jeu d'options (P16, P17)
+
+1. Manage → Design Options : créer un **deuxième** jeu d'options `Aménagement` avec deux options `Option C`
+   (principale) et `Option D` (renommer `Option 1`, `Option 2` ; `Option D` reste vide).
+2. Edit Option `Option A` (jeu `Variantes`) : rectangle 3,000 × 1,000 à un endroit libre, pièce
+   `Bureau variante A2`, Number `012`, Limit Offset 2700 mm. Finish.
+3. Edit Option `Option C` (jeu `Aménagement`) : rectangle 2,000 × 2,000 à un autre endroit libre, pièce
+   `Salle aménagement C`, Number `012`, Limit Offset 2700 mm. Finish.
+
+Attendu : P16/P17 en doublon (variantes de deux jeux différents : elles peuvent coexister, donc comparées), alors que
+P11/P12 (même jeu) ne le sont pas.
+
 ### 1.7 Contrôle et enregistrement
 
 - Schedule de pièces (Name, Number, Area, Volume, Level, Phase, Design Option, Occupancy, finitions, paramètres
-  EGR_*) : vérifier les 15 pièces et les surfaces (20 ; 12 ; 6 ; Not Placed ; Not Enclosed ; 4 ; 3 ; 1 ; 5 ; 9 ;
-  7,5 ; 7,5 ; 20 ; 6 ; 4,5). La pièce de phase Existant n'apparaît que dans un schedule de cette phase.
+  EGR_*) : vérifier les 17 pièces et les surfaces (20 ; 12 ; 6 ; Not Placed ; Not Enclosed ; 4 ; 3 ; 1 ; 5 ; 9 ;
+  7,5 ; 7,5 ; 20 ; 6 ; 4,5 ; 3 ; 4). La pièce de phase Existant n'apparaît que dans un schedule de cette phase.
 - Purge facultative, puis Save As `EGR_Ref.rvt` (fichier non collaboratif). Fermer Revit sans autre modification.
 
 ## 2. EGR_Ref_Volumes.rvt (cas R02)
@@ -196,7 +208,7 @@ l'engine 2025, 2027 pour l'engine 2026). En 2027 : non applicable tant qu'aucune
 1. Publier en test et lancer un WorkItem par cas ([PUBLISHING.md](../PUBLISHING.md) §5-6), avec le ZIP et le
    `settings.json` du cas. Télécharger `result.json` (→ `resultats/<année>/<cas>.json`) et le rapport.
 2. Première exécution de l'année : `bind` de chaque gabarit de succès (R01-R03, R05-R07, R11, R12), puis relecture du journal
-   (appariement des 15 pièces, phases, variantes). Les cas d'échec (R04, R08-R10) n'ont pas d'identifiants :
+   (appariement des 17 pièces, phases, variantes). Les cas d'échec (R04, R08-R10) n'ont pas d'identifiants :
    `bind` les recopie avec seulement `revit.version`.
 
    ```bash
@@ -213,7 +225,7 @@ l'engine 2025, 2027 pour l'engine 2026). En 2027 : non applicable tant qu'aucune
    ```
 
    Tant que la règle des doublons par variante n'est pas implémentée (EGR Dev), R01, R02, R06 et R11 montrent des
-   `ÉCART` `DUPLICATE_NUMBER` sur Bureau variante A/B : c'est attendu, à noter dans la matrice.
+   `ÉCART` `DUPLICATE_NUMBER` sur Bureau variante A/B (même jeu d'options) : c'est attendu, à noter dans la matrice.
 4. Pour chaque `À CONFIRMER`, noter la valeur réelle dans la matrice ; la décision (corriger l'attendu ou le code)
    se prend avec l'équipe (RECETTE.md §5).
 5. Contrôles manuels : la source du ZIP n'est pas modifiée, aucun dialogue (rapport), `result.json` présent même en

@@ -41,8 +41,9 @@ public class RecetteFixturesTests
     /// </summary>
     private const string PendingDuplicateRule =
         "En attente d'EGR Dev : règle DUPLICATE_NUMBER par contexte (phase, variante) décidée en EGR-18 " +
-        "(variantes différentes non doublons, modèle principal comparé à tout) ; QualityCheckService signale encore " +
-        "Bureau variante A/B en doublon. Cas concernés : pendingImplementation dans docs/recette/cases.json.";
+        "(seules les variantes différentes d'un même jeu d'options sont exclues ; jeux différents comparés ; modèle " +
+        "principal comparé à tout) ; QualityCheckService signale encore Bureau variante A/B (même jeu) en doublon. " +
+        "Cas concernés : pendingImplementation dans docs/recette/cases.json.";
 
     /// <summary>Cas dont l'attendu suit une règle pas encore implémentée (champ <c>pendingImplementation</c>).</summary>
     public static TheoryData<string> CasesPendingImplementation() => Filter(pending: true);
