@@ -29,6 +29,8 @@ internal sealed class Pipeline
     public Exception? CollectException { get; set; }
     public Exception? OpenException { get; set; }
     public Exception? CloseException { get; set; }
+    public bool ThrowOnErrorLog { get; set; }
+    public bool ReverseQualityOrder { get; set; }
     public ExtractionStatus QualityStatus { get; set; } = ExtractionStatus.Succeeded;
     public Exception? ExportException { get; set; }
 
@@ -111,7 +113,8 @@ internal sealed class Pipeline
                 Scope = AnomalyScope.Document,
                 Message = "Volumes non calculés.",
             };
-            return new QualityReport(rooms, [.. anomalies, documentAnomaly], p.QualityStatus);
+            IReadOnlyList<RoomDto> ordered = p.ReverseQualityOrder ? rooms.Reverse().ToList() : rooms;
+            return new QualityReport(ordered, [.. anomalies, documentAnomaly], p.QualityStatus);
         }
 
         public void Write(ExtractionResult result, string outputPath)
@@ -125,7 +128,14 @@ internal sealed class Pipeline
             p.Exported = result;
         }
 
-        public void Log(LogEvent logEvent) => p.Logs.Add(logEvent);
+        public void Log(LogEvent logEvent)
+        {
+            p.Logs.Add(logEvent);
+            if (p.ThrowOnErrorLog && logEvent.Level == LogLevel.Error)
+            {
+                throw new InvalidOperationException("journal indisponible");
+            }
+        }
 
         public void Flush() => p.Flushes++;
     }

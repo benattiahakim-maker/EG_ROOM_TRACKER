@@ -24,7 +24,7 @@ Paramètres de `settings.json` (exemple en section 10.1) :
 | --- | --- | --- |
 | `schemaVersion` | chaîne | Obligatoire ; `1.0` pour cette version. Version majeure inconnue : `CONFIG_SCHEMA_UNSUPPORTED` |
 | `mainModelPath` | chaîne ou null | Chemin relatif au répertoire d'entrée ; obligatoire si le ZIP contient plusieurs RVT |
-| `phaseIds` | tableau d'ElementId (chaînes) ou null | Null ou absent : toutes les phases |
+| `phaseIds` | tableau d'ElementId (chaînes) ou null | Null ou absent : toutes les phases. Tableau vide : `CONFIG_INVALID` (étape `configuration`). Phase absente du document : `CONFIG_INVALID` (étape `collection`), identifiants inconnus listés dans le message ; jamais de résultat vide présenté comme réussi |
 | `volumeMode` | `preserve` ou `compute` | `preserve` par défaut ; `compute` en P2 (EGR-16) |
 | `sharedParameters` | tableau `{ key, guid }` | Facultatif ; mapping de paramètres partagés par GUID, `key` unique |
 
@@ -152,7 +152,7 @@ Une erreur globale termine le traitement avec `status: failed` ; le code figure 
 
 | Code | `stage` | Cause |
 | --- | --- | --- |
-| `CONFIG_INVALID` | `configuration` (configuration) | `settings.json` absent, illisible ou non conforme |
+| `CONFIG_INVALID` | `configuration` (configuration) ; `collection` (collecte) pour une phase inconnue | `settings.json` absent, illisible ou non conforme, dont `phaseIds` vide ; ou `phaseIds` désignant une phase absente du document (identifiants listés dans le message) |
 | `CONFIG_SCHEMA_UNSUPPORTED` | `configuration` (configuration) | Version majeure de `schemaVersion` non prise en charge |
 | `PATH_OUTSIDE_INPUT` | `configuration` (configuration) | Chemin sortant du répertoire d'entrée |
 | `RVT_NOT_FOUND` | `input` (entrée) | Aucun RVT, ou `mainModelPath` introuvable |
@@ -323,8 +323,8 @@ Chaque décision est tranchée et documentée dans la carte indiquée, puis repo
 
 | ID | Décision à prendre | Carte |
 | --- | --- | --- |
-| D1 | Stratégie d'ouverture du RVT (`DesignAutomationData.RevitDoc` ou ouverture explicite), propriétaire de fermeture, traitement des maquettes collaboratives (détachement, worksets) — **Proposition EGR-06, à valider** : ouverture explicite du RVT principal (Activity sans `/i`), détachement avec conservation des worksets et ouverture de tous les worksets, fermeture sans sauvegarde par l'application ; détail dans [`docs/DOCUMENT.md`](DOCUMENT.md) | EGR-06 |
-| D2 | Politique des avertissements et erreurs Revit à l'ouverture : avertissements tolérés, journalisés en `REVIT_WARNING_ON_OPEN`, ou bloquants — **Proposition EGR-06, à valider** : avertissements tolérés et agrégés en `REVIT_WARNING_ON_OPEN` ; erreurs et corruptions bloquantes, annulation et `DOCUMENT_CORRUPTED` ; détail dans [`docs/DOCUMENT.md`](DOCUMENT.md) | EGR-06 |
+| D1 | Stratégie d'ouverture du RVT (`DesignAutomationData.RevitDoc` ou ouverture explicite), propriétaire de fermeture, traitement des maquettes collaboratives (détachement, worksets) — **Tranchée (EGR-06)** : ouverture explicite du RVT principal par l'application (Activity sans `/i`) ; maquette collaborative détachée avec conservation des worksets, tous les worksets ouverts ; fermeture sans sauvegarde par l'application, dans un bloc `finally` ; détail dans [`docs/DOCUMENT.md`](DOCUMENT.md) | EGR-06 |
+| D2 | Politique des avertissements et erreurs Revit à l'ouverture : avertissements tolérés, journalisés en `REVIT_WARNING_ON_OPEN`, ou bloquants — **Tranchée (EGR-06), mode strict pour le MVP** : avertissements tolérés et signalés (`REVIT_WARNING_ON_OPEN`) ; toute erreur ou corruption du document principal bloque (annulation, `DOCUMENT_CORRUPTED`). Une tolérance opt-in de certaines erreurs pourra être étudiée après EGR-18. Statut `succeededWithWarnings` forcé par l'orchestration en cas de pièce `EXTRACTION_ERROR` : conservé ; détail dans [`docs/DOCUMENT.md`](DOCUMENT.md) | EGR-06 |
 | D3 | Choix métier par défaut de la section 12 (document principal, phases, hauteur non bornée, occupation et finitions textuelles, mode de volume) | EGR-01 |
 | D4 | Arborescence des liens dans le ZIP et résolution de leurs chemins | EGR-05 |
 | D5 | Tolérances de comparaison des quantités, confirmées sur le jeu de référence | EGR-18 |
