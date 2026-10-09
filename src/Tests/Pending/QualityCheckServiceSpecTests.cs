@@ -16,14 +16,12 @@ namespace EgRoomTracker.Tests.Pending;
 /// </summary>
 public class QualityCheckServiceSpecTests
 {
-    private const string Skip = PendingImplementations.Egr11;
-
     private static readonly VolumeComputationState Computed = new(VolumeMode.Compute, VolumesComputed: true);
     private static readonly VolumeComputationState NotComputed = new(VolumeMode.Preserve, VolumesComputed: false);
 
     private readonly IQualityCheckService _service = new QualityCheckService();
 
-    [Fact(Skip = Skip)]
+    [Fact]
     public void CleanRooms_Succeed_WithoutFlags()
     {
         var rooms = new[] { Rooms.Complete(1, "001"), Rooms.Complete(2, "002") };
@@ -35,7 +33,7 @@ public class QualityCheckServiceSpecTests
         Assert.All(report.Rooms, r => Assert.Empty(r.QualityFlags));
     }
 
-    [Fact(Skip = Skip)]
+    [Fact]
     public void AllRooms_AreKept_InInputOrder()
     {
         var rooms = new[]
@@ -50,7 +48,7 @@ public class QualityCheckServiceSpecTests
         Assert.Equal(["1", "2", "3"], report.Rooms.Select(r => r.ElementId));
     }
 
-    [Fact(Skip = Skip)]
+    [Fact]
     public void VolumeNotComputed_InPreserveMode_IsASingleInfoDocumentAnomaly_AndStillSucceeds()
     {
         var rooms = new[] { Rooms.Complete(1, "001"), Rooms.Complete(2, "002") };
@@ -65,7 +63,7 @@ public class QualityCheckServiceSpecTests
         Assert.Equal(ExtractionStatus.Succeeded, report.Status);
     }
 
-    [Fact(Skip = Skip)]
+    [Fact]
     public void DuplicateNumber_InSamePhase_FlagsEveryRoomWithOneAnomalyEach()
     {
         var rooms = new[] { Rooms.Complete(412345, "001"), Rooms.Complete(412398, "002"), Rooms.Complete(415002, "001") };
@@ -81,7 +79,7 @@ public class QualityCheckServiceSpecTests
         Assert.Equal(ExtractionStatus.SucceededWithWarnings, report.Status);
     }
 
-    [Fact(Skip = Skip)]
+    [Fact]
     public void SameNumber_InDifferentPhases_IsNotADuplicate()
     {
         var rooms = new[] { Rooms.Complete(1, "001", Rooms.NewConstruction), Rooms.Complete(2, "001", Rooms.Existing) };
@@ -92,7 +90,7 @@ public class QualityCheckServiceSpecTests
         Assert.Equal(ExtractionStatus.Succeeded, report.Status);
     }
 
-    [Fact(Skip = Skip)]
+    [Fact]
     public void NumbersDifferingOnlyByLeadingZeros_AreNotDuplicates()
     {
         var rooms = new[] { Rooms.Complete(1, "001"), Rooms.Complete(2, "1") };
@@ -102,7 +100,7 @@ public class QualityCheckServiceSpecTests
         Assert.All(report.Rooms, r => Assert.Empty(r.QualityFlags));
     }
 
-    [Theory(Skip = Skip)]
+    [Theory]
     [InlineData("")]
     [InlineData(null)]
     public void EmptyOrAbsentNumbers_AreNeverDuplicates(string? number)
@@ -117,7 +115,7 @@ public class QualityCheckServiceSpecTests
         Assert.Equal(ExtractionStatus.Succeeded, report.Status);
     }
 
-    [Fact(Skip = Skip)]
+    [Fact]
     public void ZeroArea_OnPlacedRoom_IsFlagged()
     {
         var report = _service.Evaluate([Rooms.Complete(1) with { AreaM2 = 0 }], [], Computed);
@@ -128,7 +126,7 @@ public class QualityCheckServiceSpecTests
         Assert.Equal(ExtractionStatus.SucceededWithWarnings, report.Status);
     }
 
-    [Fact(Skip = Skip)]
+    [Fact]
     public void ZeroArea_OnUnplacedRoom_IsOnlyUnplaced()
     {
         var room = Rooms.Complete(415002) with { AreaM2 = 0, QualityFlags = [QualityFlagCodes.Unplaced] };
@@ -139,7 +137,7 @@ public class QualityCheckServiceSpecTests
         Assert.Equal([QualityFlagCodes.Unplaced], report.Anomalies.Select(a => a.Code));
     }
 
-    [Fact(Skip = Skip)]
+    [Fact]
     public void NullArea_IsNotZeroArea()
     {
         var report = _service.Evaluate([Rooms.Complete(1) with { AreaM2 = null }], [], Computed);
@@ -155,7 +153,7 @@ public class QualityCheckServiceSpecTests
         { QualityFlagCodes.ExtractionError, AnomalySeverity.Error },
     };
 
-    [Theory(Skip = Skip)]
+    [Theory]
     [MemberData(nameof(ReaderRoomFlags))]
     public void RoomFlagsFromReader_AreKept_AndLeadToSucceededWithWarnings(string code, AnomalySeverity severity)
     {
@@ -168,7 +166,7 @@ public class QualityCheckServiceSpecTests
         Assert.Equal(ExtractionStatus.SucceededWithWarnings, report.Status);
     }
 
-    [Theory(Skip = Skip)]
+    [Theory]
     [InlineData(AnomalySeverity.Info, ExtractionStatus.Succeeded)]
     [InlineData(AnomalySeverity.Warning, ExtractionStatus.SucceededWithWarnings)]
     [InlineData(AnomalySeverity.Error, ExtractionStatus.SucceededWithWarnings)]
@@ -188,7 +186,7 @@ public class QualityCheckServiceSpecTests
         Assert.NotEqual(ExtractionStatus.Failed, report.Status);
     }
 
-    [Fact(Skip = Skip)]
+    [Fact]
     public void QualityFlags_AreUnique_AndMatchRoomAnomalies()
     {
         var rooms = new[]

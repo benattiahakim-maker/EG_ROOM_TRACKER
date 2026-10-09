@@ -1,0 +1,117 @@
+using System.Globalization;
+using EgRoomTracker.Application.Revit;
+using EgRoomTracker.Contracts.Codes;
+using EgRoomTracker.Contracts.Results;
+
+namespace EgRoomTracker.Application.Quality;
+
+/// <summary>
+/// Indicateurs qualité et statut final (EGR-11, sections 3, 9.1 et 9.3), sans appel Revit.
+/// Répartition : UNPLACED, MISSING_PARAMETER, LEVEL_NOT_FOUND et EXTRACTION_ERROR arrivent de la lecture et sont
+/// conservés ; ce service ajoute DUPLICATE_NUMBER, ZERO_AREA et VOLUME_NOT_COMPUTED, puis calcule le statut.
+/// Aucune pièce n'est supprimée, fusionnée ni réordonnée.
+/// </summary>
+public sealed class QualityCheckService : IQualityCheckService
+{
+    public QualityReport Evaluate(
+        IReadOnlyList<RoomDto> rooms,
+        IReadOnlyList<AnomalyDto> anomalies,
+        VolumeComputationState volumeState)
+    {
+        var flags = rooms.Select(r => r.QualityFlags.Distinct(StringComparer.Ordinal).ToList()).ToArray();
+        var added = rooms.Select(_ => new List<AnomalyDto>()).ToArray();
+
+        // ZERO_AREA : surface nulle (0, pas null) sur une pièce dont le non-placement n'est pas vérifié.
+        for (var i = 0; i < rooms.Count; i++)
+        {
+            if (rooms[i].AreaM2 == 0 && !flags[i].Contains(QualityFlagCodes.Unplaced))
+            {
+                AddFlag(flags[i], added[i], rooms[i], QualityFlagCodes.ZeroArea,
+                    "Surface nulle sur une pièce placée (non fermée ou redondante).",
+                    new Dictionary<string, object?> { ["areaM2"] = 0.0 });
+            }
+        }
+
+        // DUPLICATE_NUMBER : même numéro (comparaison exacte, zéros initiaux significatifs) et même phase ;
+        // numéros vides ou absents ignorés. Posé sur chaque pièce du groupe.
+        var groups = Enumerable.Range(0, rooms.Count)
+            .Where(i => !string.IsNullOrEmpty(rooms[i].Number))
+            .GroupBy(i => (Phase: rooms[i].Phase?.ElementId, Number: rooms[i].Number!))
+            .Where(g => g.Count() > 1);
+        foreach (var group in groups)
+        {
+            var elementIds = group.Select(i => rooms[i].ElementId).OrderBy(NumericKey).ThenBy(id => id, StringComparer.Ordinal).ToArray();
+            foreach (var i in group)
+            {
+                AddFlag(flags[i], added[i], rooms[i], QualityFlagCodes.DuplicateNumber,
+                    $"Numéro {group.Key.Number} partagé par {elementIds.Length} pièces.",
+                    new Dictionary<string, object?> { ["number"] = group.Key.Number, ["elementIds"] = elementIds });
+            }
+        }
+
+        var documentAnomalies = anomalies.Where(a => a.Scope == AnomalyScope.Document).ToList();
+        if (!volumeState.VolumesComputed)
+        {
+            documentAnomalies.Add(new AnomalyDto
+            {
+                Code = DocumentAnomalyCodes.VolumeNotComputed,
+                Severity = AnomalySeverity.Info,
+                Scope = AnomalyScope.Document,
+                ElementId = null,
+                Message = "Calcul des volumes désactivé dans le document ; volumeM3 exporté à null (mode preserve).",
+                Details = new Dictionary<string, object?>
+                {
+                    ["volumeMode"] = volumeState.Mode.ToString().ToLowerInvariant(),
+                    ["roomsAffected"] = rooms.Count(r => r.VolumeStatus == VolumeStatus.NotComputed),
+                },
+            });
+        }
+
+        // Ordre : anomalies document, puis anomalies pièce dans l'ordre des pièces (lecture puis qualité).
+        var roomAnomalies = anomalies.Where(a => a.Scope == AnomalyScope.Room).ToList();
+        var ordered = new List<AnomalyDto>(documentAnomalies);
+        var placed = new HashSet<AnomalyDto>(ReferenceEqualityComparer.Instance);
+        for (var i = 0; i < rooms.Count; i++)
+        {
+            foreach (var anomaly in roomAnomalies.Where(a => a.ElementId == rooms[i].ElementId && placed.Add(a)))
+            {
+                ordered.Add(anomaly);
+            }
+
+            ordered.AddRange(added[i]);
+        }
+
+        ordered.AddRange(roomAnomalies.Where(a => !placed.Contains(a)));
+
+        var resultRooms = rooms.Select((r, i) => r with { QualityFlags = flags[i] }).ToList();
+        return new QualityReport(resultRooms, ordered, StatusOf(ordered));
+    }
+
+    /// <summary>Statut (9.3) : une anomalie warning ou error donne succeededWithWarnings ; info seule, succeeded. Jamais failed ici.</summary>
+    internal static ExtractionStatus StatusOf(IEnumerable<AnomalyDto> anomalies) =>
+        anomalies.Any(a => a.Severity is AnomalySeverity.Warning or AnomalySeverity.Error)
+            ? ExtractionStatus.SucceededWithWarnings
+            : ExtractionStatus.Succeeded;
+
+    private static void AddFlag(List<string> flags, List<AnomalyDto> added, RoomDto room, string code, string message, IReadOnlyDictionary<string, object?> details)
+    {
+        if (flags.Contains(code))
+        {
+            return;
+        }
+
+        flags.Add(code);
+        added.Add(new AnomalyDto
+        {
+            Code = code,
+            Severity = AnomalySeverity.Warning,
+            Scope = AnomalyScope.Room,
+            ElementId = room.ElementId,
+            Message = message,
+            Details = details,
+        });
+    }
+
+    private static long NumericKey(string elementId) =>
+        long.TryParse(elementId, NumberStyles.AllowLeadingSign, CultureInfo.InvariantCulture, out var value) ? value : long.MaxValue;
+}

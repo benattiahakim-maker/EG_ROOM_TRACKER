@@ -19,13 +19,3 @@ public sealed record QualityReport(
     IReadOnlyList<RoomDto> Rooms,
     IReadOnlyList<AnomalyDto> Anomalies,
     ExtractionStatus Status);
-
-/// <summary>Squelette ; implémentation en EGR-11 (#11).</summary>
-public sealed class QualityCheckService : IQualityCheckService
-{
-    public QualityReport Evaluate(
-        IReadOnlyList<RoomDto> rooms,
-        IReadOnlyList<AnomalyDto> anomalies,
-        VolumeComputationState volumeState) =>
-        throw new NotImplementedException("EGR-11 : indicateurs qualité et statut.");
-}
