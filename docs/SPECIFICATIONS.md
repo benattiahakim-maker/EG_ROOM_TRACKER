@@ -202,10 +202,10 @@ Une anomalie de sévérité info (`VOLUME_NOT_COMPUTED`, `LINK_NOT_LOADED`, `UNS
 
 | Champ | Type | Règle (mise en œuvre) |
 | --- | --- | --- |
-| `correlationId` | chaîne | Identifiant de l'exécution, aussi porté par chaque ligne de log. Actuellement généré par l'add-in (`run-<guid>`) ; reprise de l'identifiant du WorkItem à valider sur APS |
-| `extractorVersion` | chaîne | Version de l'assembly, sans métadonnées de build (`Version` de `Directory.Build.props`) |
+| `correlationId` | chaîne | Identifiant de l'exécution, aussi porté par chaque ligne de log. Identifiant du WorkItem Design Automation (variable d'environnement `DAS_WORKITEM_ID`) ; à défaut (exécution hors APS), `run-<guid>` généré par l'add-in |
+| `extractorVersion` | chaîne | Version de l'assembly, sans métadonnées de build : source unique `<Version>` de `Directory.Build.props`, propagée à l'assembly et lue à l'exécution (aussi `@APP_VERSION@` de l'AppBundle) |
 | `revit.version` / `revit.build` | chaîne / chaîne ou null | `Application.VersionNumber` / `VersionBuild` du moteur |
-| `apsEngine` | chaîne ou null | Identifiant du moteur APS lorsqu'il est disponible ; aujourd'hui toujours `null` (non fourni par le contexte SDK) |
+| `apsEngine` | chaîne ou null | `EngineId` du fichier `<id du WorkItem>_job.das` écrit par Design Automation dans le répertoire de travail (par exemple `Autodesk.Revit+2026`) ; `null` si le fichier, le champ ou l'identifiant du WorkItem est absent ou illisible |
 | `source` | objet ou null | `fileName`, `relativePath` (relatif au répertoire d'entrée), `isWorkshared` (null si inconnu) ; null si le RVT n'a pas été résolu |
 | `startedAtUtc` / `completedAtUtc` | date-heure UTC | Début et fin de l'orchestration |
 | `options` | objet | Options appliquées : `phaseIds` (null = toutes), `volumeMode`, `sharedParameterKeys` |
@@ -244,8 +244,8 @@ Fichier de référence, schéma 1.3. Trois pièces, document sans calcul de volu
 {
   "schemaVersion": "1.3",
   "summary": {
-    "correlationId": "wi-7f3c2a9e5b1d4c08",
-    "extractorVersion": "0.2.0",
+    "correlationId": "7f3c2a9e5b1d4c08a1b2c3d4e5f60718",
+    "extractorVersion": "0.1.0",
     "revit": { "version": "2026", "build": "26.0.4.409" },
     "apsEngine": "Autodesk.Revit+2026",
     "source": {
