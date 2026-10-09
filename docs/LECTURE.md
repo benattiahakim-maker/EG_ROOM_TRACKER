@@ -14,7 +14,7 @@ Implémentation : `EgRoomTracker.Revit.RoomParameterReader` ; règles indépenda
 | `level` | `Room.LevelId` → `Level` | `elementId`, `uniqueId`, `name` ; null + `LEVEL_NOT_FOUND` si invalide ou introuvable |
 | `occupancy` | `ROOM_OCCUPANCY` | texte d'usage, pas un nombre d'occupants |
 | `phase` | `ROOM_PHASE_ID` → `Phase` | `elementId`, `name` ; null si absente |
-| `designOption` | `Element.DesignOption` | `elementId`, `name` ; null hors variante |
+| `designOption` | `Element.DesignOption` | `elementId`, `name` ; null hors variante. Jeu de variantes lu en interne (`OPTION_SET_ID` de la variante, ElementId ou entier ; null si illisible), non sérialisé, pour `DUPLICATE_NUMBER` |
 
 Paramètres natifs lus par `BuiltInParameter`, jamais par libellé français/anglais.
 

@@ -1,3 +1,4 @@
+using System.Globalization;
 using Autodesk.Revit.DB;
 using Autodesk.Revit.DB.Architecture;
 using EgRoomTracker.Application.Revit;
@@ -82,7 +83,8 @@ public sealed class RoomParameterReader(RevitExecutionContext context, IUnitConv
             isPlaced: isPlaced,
             units: units));
         builder.Phase(ReadPhase(document, element));
-        builder.DesignOption(element.DesignOption is { } option ? new ElementRef(Id(option.Id), option.Name) : null);
+        var option = element.DesignOption;
+        builder.DesignOption(option is null ? null : new ElementRef(Id(option.Id), option.Name), ReadOptionSetId(option));
 
         builder.Finishes(
             floor: builder.Text(ReadText(element, BuiltInParameter.ROOM_FINISH_FLOOR), nameof(BuiltInParameter.ROOM_FINISH_FLOOR)),
@@ -208,4 +210,36 @@ public sealed class RoomParameterReader(RevitExecutionContext context, IUnitConv
     }
 
     private static string Id(ElementId id) => id.Value.ToString(System.Globalization.CultureInfo.InvariantCulture);
+
+    /// <summary>
+    /// Jeu de variantes d'une variante : <c>BuiltInParameter.OPTION_SET_ID</c> (« Design Option Set Id ») lu sur la
+    /// <c>DesignOption</c>. Type de stockage non documenté : ElementId ou entier acceptés ; sinon null (inconnu).
+    /// </summary>
+    private static string? ReadOptionSetId(DesignOption? option)
+    {
+        if (option is null)
+        {
+            return null;
+        }
+
+        try
+        {
+            var parameter = option.get_Parameter(BuiltInParameter.OPTION_SET_ID);
+            if (parameter is null || !parameter.HasValue)
+            {
+                return null;
+            }
+
+            return parameter.StorageType switch
+            {
+                StorageType.ElementId when parameter.AsElementId() is { } id && id != ElementId.InvalidElementId => Id(id),
+                StorageType.Integer => parameter.AsInteger().ToString(CultureInfo.InvariantCulture),
+                _ => null,
+            };
+        }
+        catch (Exception)
+        {
+            return null;
+        }
+    }
 }

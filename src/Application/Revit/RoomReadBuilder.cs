@@ -95,9 +95,10 @@ public sealed class RoomReadBuilder
         return this;
     }
 
-    public RoomReadBuilder DesignOption(ElementRef? designOption)
+    /// <param name="designOptionSetId">Jeu de variantes de la variante (donnée interne non sérialisée) ; null si inconnu.</param>
+    public RoomReadBuilder DesignOption(ElementRef? designOption, string? designOptionSetId = null)
     {
-        _room = _room with { DesignOption = designOption };
+        _room = _room with { DesignOption = designOption, DesignOptionSetId = designOption is null ? null : designOptionSetId };
         return this;
     }
 

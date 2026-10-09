@@ -33,16 +33,25 @@ public sealed class QualityCheckService : IQualityCheckService
         }
 
         // DUPLICATE_NUMBER : même numéro (comparaison exacte, zéros initiaux significatifs) et même phase ;
-        // numéros vides ou absents ignorés. Posé sur chaque pièce du groupe.
+        // numéros vides ou absents ignorés ; deux pièces de variantes différentes d'un même jeu ne coexistent
+        // jamais et ne sont pas en doublon (CanCoexist). Posé sur chaque pièce en conflit avec au moins une autre ;
+        // elementIds = la pièce et celles avec lesquelles elle est en conflit.
         var groups = Enumerable.Range(0, rooms.Count)
             .Where(i => !string.IsNullOrEmpty(rooms[i].Number))
             .GroupBy(i => (Phase: rooms[i].Phase?.ElementId, Number: rooms[i].Number!))
             .Where(g => g.Count() > 1);
         foreach (var group in groups)
         {
-            var elementIds = group.Select(i => rooms[i].ElementId).OrderBy(NumericKey).ThenBy(id => id, StringComparer.Ordinal).ToArray();
-            foreach (var i in group)
+            var members = group.ToList();
+            foreach (var i in members)
             {
+                var conflicts = members.Where(j => j == i || CanCoexist(rooms[i], rooms[j])).ToList();
+                if (conflicts.Count < 2)
+                {
+                    continue;
+                }
+
+                var elementIds = conflicts.Select(j => rooms[j].ElementId).OrderBy(NumericKey).ThenBy(id => id, StringComparer.Ordinal).ToArray();
                 AddFlag(flags[i], added[i], rooms[i], QualityFlagCodes.DuplicateNumber,
                     $"Numéro {group.Key.Number} partagé par {elementIds.Length} pièces.",
                     new Dictionary<string, object?> { ["number"] = group.Key.Number, ["elementIds"] = elementIds });
@@ -103,6 +112,30 @@ public sealed class QualityCheckService : IQualityCheckService
 
         var resultRooms = rooms.Select((r, i) => r with { QualityFlags = flags[i] }).ToList();
         return new QualityReport(resultRooms, ordered, StatusOf(ordered));
+    }
+
+    /// <summary>
+    /// Deux pièces de même phase peuvent-elles coexister dans un même état du modèle ?
+    /// Oui si l'une est dans le modèle principal (sans variante), si elles sont dans la même variante, ou dans des
+    /// variantes de jeux différents (une vue affiche une variante par jeu). Non si elles sont dans deux variantes
+    /// différentes d'un même jeu (mutuellement exclusives). Jeu inconnu pour l'une des deux : coexistence supposée
+    /// (doublon signalé plutôt que manqué).
+    /// </summary>
+    internal static bool CanCoexist(RoomDto a, RoomDto b)
+    {
+        if (a.DesignOption is null || b.DesignOption is null)
+        {
+            return true;
+        }
+
+        if (string.Equals(a.DesignOption.ElementId, b.DesignOption.ElementId, StringComparison.Ordinal))
+        {
+            return true;
+        }
+
+        return a.DesignOptionSetId is null
+            || b.DesignOptionSetId is null
+            || !string.Equals(a.DesignOptionSetId, b.DesignOptionSetId, StringComparison.Ordinal);
     }
 
     /// <summary>Statut (9.3) : une anomalie warning ou error donne succeededWithWarnings ; info seule, succeeded. Jamais failed ici.</summary>
