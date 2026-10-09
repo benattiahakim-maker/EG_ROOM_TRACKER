@@ -50,6 +50,8 @@ internal sealed class TestPipeline
 
     public List<LogEvent> Logs { get; } = [];
 
+    public int CloseCount { get; private set; }
+
     public static ExtractionRequest Request { get; } = new()
     {
         CorrelationId = "wi-7f3c2a9e5b1d4c08",
@@ -79,10 +81,13 @@ internal sealed class TestPipeline
 
         public VolumeComputationState Prepare(VolumeMode mode) => new(mode, p.VolumesComputed);
 
-        public IReadOnlyList<long> CollectRoomIds(IReadOnlyList<string>? phaseIds) => p.RoomIds;
+        public void Close() => p.CloseCount++;
 
-        public RoomReadResult Read(long roomElementId, IReadOnlyList<SharedParameterMapping> sharedParameters, VolumeComputationState volumeState) =>
-            p.ReadRoom(roomElementId);
+        public IReadOnlyList<CollectedRoom> CollectRooms(IReadOnlyList<string>? phaseIds) =>
+            [.. p.RoomIds.Select(id => new CollectedRoom(id, Rooms.UniqueIdOf(id)))];
+
+        public RoomReadResult Read(CollectedRoom room, IReadOnlyList<SharedParameterMapping> sharedParameters, VolumeComputationState volumeState) =>
+            p.ReadRoom(room.ElementId);
 
         public QualityReport Evaluate(IReadOnlyList<RoomDto> rooms, IReadOnlyList<AnomalyDto> anomalies, VolumeComputationState volumeState)
         {

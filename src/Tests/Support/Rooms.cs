@@ -14,10 +14,12 @@ internal static class Rooms
 
     public static readonly ElementRef Existing = new("86960", "Existant");
 
+    public static string UniqueIdOf(long id) => $"5b1e2f8a-1c3d-4e5f-8a9b-0c1d2e3f4a5b-{id:x8}";
+
     public static RoomDto Complete(long id, string? number = null, ElementRef? phase = null) => new()
     {
         ElementId = id.ToString(System.Globalization.CultureInfo.InvariantCulture),
-        UniqueId = $"5b1e2f8a-1c3d-4e5f-8a9b-0c1d2e3f4a5b-{id:x8}",
+        UniqueId = UniqueIdOf(id),
         Name = "Bureau",
         Number = number ?? $"{id % 1000:000}",
         AreaM2 = 18.425,

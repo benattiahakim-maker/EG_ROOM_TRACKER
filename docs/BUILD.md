@@ -62,5 +62,5 @@ référence sont utilisées. L'exécution réelle requiert Revit / Design Automa
 | `Schema/` | `result.example.json` conforme à `docs/schema/result.schema.json` (draft 2020-12, formats vérifiés, JsonSchema.Net) ; écarts au contrat rejetés |
 | `Contracts/` | DTO ↔ schéma : aller-retour de l'exemple, sorties `succeeded` / `succeededWithWarnings` / `failed` conformes, déterminisme, tri numérique, null / "" / 0, nombres invariants |
 | `Application/` | Orchestration et bilan (`RoomExtractionService`) : anomalies, statut, compteurs, erreurs globales |
-| `Units/` | Conversions SI via une doublure d'`IUnitConversionService` (l'implémentation UnitUtils n'est testable que dans Revit) |
-| `Pending/` | Spécifications exécutables d'`InputConfigurationService` (EGR-05), `QualityCheckService` (EGR-11) et `ResultExportService` (EGR-12), ignorées (`Skip`) tant que ces services sont des squelettes ; un garde-fou échoue dès qu'un squelette est implémenté pour rappeler de les activer |
+| `Units/` | Quantités converties via une doublure d'`IUnitConversionService` : précision complète, 0 et null distincts (UnitUtils n'est testable que dans Revit) |
+| `Pending/` | Spécifications exécutables de `QualityCheckService` (EGR-11) et `ResultExportService` (EGR-12), ignorées (`Skip`) tant que ces services sont des squelettes ; un garde-fou échoue dès qu'un squelette est implémenté pour rappeler de les activer |

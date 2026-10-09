@@ -1,4 +1,3 @@
-using EgRoomTracker.Application.Configuration;
 using EgRoomTracker.Application.Quality;
 using EgRoomTracker.Application.Revit;
 using EgRoomTracker.Contracts.Configuration;
@@ -15,10 +14,6 @@ namespace EgRoomTracker.Tests.Pending;
 public class SkeletonTripwireTests
 {
     private const string Reminder = "Service implémenté : activer les tests de Pending/ correspondants et retirer ce garde-fou.";
-
-    [Fact]
-    public void InputConfigurationService_IsStillASkeleton_Egr05() =>
-        AssertSkeleton(() => new InputConfigurationService().Load("/in", "/settings.json"));
 
     [Fact]
     public void QualityCheckService_IsStillASkeleton_Egr11() =>

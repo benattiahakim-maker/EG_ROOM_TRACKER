@@ -125,16 +125,49 @@ public class ResultContractSerializationTests
     }
 
     [Fact]
-    public void Failed_UnexpectedErrorDuringCollection_IsSchemaValidAndKeepsSource()
+    public void RoomReadFailure_IsExtractionError_WithSucceededWithWarnings()
     {
-        var pipeline = new TestPipeline { RoomIds = [412345], ReadRoom = _ => throw new InvalidOperationException("boom") };
+        // Depuis #22 : une exception limitée à une pièce donne EXTRACTION_ERROR (identité exportée), pas d'échec global.
+        var pipeline = new TestPipeline
+        {
+            RoomIds = [412398, 412345],
+            ReadRoom = id => id == 412345 ? throw new InvalidOperationException("boom") : new RoomReadResult(Rooms.Complete(id), []),
+        };
+
+        var result = pipeline.Run();
+
+        var json = JsonNode.Parse(ContractJson.Serialize(result))!;
+        ResultSchema.AssertValid(json);
+        Assert.Equal(ExtractionStatus.SucceededWithWarnings, result.Summary.Status);
+        Assert.Empty(result.Summary.Errors);
+        Assert.Equal(new RoomCounts(2, 2, 1), result.Summary.Counts);
+        var broken = result.Rooms[0];
+        Assert.Equal(("412345", Rooms.UniqueIdOf(412345)), (broken.ElementId, broken.UniqueId));
+        Assert.Equal([QualityFlagCodes.ExtractionError], broken.QualityFlags);
+        Assert.Null(broken.Name);
+        Assert.Null(broken.AreaM2);
+        Assert.Equal(VolumeStatus.NotAvailable, broken.VolumeStatus);
+        var anomaly = Assert.Single(result.Anomalies);
+        Assert.Equal((QualityFlagCodes.ExtractionError, AnomalySeverity.Error, "412345"), (anomaly.Code, anomaly.Severity, anomaly.ElementId));
+    }
+
+    [Fact]
+    public void Failed_UnexpectedErrorOutsideARoom_IsSchemaValidAndKeepsSource()
+    {
+        var pipeline = new TestPipeline
+        {
+            RoomIds = [412345],
+            Evaluate = (_, _, _) => throw new InvalidOperationException("boom"),
+        };
 
         var result = pipeline.Run();
 
         var json = JsonNode.Parse(ContractJson.Serialize(result))!;
         ResultSchema.AssertValid(json);
         Assert.Equal("Projet/EG_Batiment_A.rvt", json["summary"]!["source"]!["relativePath"]!.GetValue<string>());
-        Assert.Equal(ErrorCodes.UnexpectedError, Assert.Single(result.Summary.Errors).Code);
+        var error = Assert.Single(result.Summary.Errors);
+        Assert.Equal((ErrorCodes.UnexpectedError, Stages.Quality), (error.Code, error.Stage));
+        Assert.Empty(result.Rooms);
     }
 
     [Fact]
