@@ -12,6 +12,7 @@ namespace EgRoomTracker.Tests.Pending;
 /// Hypothèse de répartition (à confirmer en EGR-11) : UNPLACED, MISSING_PARAMETER, LEVEL_NOT_FOUND et EXTRACTION_ERROR
 /// sont détectés à la lecture (Revit) et arrivent en entrée ; DUPLICATE_NUMBER, ZERO_AREA, VOLUME_NOT_COMPUTED et le
 /// statut sont calculés ici à partir des DTO.
+/// Placement : seul l'indicateur UNPLACED le porte (plus de champ IsPlaced) ; ZERO_AREA = areaM2 == 0 et pas UNPLACED.
 /// </summary>
 public class QualityCheckServiceSpecTests
 {

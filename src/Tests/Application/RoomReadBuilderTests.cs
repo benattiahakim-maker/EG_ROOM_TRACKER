@@ -27,7 +27,6 @@ public class RoomReadBuilderTests
         Assert.Equal("001", result.Room.Number);
         Assert.Equal("", result.Room.Occupancy);
         Assert.Equal("R+0", result.Room.Level?.Name);
-        Assert.True(result.Room.IsPlaced);
         Assert.Empty(result.Room.QualityFlags);
         Assert.Empty(result.Anomalies);
     }
@@ -83,11 +82,10 @@ public class RoomReadBuilderTests
     }
 
     [Fact]
-    public void Unplaced_SetsFlagAnomalyAndIsPlacedFalse()
+    public void Unplaced_SetsOnlyUnplacedFlagAndAnomaly()
     {
         var result = NewBuilder().Placement(false).Build();
 
-        Assert.False(result.Room.IsPlaced);
         Assert.Equal([QualityFlagCodes.Unplaced], result.Room.QualityFlags);
         var anomaly = Assert.Single(result.Anomalies);
         Assert.Equal(true, anomaly.Details["locationIsNull"]);
@@ -106,10 +104,12 @@ public class RoomReadBuilderTests
     }
 
     [Fact]
-    public void IsPlaced_IsNotSerialized()
+    public void Placed_HasNoFlag_AndNoPlacementFieldIsSerialized()
     {
-        var json = JsonSerializer.Serialize(NewBuilder().Placement(true).Build().Room);
+        var room = NewBuilder().Placement(true).Build().Room;
+        var json = JsonSerializer.Serialize(room);
 
+        Assert.DoesNotContain(QualityFlagCodes.Unplaced, room.QualityFlags);
         Assert.DoesNotContain("IsPlaced", json, StringComparison.OrdinalIgnoreCase);
     }
 }

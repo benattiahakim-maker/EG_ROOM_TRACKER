@@ -9,7 +9,7 @@ namespace EgRoomTracker.Revit;
 /// <summary>
 /// État du calcul des volumes (EGR-09) : mode <c>preserve</c>, lecture du réglage du document
 /// <c>AreaVolumeSettings.GetAreaVolumeSettings(document).ComputeVolumes</c>, sans transaction ni modification.
-/// Mode <c>compute</c> (P2, EGR-16) non disponible : échec explicite plutôt qu'un repli silencieux.
+/// Mode <c>compute</c> (P2, EGR-16) refusé dès la validation de configuration ; contrôle défensif conservé ici.
 /// </summary>
 public sealed class VolumeCalculationService(RevitExecutionContext context) : IVolumeCalculationService
 {

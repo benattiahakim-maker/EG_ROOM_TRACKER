@@ -70,6 +70,15 @@ public sealed class InputConfigurationServiceTests : IDisposable
     }
 
     [Fact]
+    public void VolumeModeCompute_IsRejectedEarly_BeforeRvtResolution()
+    {
+        // EGR-16 non livrée : refus en configuration, même avec un ZIP sans RVT (avant la résolution et l'ouverture).
+        _fixture.WriteSettings("""{ "schemaVersion": "1.0", "volumeMode": "compute" }""");
+
+        AssertFails(ErrorCodes.ConfigInvalid, Stages.Configuration);
+    }
+
+    [Fact]
     public void UnsupportedSchema_IsReportedBeforePathChecks()
     {
         _fixture.WriteSettings("""{ "schemaVersion": "2.0", "mainModelPath": "../x.rvt" }""");
@@ -90,6 +99,7 @@ public sealed class InputConfigurationServiceTests : IDisposable
     {
         { "{ \"schemaVersion\": \"3.0\" }", ErrorCodes.ConfigSchemaUnsupported, Stages.Configuration },
         { "{ \"schemaVersion\": \"1.0\", \"phaseIds\": [] }", ErrorCodes.ConfigInvalid, Stages.Configuration },
+        { "{ \"schemaVersion\": \"1.0\", \"volumeMode\": \"compute\" }", ErrorCodes.ConfigInvalid, Stages.Configuration },
         { "{ \"schemaVersion\": \"1.0\", \"mainModelPath\": \"/etc/A.rvt\" }", ErrorCodes.PathOutsideInput, Stages.Configuration },
         { "{ \"schemaVersion\": \"1.0\" }", ErrorCodes.RvtAmbiguous, Stages.Input },
         { "{ \"schemaVersion\": \"1.0\", \"mainModelPath\": \"C.rvt\" }", ErrorCodes.RvtNotFound, Stages.Input },
@@ -115,13 +125,13 @@ public sealed class InputConfigurationServiceTests : IDisposable
     [Fact]
     public void Pipeline_Success_ReportsOptionsAsRead()
     {
-        _fixture.AddFile("A.rvt").WriteSettings("""{ "schemaVersion": "1.0", "phaseIds": ["86961"], "volumeMode": "compute" }""");
+        _fixture.AddFile("A.rvt").WriteSettings("""{ "schemaVersion": "1.0", "phaseIds": ["86961"], "volumeMode": "preserve" }""");
         var pipeline = new Pipeline { LoadSettings = Load };
 
         var result = pipeline.CreateService().Run(Pipeline.Request);
 
         Assert.Equal(["86961"], result.Summary.Options.PhaseIds);
-        Assert.Equal(VolumeMode.Compute, result.Summary.Options.VolumeMode);
+        Assert.Equal(VolumeMode.Preserve, result.Summary.Options.VolumeMode);
         Assert.Empty(result.Summary.Errors);
     }
 

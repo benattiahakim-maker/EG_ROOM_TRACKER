@@ -83,7 +83,7 @@ internal sealed class TestPipeline
 
         public void Close() => p.CloseCount++;
 
-        public IReadOnlyList<CollectedRoom> CollectRooms(IReadOnlyList<string>? phaseIds) =>
+        public IReadOnlyList<CollectedRoom> CollectRooms(IReadOnlyList<long>? phaseElementIds) =>
             [.. p.RoomIds.Select(id => new CollectedRoom(id, Rooms.UniqueIdOf(id)))];
 
         public RoomReadResult Read(CollectedRoom room, IReadOnlyList<SharedParameterMapping> sharedParameters, VolumeComputationState volumeState) =>

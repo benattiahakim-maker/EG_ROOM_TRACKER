@@ -1,5 +1,3 @@
-using System.Text.Json.Serialization;
-
 namespace EgRoomTracker.Contracts.Results;
 
 /// <summary>
@@ -39,14 +37,6 @@ public sealed record RoomDto
     /// <summary>Une entrée par clé de mapping de <c>settings.json</c>.</summary>
     public IReadOnlyDictionary<string, SharedParameterValue> SharedParameters { get; init; } =
         new Dictionary<string, SharedParameterValue>();
-
-    /// <summary>
-    /// Placement vérifié à la lecture (<c>Location</c> non nulle) : true placée, false non placée, null inconnu
-    /// (pièce en EXTRACTION_ERROR). Donnée interne pour le contrôle qualité (ZERO_AREA ne s'applique qu'aux pièces
-    /// placées) ; non sérialisée, absente de <c>result.json</c>.
-    /// </summary>
-    [JsonIgnore]
-    public bool? IsPlaced { get; init; }
 
     /// <summary>Codes d'anomalie de portée pièce (<see cref="Codes.QualityFlagCodes"/>).</summary>
     public IReadOnlyList<string> QualityFlags { get; init; } = [];

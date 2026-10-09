@@ -8,12 +8,12 @@ namespace EgRoomTracker.Tests.Application;
 public class PhaseSelectionTests
 {
     [Fact]
-    public void Parse_Null_MeansAllPhases() => Assert.Null(PhaseSelection.Parse(null));
+    public void From_Null_MeansAllPhases() => Assert.Null(PhaseSelection.From(null));
 
     [Fact]
-    public void Parse_Empty_FailsWithConfigInvalid()
+    public void From_Empty_DefensiveConfigInvalid()
     {
-        var ex = Assert.Throws<ExtractionFailedException>(() => PhaseSelection.Parse([]));
+        var ex = Assert.Throws<ExtractionFailedException>(() => PhaseSelection.From([]));
 
         Assert.Equal(ErrorCodes.ConfigInvalid, ex.Error.Code);
         Assert.Equal(Stages.Configuration, ex.Error.Stage);
@@ -40,22 +40,10 @@ public class PhaseSelectionTests
     }
 
     [Fact]
-    public void Parse_ElementIds_AreConvertedAndDeduplicated()
+    public void From_ValidatedIds_AreKeptAsSet()
     {
-        var phases = PhaseSelection.Parse(["86961", "86961", "9007199254740993", "-1"])!;
+        var phases = PhaseSelection.From([86961L, 86960L, 9007199254740993L])!;
 
-        Assert.Equal(new long[] { -1, 86961, 9007199254740993 }, phases.Order());
-    }
-
-    [Theory]
-    [InlineData("abc")]
-    [InlineData("12.5")]
-    [InlineData("")]
-    public void Parse_InvalidElementId_FailsWithConfigInvalid(string value)
-    {
-        var ex = Assert.Throws<ExtractionFailedException>(() => PhaseSelection.Parse(["86961", value]));
-
-        Assert.Equal(ErrorCodes.ConfigInvalid, ex.Error.Code);
-        Assert.Equal(Stages.Configuration, ex.Error.Stage);
+        Assert.Equal(new long[] { 86960, 86961, 9007199254740993 }, phases.Order());
     }
 }

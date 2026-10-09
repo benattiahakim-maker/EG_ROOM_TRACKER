@@ -87,7 +87,7 @@ public sealed class RoomExtractionService
                 var volumeState = _volume.Prepare(settings.VolumeMode);
 
                 stage = Stages.Collection;
-                var collected = _collection.CollectRooms(settings.PhaseIds);
+                var collected = _collection.CollectRooms(settings.PhaseElementIds);
                 roomsCollected = collected.Count;
                 var rooms = new List<RoomDto>(collected.Count);
                 var anomalies = new List<AnomalyDto>(document.Anomalies);

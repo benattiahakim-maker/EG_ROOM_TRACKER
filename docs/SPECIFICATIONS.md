@@ -25,7 +25,7 @@ Paramètres de `settings.json` (exemple en section 10.1) :
 | `schemaVersion` | chaîne | Obligatoire ; `1.0` pour cette version. Version majeure inconnue : `CONFIG_SCHEMA_UNSUPPORTED` |
 | `mainModelPath` | chaîne ou null | Chemin relatif au répertoire d'entrée ; obligatoire si le ZIP contient plusieurs RVT ; un RVT unique est détecté automatiquement |
 | `phaseIds` | tableau d'ElementId (chaînes) ou null | Null ou absent : toutes les phases. Sinon entiers positifs sans doublon. Tableau vide : `CONFIG_INVALID` (étape `configuration`). Phase absente du document : `CONFIG_INVALID` (étape `collection`), identifiants inconnus listés dans le message ; jamais de résultat vide présenté comme réussi |
-| `volumeMode` | `preserve` ou `compute` | `preserve` par défaut ; `compute` en P2 (EGR-16) |
+| `volumeMode` | `preserve` ou `compute` | `preserve` par défaut ; `compute` en P2 (EGR-16) : tant qu'il n'est pas livré, `compute` est refusé en `CONFIG_INVALID` (étape `configuration`), avant l'ouverture du document |
 | `sharedParameters` | tableau `{ key, guid }` | Facultatif ; mapping de paramètres partagés par GUID, `key` unique |
 
 Les chemins restent confinés au répertoire d'entrée. Les liens présents dans le ZIP conservent une arborescence documentée (décision D4, règles détaillées de validation dans [`docs/INPUTS.md`](INPUTS.md)) ; les liens absents sont signalés (`LINK_MISSING`), les liens présents mais déchargés sont indiqués (`LINK_NOT_LOADED`, info). Le MVP collecte les pièces du document principal uniquement, sans parcourir les pièces des documents liés.
@@ -153,7 +153,7 @@ Une erreur globale termine le traitement avec `status: failed` ; le code figure 
 
 | Code | `stage` | Cause |
 | --- | --- | --- |
-| `CONFIG_INVALID` | `configuration` (configuration) ; `collection` (collecte) pour une phase inconnue | `settings.json` absent, illisible ou non conforme, dont `phaseIds` vide ; ou `phaseIds` désignant une phase absente du document (identifiants listés dans le message) |
+| `CONFIG_INVALID` | `configuration` (configuration) ; `collection` (collecte) pour une phase inconnue | `settings.json` absent, illisible ou non conforme, dont `phaseIds` vide ou `volumeMode` `compute` non encore disponible ; ou `phaseIds` désignant une phase absente du document (identifiants listés dans le message) |
 | `CONFIG_SCHEMA_UNSUPPORTED` | `configuration` (configuration) | Version majeure de `schemaVersion` non prise en charge |
 | `PATH_OUTSIDE_INPUT` | `configuration` (configuration) | Chemin sortant du répertoire d'entrée |
 | `RVT_NOT_FOUND` | `input` (entrée) | Aucun RVT, ou `mainModelPath` introuvable |

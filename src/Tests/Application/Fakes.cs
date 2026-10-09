@@ -27,6 +27,7 @@ internal sealed class Pipeline
     public IReadOnlyList<CollectedRoom> Rooms { get; set; } = [new(415002, "u-415002"), new(412345, "u-412345")];
     public Func<CollectedRoom, RoomReadResult>? ReadRoom { get; set; }
     public Exception? CollectException { get; set; }
+    public IReadOnlyList<long>? CollectedPhaseIds { get; set; }
     public Exception? OpenException { get; set; }
     public Exception? CloseException { get; set; }
     public bool ThrowOnErrorLog { get; set; }
@@ -89,9 +90,10 @@ internal sealed class Pipeline
             return new VolumeComputationState(mode, VolumesComputed: false);
         }
 
-        public IReadOnlyList<CollectedRoom> CollectRooms(IReadOnlyList<string>? phaseIds)
+        public IReadOnlyList<CollectedRoom> CollectRooms(IReadOnlyList<long>? phaseElementIds)
         {
             p.Calls.Add("collect");
+            p.CollectedPhaseIds = phaseElementIds;
             return p.CollectException is null ? p.Rooms : throw p.CollectException;
         }
 

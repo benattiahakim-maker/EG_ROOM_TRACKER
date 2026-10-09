@@ -1,6 +1,7 @@
 using EgRoomTracker.Application;
 using EgRoomTracker.Application.Revit;
 using EgRoomTracker.Contracts.Codes;
+using EgRoomTracker.Contracts.Configuration;
 using EgRoomTracker.Contracts.Results;
 using EgRoomTracker.Logging;
 
@@ -232,5 +233,18 @@ public class RoomExtractionServiceTests
         var result = pipeline.CreateService().Run(Pipeline.Request);
 
         Assert.Equal(["9", "10", "100", "1000000000000"], result.Rooms.Select(r => r.ElementId));
+    }
+
+    [Fact]
+    public void Collection_ReceivesValidatedPhaseElementIds()
+    {
+        var pipeline = new Pipeline
+        {
+            LoadSettings = () => new ExtractionSettings { SchemaVersion = "1.0", PhaseIds = ["0086961"], PhaseElementIds = [86961L] },
+        };
+
+        pipeline.CreateService().Run(Pipeline.Request);
+
+        Assert.Equal([86961L], pipeline.CollectedPhaseIds);
     }
 }

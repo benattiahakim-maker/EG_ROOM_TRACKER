@@ -35,7 +35,7 @@ Le service retourne la configuration **telle que lue**, complétée par deux cha
 | (propriétés inconnues) | En `1.0` : refusées (faute de frappe, ex. `volumemode`). En `1.x` avec x > 0 : ignorées (ajouts facultatifs d'une mineure plus récente) | `CONFIG_INVALID` |
 | `mainModelPath` | Chaîne non vide, ou null / absent (détection automatique) | `CONFIG_INVALID` |
 | `phaseIds` | null / absent = toutes les phases. Sinon tableau **non vide** de chaînes d'entiers positifs (`"86961"`), sans doublon (comparaison numérique), dans les limites d'un Int64 | `CONFIG_INVALID` |
-| `volumeMode` | `"preserve"` (défaut si absent ou null) ou `"compute"`, casse exacte | `CONFIG_INVALID` |
+| `volumeMode` | `"preserve"` (défaut si absent ou null) ou `"compute"`, casse exacte. `"compute"` (EGR-16) refusé tant qu'il n'est pas livré, avant la résolution du RVT (`InputConfigurationService`) | `CONFIG_INVALID` |
 | `sharedParameters` | null / absent = aucun. Sinon tableau d'objets `{ key, guid }`. `key` : chaîne non vide, sans espace en début ou fin, unique (comparaison sensible à la casse, comme les clés JSON de `rooms[].sharedParameters`). `guid` : format `xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx`, GUID nul refusé | `CONFIG_INVALID` |
 
 Les messages d'erreur nomment la propriété en cause (ex. `settings.json : sharedParameters[1].key « a » en double…`)

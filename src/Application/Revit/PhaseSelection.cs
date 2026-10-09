@@ -6,39 +6,29 @@ namespace EgRoomTracker.Application.Revit;
 /// <summary>
 /// Filtre explicite de phases (<c>settings.phaseIds</c>, section 2) : null ou absent = toutes les phases ;
 /// liste vide ou phase absente du document = configuration invalide (CONFIG_INVALID).
+/// Les identifiants arrivent déjà validés et typés par EGR-05 (<c>ExtractionSettings.PhaseElementIds</c>).
 /// </summary>
 public static class PhaseSelection
 {
     /// <summary>
-    /// Convertit les ElementId de phase (chaînes) en valeurs entières ; null = aucune restriction.
-    /// Contrôle défensif uniquement : la validation de <c>settings.json</c>, y compris le format entier des
-    /// <c>phaseIds</c>, relève d'EGR-05 (<c>IInputConfigurationService</c>).
+    /// Ensemble des ElementId de phase demandés ; null = aucune restriction.
+    /// Contrôle défensif uniquement : <c>[]</c> est déjà refusé par la validation de configuration (EGR-05) ;
+    /// s'il arrivait quand même, CONFIG_INVALID (étape <c>configuration</c>) plutôt qu'un résultat vide.
     /// </summary>
-    public static IReadOnlySet<long>? Parse(IReadOnlyList<string>? phaseIds)
+    public static IReadOnlySet<long>? From(IReadOnlyList<long>? phaseElementIds)
     {
-        if (phaseIds is null)
+        if (phaseElementIds is null)
         {
             return null;
         }
 
-        if (phaseIds.Count == 0)
+        if (phaseElementIds.Count == 0)
         {
             throw new ExtractionFailedException(ErrorCodes.ConfigInvalid, Stages.Configuration,
                 "phaseIds : liste vide ; utiliser null ou omettre la clé pour toutes les phases.");
         }
 
-        var result = new HashSet<long>();
-        foreach (var id in phaseIds)
-        {
-            if (!long.TryParse(id, NumberStyles.AllowLeadingSign, CultureInfo.InvariantCulture, out var value))
-            {
-                throw new ExtractionFailedException(ErrorCodes.ConfigInvalid, Stages.Configuration, $"phaseIds : ElementId invalide « {id} ».");
-            }
-
-            result.Add(value);
-        }
-
-        return result;
+        return new HashSet<long>(phaseElementIds);
     }
 
     /// <summary>
