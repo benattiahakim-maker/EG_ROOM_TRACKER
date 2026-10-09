@@ -33,15 +33,15 @@ public sealed class RoomParameterReader(RevitExecutionContext context, IUnitConv
         {
             if (!IsKnown(document, mapping.Guid))
             {
-                anomalies.Add(new AnomalyDto
-                {
-                    Code = DocumentAnomalyCodes.SharedParameterNotFound,
-                    Severity = AnomalySeverity.Warning,
-                    Scope = AnomalyScope.Document,
-                    ElementId = null,
-                    Message = $"Paramètre partagé {mapping.Key} ({mapping.Guid:D}) inconnu dans le document ; valeur null pour toutes les pièces.",
-                    Details = new Dictionary<string, object?> { ["key"] = mapping.Key, ["guid"] = mapping.Guid.ToString("D") },
-                });
+                anomalies.Add(SharedParameterAnomalies.NotFound(mapping));
+                continue;
+            }
+
+            // Type numérique non exportable : connu dès la définition du paramètre dans le document.
+            var dataType = SharedParameterElement.Lookup(document, mapping.Guid)?.GetDefinition()?.GetDataType();
+            if (dataType is not null && IsUnsupportedNumericSpec(dataType))
+            {
+                anomalies.Add(SharedParameterAnomalies.UnsupportedType(mapping, dataType.TypeId ?? string.Empty));
             }
         }
 
@@ -139,12 +139,14 @@ public sealed class RoomParameterReader(RevitExecutionContext context, IUnitConv
         };
     }
 
-    private static SharedParameterMeasure MeasureOf(Definition? definition)
+    /// <summary>Grandeur d'un double selon sa spec ; spec absente ou autre que longueur/surface/volume/nombre : non supportée.</summary>
+    private static SharedParameterMeasure MeasureOf(Definition? definition) => MeasureOf(definition?.GetDataType());
+
+    private static SharedParameterMeasure MeasureOf(ForgeTypeId? dataType)
     {
-        var dataType = definition?.GetDataType();
-        if (dataType is null)
+        if (dataType is null || dataType.Empty())
         {
-            return SharedParameterMeasure.Other;
+            return SharedParameterMeasure.Unsupported;
         }
 
         if (dataType == SpecTypeId.Length)
@@ -157,8 +159,23 @@ public sealed class RoomParameterReader(RevitExecutionContext context, IUnitConv
             return SharedParameterMeasure.Area;
         }
 
-        return dataType == SpecTypeId.Volume ? SharedParameterMeasure.Volume : SharedParameterMeasure.Other;
+        if (dataType == SpecTypeId.Volume)
+        {
+            return SharedParameterMeasure.Volume;
+        }
+
+        return dataType == SpecTypeId.Number ? SharedParameterMeasure.Number : SharedParameterMeasure.Unsupported;
     }
+
+    /// <summary>
+    /// Spec mesurable (valeur double avec unité, <c>UnitUtils.IsMeasurableSpec</c>) autre que longueur, surface, volume
+    /// ou nombre sans unité. Les specs non mesurables (texte, entier, Oui/Non, références) ne sont pas concernées.
+    /// </summary>
+    private static bool IsUnsupportedNumericSpec(ForgeTypeId dataType) =>
+        !dataType.Empty()
+        && dataType != SpecTypeId.Int.Integer
+        && UnitUtils.IsMeasurableSpec(dataType)
+        && MeasureOf(dataType) == SharedParameterMeasure.Unsupported;
 
     private bool IsKnown(Document document, Guid guid)
     {
