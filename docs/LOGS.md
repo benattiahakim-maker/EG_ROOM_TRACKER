@@ -12,7 +12,7 @@ Aucun fichier de log n'est produit et les logs ne font pas partie de `result.jso
 | `timestampUtc` | toujours | ISO 8601 UTC, millisecondes (`2026-10-09T12:00:03.250Z`) |
 | `level` | toujours | `Info`, `Warning`, `Error` |
 | `eventCode` | toujours | code d'événement (`EXTRACTION_STARTED`, …, voir `LogEventCodes`) |
-| `correlationId` | toujours | identifiant de corrélation de l'exécution, identique à `summary.correlationId` |
+| `correlationId` | toujours | identifiant de corrélation de l'exécution, identique à `summary.correlationId` : identifiant du WorkItem (`DAS_WORKITEM_ID`), sinon `run-<guid>` |
 | `stage` | toujours | identifiant d'étape (voir ci-dessous) |
 | `message` | toujours | texte lisible, secrets masqués |
 | `documentPath` | si pertinent | chemin relatif au répertoire d'entrée |
@@ -41,7 +41,7 @@ lecteur JSON.
 Exemple :
 
 ```json
-{"timestampUtc":"2026-10-09T12:00:41.120Z","level":"Error","eventCode":"EXTRACTION_FAILED","correlationId":"wi-7f3c2a9e5b1d4c08","stage":"configuration","message":"CONFIG_INVALID : settings.json absent.","data":{"errorCode":"CONFIG_INVALID"},"exception":{"type":"EgRoomTracker.Application.ExtractionFailedException","message":"settings.json absent.","stackTrace":"..."}}
+{"timestampUtc":"2026-10-09T12:00:41.120Z","level":"Error","eventCode":"EXTRACTION_FAILED","correlationId":"7f3c2a9e5b1d4c08a1b2c3d4e5f60718","stage":"configuration","message":"CONFIG_INVALID : settings.json absent.","data":{"errorCode":"CONFIG_INVALID"},"exception":{"type":"EgRoomTracker.Application.ExtractionFailedException","message":"settings.json absent.","stackTrace":"..."}}
 ```
 
 ## Événements minimaux
@@ -54,8 +54,11 @@ l'indicateur `EXTRACTION_ERROR`.
 
 Événements de collecte (EGR-07) : `ROOM_COLLECTION_DETAILS` (nombre de pièces, non placées, en variante, exclues
 par le filtre de phase, filtre appliqué). Une phase demandée absente du document provoque un échec global
-`CONFIG_INVALID` (`EXTRACTION_FAILED`). `LINKED_DOCUMENT_FAILURES` (Warning) compte les messages d'échec émis par des
-liens à l'ouverture.
+`CONFIG_INVALID` (`EXTRACTION_FAILED`).
+
+Événements d'ouverture, étape `document` (`LogEventCodes.DocumentUpgradeInMemory` et `LogEventCodes.LinkedDocumentFailures`) :
+`DOCUMENT_UPGRADE_IN_MEMORY` (Info) signale un RVT d'une version antérieure mis à niveau en mémoire, sans sauvegarde ;
+`LINKED_DOCUMENT_FAILURES` (Warning) compte les messages d'échec émis par des liens à l'ouverture.
 
 Événement qualité : `DUPLICATE_OPTION_SET_UNKNOWN` (Warning, étape `quality`, au plus une ligne) signale des
 `DUPLICATE_NUMBER` posés entre variantes différentes dont le jeu d'options n'a pas pu être lu (détail

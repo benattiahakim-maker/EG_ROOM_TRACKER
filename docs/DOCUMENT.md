@@ -12,7 +12,7 @@ dans `EgRoomTracker.Application.Revit` (`MainModelLocation`, `RevitVersionCompat
   Contrôle défensif : chemin confiné au répertoire d'entrée (`PATH_OUTSIDE_INPUT`), fichier `.rvt` existant
   (`RVT_NOT_FOUND`).
 - **Version** : `BasicFileInfo` lu avant ouverture ; RVT postérieur au moteur → `REVIT_VERSION_INCOMPATIBLE`.
-  RVT antérieur : mise à niveau en mémoire seulement (événement `DOCUMENT_UPGRADE_IN_MEMORY`).
+  RVT antérieur : mise à niveau en mémoire seulement (événement `DOCUMENT_UPGRADE_IN_MEMORY`, `LogEventCodes.DocumentUpgradeInMemory`).
 - **Maquettes collaboratives** : détachement du central en conservant les worksets
   (`DetachAndPreserveWorksets`), tous les worksets ouverts (`OpenAllWorksets`) pour ne manquer aucune pièce.
   Le central n'est jamais modifié.
@@ -33,7 +33,7 @@ Pendant l'ouverture seulement (abonnement à `Application.FailuresProcessing`) :
 - `CorruptModelException` → `DOCUMENT_CORRUPTED` ; autre exception Revit d'ouverture → `DOCUMENT_OPEN_FAILED`.
 - **Documents liés** : seuls les échecs du document principal sont traités par cette politique. Les messages émis
   par un document lié pendant son chargement (`FailuresAccessor.GetDocument().IsLinked`) sont laissés au traitement
-  par défaut de Revit et comptés (log `LINKED_DOCUMENT_FAILURES`) : un lien défectueux ne fait pas échouer le
+  par défaut de Revit et comptés (log `LINKED_DOCUMENT_FAILURES`, `LogEventCodes.LinkedDocumentFailures`) : un lien défectueux ne fait pas échouer le
   document principal.
 - Tolérance opt-in de certaines erreurs : à étudier après EGR-18, hors MVP.
 

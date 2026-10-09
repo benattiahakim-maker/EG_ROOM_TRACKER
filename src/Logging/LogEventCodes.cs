@@ -23,4 +23,10 @@ public static class LogEventCodes
 
     /// <summary>volumeMode compute : activation temporaire du calcul impossible ; volumes non disponibles.</summary>
     public const string VolumeComputeFailed = "VOLUME_COMPUTE_FAILED";
+
+    /// <summary>RVT d'une version antérieure mis à niveau en mémoire à l'ouverture, sans sauvegarde (étape <c>document</c>).</summary>
+    public const string DocumentUpgradeInMemory = "DOCUMENT_UPGRADE_IN_MEMORY";
+
+    /// <summary>Messages d'échec émis par des liens à l'ouverture, traités par défaut par Revit (étape <c>document</c>).</summary>
+    public const string LinkedDocumentFailures = "LINKED_DOCUMENT_FAILURES";
 }

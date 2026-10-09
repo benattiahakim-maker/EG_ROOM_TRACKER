@@ -19,7 +19,7 @@ internal static class ActivityContract
         var application = data.RevitApp;
         return new ExtractionRequest
         {
-            // Corrélation provisoire ; reprise de l'identifiant du WorkItem à valider en EGR-13.
+            // Valeurs par défaut : AutomationApplication les remplace par le contexte du WorkItem (WorkItemContext).
             CorrelationId = $"run-{Guid.NewGuid():N}",
             InputDirectory = Path.Combine(workingDirectory, InputDirectoryName),
             SettingsPath = Path.Combine(workingDirectory, SettingsFileName),

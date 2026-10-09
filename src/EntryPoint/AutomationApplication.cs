@@ -1,6 +1,7 @@
 using Autodesk.Revit.ApplicationServices;
 using Autodesk.Revit.DB;
 using DesignAutomationFramework;
+using EgRoomTracker.Application;
 using EgRoomTracker.Contracts.Codes;
 using EgRoomTracker.Contracts.Results;
 using EgRoomTracker.Logging;
@@ -29,11 +30,17 @@ public sealed class AutomationApplication : IExternalDBApplication
     {
         e.Succeeded = false;
         // Corrélation créée avant toute adaptation du contexte : le journal existe même si celle-ci échoue.
-        var correlationId = $"run-{Guid.NewGuid():N}";
+        // Identifiant du WorkItem (DAS_WORKITEM_ID) sur APS, sinon run-<guid> (exécution locale).
+        var workItem = WorkItemContext.Read(Environment.GetEnvironmentVariable, Directory.GetCurrentDirectory());
+        var correlationId = workItem.CorrelationId(Guid.NewGuid);
         using var log = new JsonConsoleLogService(correlationId);
         try
         {
-            var request = ActivityContract.CreateRequest(e.DesignAutomationData) with { CorrelationId = correlationId };
+            var request = ActivityContract.CreateRequest(e.DesignAutomationData) with
+            {
+                CorrelationId = correlationId,
+                ApsEngine = workItem.EngineId,
+            };
             var service = CompositionRoot.CreateExtractionService(e.DesignAutomationData, log);
             var result = service.Run(request);
             e.Succeeded = result.Summary.Status != ExtractionStatus.Failed;

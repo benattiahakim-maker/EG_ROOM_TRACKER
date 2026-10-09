@@ -13,6 +13,7 @@ Le format s'inspire de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/).
 
 ### Modifié
 
+- Cohérence doc/code : `summary.correlationId` = identifiant du WorkItem (`DAS_WORKITEM_ID`, repli `run-<guid>`), `summary.apsEngine` = `EngineId` du fichier `<id>_job.das` (null sinon), sans changement de schéma ; exemple `result.json` aligné sur la version unique `0.1.0` de `Directory.Build.props` (test de non-régression) ; `DOCUMENT_UPGRADE_IN_MEMORY` et `LINKED_DOCUMENT_FAILURES` déplacés dans `LogEventCodes`.
 - Spécifications v0.3 : sections 9 et 10 alignées sur le code et le schéma 1.3 (codes, sévérités, détails, champs de `summary`, événements de log, variantes), statut des décisions D1 à D9 ; README, backlog (EGR-19 #35, EGR-20 #36, état des cartes) et ce CHANGELOG.
 
 ## Contrat `result.json` 1.3 — 9 octobre 2026

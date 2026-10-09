@@ -25,7 +25,7 @@ public sealed class RevitDocumentService(RevitExecutionContext context, ILogServ
         var versionCheck = RevitVersionCompatibility.Check(fileInfo.Format, fileInfo.IsSavedInLaterVersion, context.Application.VersionNumber);
         if (versionCheck.UpgradedInMemory)
         {
-            log.Log(new LogEvent(LogLevel.Info, "DOCUMENT_UPGRADE_IN_MEMORY", Stages.Document,
+            log.Log(new LogEvent(LogLevel.Info, LogEventCodes.DocumentUpgradeInMemory, Stages.Document,
                 $"RVT {versionCheck.FileYear} mis à niveau en mémoire vers Revit {context.Application.VersionNumber} ; aucune sauvegarde.")
             {
                 DocumentPath = relativePath,
@@ -43,7 +43,7 @@ public sealed class RevitDocumentService(RevitExecutionContext context, ILogServ
 
         if (policy.LinkedDocumentFailures > 0)
         {
-            log.Log(new LogEvent(LogLevel.Warning, "LINKED_DOCUMENT_FAILURES", Stages.Document,
+            log.Log(new LogEvent(LogLevel.Warning, LogEventCodes.LinkedDocumentFailures, Stages.Document,
                 $"{policy.LinkedDocumentFailures} message(s) d'échec émis par des liens à l'ouverture ; traitement par défaut de Revit, sans effet sur le document principal.")
             {
                 DocumentPath = relativePath,
