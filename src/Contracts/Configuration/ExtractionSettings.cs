@@ -9,11 +9,27 @@ public sealed record ExtractionSettings
     /// <summary>Version du schéma de configuration (<c>1.0</c>).</summary>
     public required string SchemaVersion { get; init; }
 
-    /// <summary>Chemin relatif du RVT principal dans le répertoire d'entrée ; obligatoire si plusieurs RVT.</summary>
+    /// <summary>
+    /// <c>mainModelPath</c> tel que lu dans settings.json : chemin relatif du RVT principal dans le répertoire d'entrée ;
+    /// obligatoire si plusieurs RVT, null pour la détection automatique. Voir <see cref="ResolvedMainModelPath"/>.
+    /// </summary>
     public string? MainModelPath { get; init; }
 
-    /// <summary>ElementId des phases (chaînes) ; null = toutes les phases.</summary>
+    /// <summary>
+    /// Chemin relatif normalisé (séparateur <c>/</c>, sans <c>.</c> ni <c>..</c>) du RVT principal, confiné au répertoire
+    /// d'entrée et existant. Toujours renseigné par <c>IInputConfigurationService.Load</c>, y compris pour un ZIP à RVT
+    /// unique (détection automatique) ; null seulement avant résolution.
+    /// </summary>
+    public string? ResolvedMainModelPath { get; init; }
+
+    /// <summary>ElementId des phases tels que lus (chaînes) ; null = toutes les phases. Voir <see cref="PhaseElementIds"/>.</summary>
     public IReadOnlyList<string>? PhaseIds { get; init; }
+
+    /// <summary>
+    /// ElementId des phases typés (<c>ElementId.Value</c>), validés par <c>IInputConfigurationService</c> : entiers positifs,
+    /// sans doublon, tableau non vide ; null = toutes les phases. Même ordre que <see cref="PhaseIds"/>.
+    /// </summary>
+    public IReadOnlyList<long>? PhaseElementIds { get; init; }
 
     public VolumeMode VolumeMode { get; init; } = VolumeMode.Preserve;
 
