@@ -12,7 +12,7 @@ internal sealed class TestEnvironment : IDisposable
 
     private readonly TempDirectory _temp = new();
 
-    public TestEnvironment(bool withCredentials = true)
+    public TestEnvironment(bool withCredentials = true, string? clientId = null)
     {
         Directory.CreateDirectory(Path.Combine(Root, "src", "Packaging"));
         File.WriteAllText(Path.Combine(Root, "EgRoomTracker.sln"), string.Empty);
@@ -25,7 +25,7 @@ internal sealed class TestEnvironment : IDisposable
 
         var options = new DaManagerOptions
         {
-            Aps = new ApsSettings { Token = withCredentials ? Token : null, Nickname = "nick", DaBaseUrl = FakeApsServer.BaseUrl },
+            Aps = new ApsSettings { Token = withCredentials ? Token : null, ClientId = clientId, Nickname = "nick", DaBaseUrl = FakeApsServer.BaseUrl },
             RevitVersions = ["2026"],
             RepositoryRoot = Root,
             BundleDirectory = BundleDirectory,

@@ -9,7 +9,7 @@ ordre, mêmes messages.
 | --- | --- |
 | `ApsSettings` | Lecture des variables d'environnement, création du fournisseur de jeton |
 | `TwoLeggedTokenProvider` / `StaticTokenProvider` | OAuth 2-legged (`POST /authentication/v2/token`, jeton en cache) / jeton fourni |
-| `DesignAutomation.DesignAutomationClient` | Engines, AppBundles (création, version, téléversement S3), Activities, alias, WorkItems (soumission, suivi, rapport) |
+| `DesignAutomation.DesignAutomationClient` | Engines, AppBundles (création, version, téléversement S3), Activities, alias, WorkItems (soumission, suivi, rapport), nickname (`GET` / `PATCH /forgeapps/me`) |
 | `Oss.OssClient` | Bucket, téléversement par URL S3 signées (une ou plusieurs parties), URL signées de lecture et d'écriture |
 | `Packaging.DefinitionLoader` | Lecture de `src/Packaging/definitions` (`{{NICKNAME}}`, `{{APPBUNDLE_ALIAS}}`). `commandLine` n'est pas modifié |
 | `Packaging.AppBundleChecker` | Port de `appbundle.py check`. Les deux implémentations doivent évoluer ensemble |

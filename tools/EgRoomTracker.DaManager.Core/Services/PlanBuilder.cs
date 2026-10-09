@@ -94,6 +94,52 @@ public static class PlanBuilder
         return new($"Supprimer {plan.ToDelete.Count} version(s) de {plan.Id}", [.. plan.Describe(), journal, "Suppression définitive : une version supprimée ne peut plus servir de retour arrière."], IsDestructive: true);
     }
 
+    /// <summary>
+    /// Définition du nickname de l'application (<c>PATCH /forgeapps/me</c>). <paramref name="current"/> est la réponse
+    /// de <c>GET /forgeapps/me</c> : l'ID client quand aucun nickname n'est défini, jamais affiché tel quel.
+    /// <paramref name="ownedResources"/> : AppBundles et Activities de l'application déjà présents.
+    /// </summary>
+    public static OperationPlan SetNickname(string current, string target, string? clientId, int ownedResources)
+    {
+        if (!DesignAutomationClient.IsValidNickname(target))
+        {
+            throw new InvalidOperationException($"nickname cible « {target} » invalide : lettres, chiffres et « _ » uniquement ({DesignAutomationClient.MaxNicknameLength} caractères au plus).");
+        }
+
+        var hasNickname = HasNickname(current, clientId);
+        var steps = new List<string>
+        {
+            hasNickname
+                ? $"GET /forgeapps/me : nickname actuel « {current} »."
+                : "GET /forgeapps/me : aucun nickname (APS renvoie l'ID client, non affiché).",
+            $"Nickname cible : « {target} ».",
+            $"PATCH /forgeapps/me, corps {{\"nickname\": \"{target}\"}}.",
+            "ATTENTION : APS n'accepte ce changement que si l'application n'a encore AUCUNE donnée Design Automation (AppBundle, Activity…). À faire une seule fois, avant la première publication.",
+            "Ensuite, le nickname n'est plus modifiable : seul DELETE /forgeapps/me, qui supprime toutes les données de l'application, le permettrait (DaManager ne le fait pas).",
+            "Nickname unique chez APS : refus (409 Conflict) s'il est déjà pris par une autre application.",
+        };
+        if (ownedResources > 0)
+        {
+            steps.Add($"L'application a déjà {ownedResources} AppBundle(s) / Activity(ies) : APS refusera très probablement le changement (409).");
+        }
+        else if (hasNickname)
+        {
+            steps.Add($"Un nickname est déjà défini : le remplacer n'est possible que tant qu'aucune donnée n'a été publiée avec « {current} ».");
+        }
+
+        steps.Add($"Après succès : APS_NICKNAME={target} pour DaManager, WorkItemRunner et deploy.py (docs/OUTILS.md section 2).");
+        return new OperationPlan("Définir le nickname de l'application APS", steps);
+    }
+
+    /// <summary>
+    /// Vrai si la réponse de <c>GET /forgeapps/me</c> est un nickname et non l'ID client. Sans ID client connu
+    /// (<c>APS_TOKEN</c> seul), une valeur alphanumérique d'au moins 32 caractères est traitée comme un ID client.
+    /// </summary>
+    public static bool HasNickname(string current, string? clientId) =>
+        clientId is not null
+            ? !string.Equals(current, clientId, StringComparison.Ordinal)
+            : !(current.Length >= 32 && current.All(char.IsAsciiLetterOrDigit));
+
     private static string AliasStep(DaResourceKind kind, ResourceState state, string alias, string target) =>
         state.AliasVersion(alias) is { } current
             ? $"  PATCH /{kind.PathSegment()}/{state.Id}/aliases/{alias} : v{current} -> {target}"

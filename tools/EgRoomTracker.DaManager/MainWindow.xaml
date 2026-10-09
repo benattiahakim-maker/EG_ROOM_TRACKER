@@ -47,6 +47,10 @@
               <TextBlock Text="Configuration" Style="{StaticResource Heading}" />
               <TextBlock Text="Nickname APS (APS_NICKNAME)" Style="{StaticResource Hint}" />
               <TextBox Text="{Binding Nickname, UpdateSourceTrigger=PropertyChanged}" />
+              <WrapPanel Margin="0,4,0,0">
+                <Button Content="Définir le nickname…" Style="{StaticResource Secondary}" Command="{Binding SetNicknameCommand}"
+                        ToolTip="Une seule fois, avant toute publication : PATCH /forgeapps/me avec le nickname saisi (plan et confirmation)." />
+              </WrapPanel>
               <TextBlock Text="Racine du dépôt (définitions)" Style="{StaticResource Hint}" Margin="0,6,0,0" />
               <DockPanel>
                 <Button DockPanel.Dock="Right" Content="…" Style="{StaticResource Secondary}" Command="{Binding BrowseRepositoryCommand}" />

@@ -16,6 +16,15 @@ public sealed partial class FakeApsServer : HttpMessageHandler
 
     public List<string> Engines { get; } = ["Autodesk.Revit+2025", "Autodesk.Revit+2026", "Autodesk.Revit+2027", "Autodesk.AutoCAD+25"];
 
+    /// <summary>ID client simulé, renvoyé par GET /forgeapps/me tant qu'aucun nickname n'est défini.</summary>
+    public const string ClientId = "ABCDEFGHIJKLMNOPQRSTUVWXYZ012345";
+
+    /// <summary>Réponse de GET /forgeapps/me : nickname, ou ID client sans nickname.</summary>
+    public string ForgeAppNickname { get; set; } = ClientId;
+
+    /// <summary>Nicknames pris par d'autres applications (PATCH : 409).</summary>
+    public HashSet<string> TakenNicknames { get; } = [];
+
     public Dictionary<string, Resource> AppBundles { get; } = [];
 
     public Dictionary<string, Resource> Activities { get; } = [];
@@ -71,6 +80,11 @@ public sealed partial class FakeApsServer : HttpMessageHandler
             return Json(HttpStatusCode.OK, new JsonObject { ["data"] = new JsonArray([.. Engines.Select(e => JsonValue.Create(e))]) });
         }
 
+        if (path == "/forgeapps/me")
+        {
+            return ForgeApp(request.Method, body);
+        }
+
         var match = RoutePattern().Match(path);
         if (!match.Success)
         {
@@ -118,6 +132,29 @@ public sealed partial class FakeApsServer : HttpMessageHandler
             ("DELETE", var r) when r.StartsWith("/versions/", StringComparison.Ordinal) => DeleteVersion(resource, int.Parse(r[10..], System.Globalization.CultureInfo.InvariantCulture)),
             _ => Json(HttpStatusCode.NotFound, "{}"),
         };
+    }
+
+    /// <summary>GET : chaîne JSON ; PATCH : refusé (409) si le nickname est pris ou si l'application a des données.</summary>
+    private HttpResponseMessage ForgeApp(HttpMethod method, string body)
+    {
+        if (method == HttpMethod.Get)
+        {
+            return Json(HttpStatusCode.OK, JsonValue.Create(ForgeAppNickname)!);
+        }
+
+        if (method != HttpMethod.Patch)
+        {
+            return Json(HttpStatusCode.NotFound, "{}");
+        }
+
+        var nickname = JsonNode.Parse(body)!["nickname"]!.GetValue<string>();
+        if (TakenNicknames.Contains(nickname) || AppBundles.Count + Activities.Count > 0)
+        {
+            return Json(HttpStatusCode.Conflict, """{"diagnostic":"conflict"}""");
+        }
+
+        ForgeAppNickname = nickname;
+        return new HttpResponseMessage(HttpStatusCode.OK);
     }
 
     private static HttpResponseMessage AddVersion(string kind, Resource resource, JsonObject body)

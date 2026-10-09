@@ -23,7 +23,8 @@ build + tests (local ou CI) ─► ZIP contrôlés ─► deploy.py test ─► 
 | Python 3.10+ (bibliothèque standard) | oui (packaging) | oui |
 | `jsonschema` (pip) | seulement `docs/schema/validate_examples.py` | non |
 | Revit, compte APS | **non** | compte APS du porteur |
-| `APS_TOKEN`, `APS_NICKNAME` | non | oui, avec `--apply` |
+| `deploy.py` : `APS_TOKEN`, `APS_NICKNAME` | non | oui, avec `--apply` (`deploy.py` ne lit que `APS_TOKEN`) |
+| DaManager, WorkItemRunner : `APS_CLIENT_ID` + `APS_CLIENT_SECRET` (à défaut `APS_TOKEN`), `APS_NICKNAME` | non | oui |
 
 Règles de secrets :
 
@@ -32,7 +33,13 @@ Règles de secrets :
 - `APS_TOKEN` est un jeton 2-legged temporaire (scope `code:all`, exigé par les endpoints AppBundles/Activities),
   obtenu par le porteur juste avant la publication, exporté dans le shell courant puis supprimé (`unset APS_TOKEN`).
   Ne pas le mettre dans un fichier `.env` versionné ni dans l'historique du shell partagé.
+- Les outils DaManager et WorkItemRunner ([`OUTILS.md`](OUTILS.md)) préfèrent `APS_CLIENT_ID` et
+  `APS_CLIENT_SECRET` : ils obtiennent eux-mêmes un jeton 2-legged (et le renouvellent). `APS_TOKEN` ne sert qu'à
+  défaut de ces deux variables. Même règle : variables de la session uniquement, supprimées en fin de session.
 - `deploy.py` n'affiche jamais le jeton et ne journalise pas les champs `formData` du téléversement S3.
+- Le nickname (`APS_NICKNAME`) se définit **une seule fois**, avant toute publication, tant que l'application n'a
+  aucune donnée Design Automation : bouton « Définir le nickname… » de DaManager ([`OUTILS.md`](OUTILS.md)
+  section 1). `deploy.py` ne le crée pas.
 
 Variables lues par `deploy.py` :
 
@@ -160,6 +167,13 @@ promotion), importe et exporte cette table en Markdown (l'ancienne table sans co
 protège automatiquement au nettoyage toutes les versions qu'il cite. Le fichier est local par défaut et se choisit
 avec `EGR_PUBLICATION_JOURNAL` ; un dossier OneDrive partagé est recommandé (voir
 [`tools/EgRoomTracker.DaManager/README.md`](../tools/EgRoomTracker.DaManager/README.md)).
+
+Journal partagé : OneDrive synchronise des fichiers entiers, donc **dernier écrit gagnant** si deux postes écrivent
+presque en même temps (OneDrive peut aussi créer une copie en conflit). DaManager relit le fichier juste avant
+d'écrire et fusionne les lignes par identifiant stable (date, Revit, alias, versions), puis remplace le fichier d'un
+coup : les lignes écrites entre-temps par un autre poste sont gardées, sans doublon. Il reste le délai de
+synchronisation entre postes : publier l'un après l'autre, laisser OneDrive synchroniser, et importer une éventuelle
+copie en conflit (DaManager « Importer… ») pour la fusionner.
 
 Retour arrière : un alias est repointé (`PATCH …/aliases/prod`) sur une version antérieure, qui reste disponible. Rien
 n'est supprimé.

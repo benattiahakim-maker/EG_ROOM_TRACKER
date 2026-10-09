@@ -44,6 +44,7 @@ Lancé depuis le dépôt, DaManager trouve seul la racine (le dossier qui contie
 
 | Fonction | Écritures APS | Correspondance |
 | --- | --- | --- |
+| **Définir le nickname…** : une seule fois, avant toute publication ; voir ci-dessous | `PATCH /forgeapps/me` | PUBLISHING section 1, [OUTILS](../../docs/OUTILS.md) section 1 |
 | **Actualiser** : engines Revit, AppBundles et Activities du dépôt (versions, alias), liste complète de l'application, alertes sur les engines manquants et sur le quota | aucune | `deploy.py status`, PUBLISHING section 4 |
 | **Publier en test** : ZIP contrôlés (`appbundle.py check` porté en C#), nouvelle version d'AppBundle et téléversement, alias `test`, nouvelle version d'Activity, alias `test` | oui | `deploy.py test`, PUBLISHING section 5 |
 | **Promouvoir test → prod** : alias `prod` de l'AppBundle sur la version en `test`, nouvelle version d'Activity `+prod`, versions précédentes affichées pour le journal | oui | `deploy.py promote`, PUBLISHING section 7 |
@@ -55,6 +56,25 @@ Lancé depuis le dépôt, DaManager trouve seul la racine (le dossier qui contie
 plan donne les requêtes prévues, les versions actuelles et suivantes, ainsi que le commit du dépôt, car ZIP et
 définitions doivent venir du même commit. Il est affiché dans une fenêtre modale, et rien n'est écrit sans un clic sur
 « Confirmer ». Le plan et la décision sont aussi inscrits au journal. Après chaque écriture, l'état est relu.
+
+## Nickname de l'application
+
+Le bouton **Définir le nickname…** (sous le champ Nickname) donne à l'application APS le nickname saisi dans ce
+champ, qui préfixe ensuite tous les identifiants (`<nickname>.ExtractRooms_R2026+test`) :
+
+1. lectures seules : `GET /forgeapps/me` (nickname actuel ; sans nickname, APS renvoie l'ID client, qui n'est pas
+   affiché), puis `GET /appbundles` et `GET /activities` pour compter les ressources déjà présentes ;
+2. plan : nickname actuel, nickname cible, requête `PATCH /forgeapps/me` avec `{"nickname": "…"}`, et avertissements.
+   APS n'accepte ce changement **que si l'application n'a encore aucune donnée Design Automation**. C'est donc une
+   opération unique, à faire avant la première publication : ensuite, seul `DELETE /forgeapps/me`, qui supprime
+   toutes les données de l'application, permettrait d'en changer (DaManager ne le fait pas). Un nickname déjà pris par
+   une autre application est refusé (`409 Conflict`) ;
+3. après confirmation : `PATCH /forgeapps/me`, puis relecture par `GET /forgeapps/me`.
+
+Si le nickname est déjà celui saisi, rien n'est demandé. Le nickname doit contenir uniquement des lettres, des
+chiffres et `_` (64 caractères au plus) : c'est une règle prudente de l'outil, car le nickname préfixe les
+identifiants qualifiés, qui ne doivent contenir ni point, ni `+`, ni espace. Ensuite, définir `APS_NICKNAME` avec
+cette valeur pour les lancements suivants.
 
 ## Nettoyage des versions
 
@@ -87,8 +107,19 @@ protège les versions publiées par les autres. Par exemple :
 $env:EGR_PUBLICATION_JOURNAL = "$env:OneDrive\EG_ROOM_TRACKER\publication-journal.json"
 ```
 
-Deux postes qui publient au même instant peuvent se gêner (dernier enregistrement gagnant) : publier l'un après
-l'autre, ce qui est de toute façon la règle (PUBLISHING section 5).
+**Fichier partagé, dernier écrit gagnant** : OneDrive synchronise des fichiers entiers. Si deux postes écrivent le
+journal presque en même temps, la dernière version synchronisée remplace l'autre, et OneDrive peut aussi créer une
+copie en conflit (`publication-journal-<poste>.json`). DaManager limite ce risque :
+
+- chaque ligne a un **identifiant stable** (`id`) : date, version de Revit, alias et versions pointées par l'alias
+  après la publication, par exemple `2026-10-08/R2026/test/ab4/act7`. Les lignes sans `id` (format 1, table
+  Markdown, fichiers écrits avant) reçoivent cet identifiant calculé ;
+- **juste avant d'écrire**, DaManager relit le fichier, ajoute ses nouvelles lignes à celles qu'il contient (fusion
+  par identifiant, sans doublon), puis écrit dans un fichier temporaire qui remplace le journal d'un coup. Les lignes
+  ajoutées par un autre poste depuis l'ouverture de DaManager sont donc conservées ;
+- il reste une fenêtre très courte entre la relecture et le remplacement, et surtout le délai de synchronisation
+  OneDrive entre postes : **publier l'un après l'autre** (c'est de toute façon la règle, PUBLISHING section 5),
+  attendre que OneDrive ait synchronisé, et, en cas de copie en conflit, l'importer (**Importer…**) pour la fusionner.
 
 Format (version 2) :
 
@@ -98,6 +129,7 @@ Format (version 2) :
   "version": 2,
   "entries": [
     {
+      "id": "2026-10-08/R2026/test/ab4/act7",
       "date": "2026-10-08",
       "commit": "cb73e3d",
       "revit": "2026",
@@ -107,6 +139,7 @@ Format (version 2) :
       "previous": { "appBundle": 3, "activity": 5 }
     },
     {
+      "id": "2026-10-09/R2026/prod/ab4/act8",
       "date": "2026-10-09",
       "commit": "9b9a3fb",
       "revit": "2026",
@@ -124,9 +157,9 @@ Format (version 2) :
   `previous` donne la version que cet alias pointait avant (`null` la première fois) : c'est la cible du retour arrière.
 - **Compatibilité** : un journal au format 1 (sans `alias`, avec `previousProd`) et l'ancienne table Markdown à
   6 colonnes restent lisibles. Leurs lignes sont des promotions (`prod`). Le fichier est réécrit au format 2 à la
-  publication suivante.
+  publication suivante. `id` est facultatif à la lecture ; un `id` présent est conservé tel quel.
 - **Importer…** lit un journal JSON ou une table Markdown (`.md`, par exemple copiée d'une description de PR ou d'une
-  release) et le fusionne sans doublon. Un fichier invalide est refusé avec la ligne ou l'entrée fautive, sans toucher
+  release) et le fusionne sans doublon (par identifiant, le fichier étant relu juste avant l'écriture). Un fichier invalide est refusé avec la ligne ou l'entrée fautive, sans toucher
   au journal.
 - **Exporter…** écrit le journal en JSON ou, avec l'extension `.md`, sous forme de la table de PUBLISHING, prête à coller.
 - Le nettoyage protège automatiquement toutes les versions citées (test, prod et version précédente).
@@ -154,6 +187,9 @@ une version référencée par un alias. Les tests couvrent les cas suivants :
 - nettoyage avec versions aliasées et protégées ;
 - journal : JSON et Markdown équivalents, aller-retour, erreurs explicites, versions protégées automatiquement,
   journal illisible bloquant le nettoyage, lignes ajoutées à la publication en test et à la promotion, lecture et
-  mise à niveau d'un journal au format 1, import sans doublon et export ;
+  mise à niveau d'un journal au format 1, import sans doublon et export ; journal partagé modifié entre le chargement
+  et l'écriture (les deux lignes sont gardées, sans doublon), identifiants stables, écriture atomique ;
+- nickname : plan refusé sans écriture, `PATCH /forgeapps/me` confirmé puis relu, nickname déjà défini, application
+  avec données ou nickname pris (409), nickname invalide refusé avant toute requête, ID client jamais affiché ;
 - erreurs journalisées sans secret ;
 - identifiants absents.

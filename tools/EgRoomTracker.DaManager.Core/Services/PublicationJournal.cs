@@ -17,10 +17,35 @@ public sealed record PreviousVersions(int? AppBundle, int? Activity);
 /// <summary>
 /// Ligne du journal de publication (docs/PUBLISHING.md section 8) : Date | Commit | Revit | Alias | AppBundle test / prod |
 /// Activity test / prod | Version précédente de l'alias (AppBundle / Activity). <see cref="Alias"/> vaut <c>test</c>
-/// (publication en test) ou <c>prod</c> (promotion).
+/// (publication en test) ou <c>prod</c> (promotion). <see cref="Id"/> identifie la publication pour la fusion.
 /// </summary>
 public sealed record JournalEntry(string Date, string? Commit, string Revit, string Alias, AliasVersions AppBundle, AliasVersions Activity, PreviousVersions? Previous)
 {
+    private readonly string? _id;
+
+    /// <summary>
+    /// Identifiant stable de la publication, clé de fusion du journal partagé. Par défaut (<see cref="DefaultId"/>) :
+    /// date, version Revit, alias et versions que l'alias pointe après la publication, par exemple
+    /// <c>2026-10-09/R2026/test/ab4/act4</c>. Un identifiant lu dans le fichier est conservé tel quel.
+    /// </summary>
+    public string Id
+    {
+        get => _id ?? DefaultId;
+        init => _id = string.IsNullOrWhiteSpace(value) || value.Trim() == DefaultId ? null : value.Trim();
+    }
+
+    /// <summary>Identifiant calculé depuis le contenu ; les entrées sans « id » (formats antérieurs, Markdown) l'utilisent.</summary>
+    public string DefaultId
+    {
+        get
+        {
+            var prod = Alias == DeploymentService.ProdAlias;
+            var bundle = prod ? AppBundle.Prod : AppBundle.Test;
+            var activity = prod ? Activity.Prod : Activity.Test;
+            return $"{Date}/R{Revit}/{Alias}/ab{bundle?.ToString(CultureInfo.InvariantCulture) ?? "-"}/act{activity?.ToString(CultureInfo.InvariantCulture) ?? "-"}";
+        }
+    }
+
     /// <summary>Toutes les versions citées par la ligne pour un type de ressource (à conserver pour le retour arrière).</summary>
     public IEnumerable<int> Versions(DaResourceKind kind)
     {
@@ -40,6 +65,8 @@ public sealed record JournalEntry(string Date, string? Commit, string Revit, str
 /// protège automatiquement toute version citée par le journal.
 /// Compatibilité : la version 1 (avant le journal des publications en test : pas d'« alias », « previousProd ») et
 /// l'ancienne table à 6 colonnes restent lisibles ; leurs lignes sont des promotions (alias <c>prod</c>).
+/// Journal partagé (dossier OneDrive) : <see cref="SaveMerged"/> relit le fichier juste avant d'écrire et fusionne par
+/// <see cref="JournalEntry.Id"/>, pour ne pas écraser les lignes ajoutées entre-temps par un autre poste.
 /// </summary>
 public sealed class PublicationJournal
 {
@@ -57,7 +84,8 @@ public sealed class PublicationJournal
 
     public PublicationJournal(IEnumerable<JournalEntry>? entries = null)
     {
-        Entries = [.. (entries ?? []).Distinct().OrderBy(e => e.Date, StringComparer.Ordinal).ThenBy(e => e.Revit, StringComparer.Ordinal)];
+        // Première occurrence d'un identifiant conservée : les lignes déjà au journal priment sur les nouvelles.
+        Entries = [.. (entries ?? []).DistinctBy(e => e.Id, StringComparer.Ordinal).OrderBy(e => e.Date, StringComparer.Ordinal).ThenBy(e => e.Revit, StringComparer.Ordinal)];
     }
 
     public IReadOnlyList<JournalEntry> Entries { get; }
@@ -66,7 +94,10 @@ public sealed class PublicationJournal
     public IReadOnlyList<int> ProtectedVersions(string revitVersion, DaResourceKind kind) =>
         [.. Entries.Where(e => e.Revit == revitVersion).SelectMany(e => e.Versions(kind)).Distinct().Order()];
 
-    /// <summary>Fusion sans doublon (import) : les lignes identiques ne sont gardées qu'une fois.</summary>
+    /// <summary>
+    /// Fusion sans doublon par <see cref="JournalEntry.Id"/> : une ligne dont l'identifiant figure déjà au journal est
+    /// ignorée (la ligne existante est gardée).
+    /// </summary>
     public PublicationJournal Merge(IEnumerable<JournalEntry> entries) => new(Entries.Concat(entries));
 
     public PublicationJournal Add(JournalEntry entry) => Merge([entry]);
@@ -81,13 +112,41 @@ public sealed class PublicationJournal
     public static PublicationJournal Import(string path, string text) =>
         IsMarkdown(path) ? ParseMarkdown(text) : ParseJson(text);
 
-    /// <summary>Écriture atomique ; <c>.md</c> produit la table Markdown, toute autre extension le JSON.</summary>
+    /// <summary>
+    /// Écriture atomique (fichier temporaire unique dans le même dossier, puis remplacement) ; <c>.md</c> produit la
+    /// table Markdown, toute autre extension le JSON. Remplace le fichier tel quel : pour le journal partagé, passer par
+    /// <see cref="SaveMerged"/>.
+    /// </summary>
     public void Save(string path)
     {
-        Directory.CreateDirectory(Path.GetDirectoryName(Path.GetFullPath(path))!);
-        var temporary = path + ".tmp";
-        File.WriteAllText(temporary, IsMarkdown(path) ? ToMarkdown() : ToJson(), new UTF8Encoding(false));
-        File.Move(temporary, path, overwrite: true);
+        var full = Path.GetFullPath(path);
+        Directory.CreateDirectory(Path.GetDirectoryName(full)!);
+        var temporary = $"{full}.{Guid.NewGuid():N}.tmp";
+        try
+        {
+            File.WriteAllText(temporary, IsMarkdown(full) ? ToMarkdown() : ToJson(), new UTF8Encoding(false));
+            File.Move(temporary, full, overwrite: true);
+        }
+        finally
+        {
+            if (File.Exists(temporary))
+            {
+                File.Delete(temporary);
+            }
+        }
+    }
+
+    /// <summary>
+    /// Écriture dans un journal partagé : relit le fichier juste avant d'écrire, ajoute les lignes de ce journal dont
+    /// l'identifiant n'y figure pas encore, puis écrit (<see cref="Save"/>). Les lignes ajoutées par un autre poste
+    /// depuis le chargement sont donc conservées. Reste une fenêtre très courte (relecture → remplacement) où deux
+    /// écritures simultanées peuvent se perdre : dernier écrit gagnant. Renvoie le journal écrit.
+    /// </summary>
+    public PublicationJournal SaveMerged(string path)
+    {
+        var merged = Load(path).Merge(Entries);
+        merged.Save(path);
+        return merged;
     }
 
     // ---- JSON ----------------------------------------------------------------------------------------------------
@@ -99,6 +158,7 @@ public sealed class PublicationJournal
         {
             entries.Add(new JsonObject
             {
+                ["id"] = entry.Id,
                 ["date"] = entry.Date,
                 ["commit"] = entry.Commit,
                 ["revit"] = entry.Revit,
@@ -154,7 +214,7 @@ public sealed class PublicationJournal
                     legacy ? DeploymentService.ProdAlias : Text(e["alias"]) ?? throw new InvalidOperationException("« alias » manquant"),
                     ReadPair(e["appBundle"], "appBundle"),
                     ReadPair(e["activity"], "activity"),
-                    previous)));
+                    previous)) with { Id = Text(e["id"]) ?? string.Empty });
             }
             catch (Exception exception) when (exception is InvalidOperationException or FormatException)
             {
