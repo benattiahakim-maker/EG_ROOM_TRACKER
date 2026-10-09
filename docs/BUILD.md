@@ -63,4 +63,5 @@ référence sont utilisées. L'exécution réelle requiert Revit / Design Automa
 | `Contracts/` | DTO ↔ schéma : aller-retour de l'exemple, sorties `succeeded` / `succeededWithWarnings` / `failed` conformes, déterminisme, tri numérique, null / "" / 0, nombres invariants |
 | `Application/` | Orchestration et bilan (`RoomExtractionService`) : anomalies, statut, compteurs, erreurs globales |
 | `Units/` | Quantités converties via une doublure d'`IUnitConversionService` : précision complète, 0 et null distincts (UnitUtils n'est testable que dans Revit) |
-| `Pending/` | Spécifications exécutables de `QualityCheckService` (EGR-11) et `ResultExportService` (EGR-12), ignorées (`Skip`) tant que ces services sont des squelettes ; un garde-fou échoue dès qu'un squelette est implémenté pour rappeler de les activer |
+| `Export/` | `ResultExportService` (EGR-12) : fichier conforme au schéma dans les trois statuts, UTF-8 sans BOM, octets identiques d'une exécution et d'une culture à l'autre, fins de ligne `\n`, ordre reçu conservé, publication atomique sans fichier temporaire résiduel, exemple de la documentation reproduit à l'identique |
+| `Pending/` | Spécification exécutable de `QualityCheckService` (EGR-11), ignorée (`Skip`) tant que ce service est un squelette ; un garde-fou échoue dès qu'il est implémenté pour rappeler de l'activer |

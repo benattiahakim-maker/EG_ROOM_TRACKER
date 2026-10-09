@@ -11,7 +11,8 @@ namespace EgRoomTracker.Tests.Support;
 /// en camelCase, null écrits, clés de dictionnaire conservées) et décisions du chef de projet : dates UTC ISO 8601
 /// suffixées <c>Z</c>, accents écrits tels quels en UTF-8. Elle vérifie que les DTO du contrat peuvent
 /// produire un <c>result.json</c> conforme. Ce n'est pas l'export de production (<c>ResultExportService</c>,
-/// EGR-12) : celui-ci est couvert par <c>ResultExportServiceSpecTests</c>, à activer avec EGR-12.
+/// EGR-12) : celui-ci est couvert par <c>Export/ResultExportServiceTests</c>, qui vérifie aussi que les deux
+/// sérialisations restent équivalentes.
 /// </summary>
 internal static class ContractJson
 {

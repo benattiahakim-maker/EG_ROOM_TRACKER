@@ -16,7 +16,8 @@ namespace EgRoomTracker.Tests.Contracts;
 /// Les DTO du contrat, remplis par <see cref="RoomExtractionService"/>, se sérialisent en un <c>result.json</c>
 /// conforme au schéma dans les trois statuts (section 8), de façon déterministe et sans perte
 /// (null / "" / 0, nombres invariants, tri par elementId numérique). Sérialisation de référence des tests
-/// (<see cref="ContractJson"/>) en attendant <c>ResultExportService</c> (EGR-12).
+/// (<see cref="ContractJson"/>) ; l'export de production (<c>ResultExportService</c>, EGR-12) est couvert par
+/// <c>Export/ResultExportServiceTests</c>.
 /// </summary>
 public class ResultContractSerializationTests
 {

@@ -179,7 +179,7 @@ public class ExtractionPipelineTests
     }
 
     // Décision du chef de projet : le tri par elementId numérique relève de l'orchestration ; l'export écrit dans l'ordre reçu.
-    [Fact(Skip = "Écart RoomExtractionService : report.Rooms n'est pas retrié après le contrôle qualité. Correction par EGR Dev dans #24 (EGR-07) ; activer ce test ensuite.")]
+    [Fact]
     public void Rooms_StaySorted_EvenIfQualityCheckReordersThem()
     {
         var pipeline = new TestPipeline
