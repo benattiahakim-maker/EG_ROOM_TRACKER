@@ -14,4 +14,10 @@ public static class LogEventCodes
     public const string RoomExtractionFailed = "ROOM_EXTRACTION_FAILED";
     public const string DocumentCloseFailed = "DOCUMENT_CLOSE_FAILED";
     public const string RoomCollectionDetails = "ROOM_COLLECTION_DETAILS";
+
+    /// <summary>Préparation des volumes (EGR-16) : mode, réglage du document, activation temporaire, annulation.</summary>
+    public const string VolumeComputation = "VOLUME_COMPUTATION";
+
+    /// <summary>volumeMode compute : activation temporaire du calcul impossible ; volumes non disponibles.</summary>
+    public const string VolumeComputeFailed = "VOLUME_COMPUTE_FAILED";
 }

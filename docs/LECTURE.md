@@ -88,9 +88,29 @@ Règles pures dans `RoomQuantities` (testées sous Linux) :
 
 Surface et hauteur NaN/infinies : `null` (UnitUtils lève `ArgumentException` sur une valeur non finie ; filtrées
 avant l'appel). Une pièce non placée garde la surface lue (0 attendu). L'anomalie document `VOLUME_NOT_COMPUTED` est
-posée par le contrôle qualité (EGR-11) à partir des `volumeStatus`. Mode `compute` (EGR-16) : refusé en
-`CONFIG_INVALID` dès la validation de configuration (contrôle défensif conservé dans `VolumeCalculationService`). Les tolérances d'écart (D5) se vérifient sur le
+posée par le contrôle qualité (EGR-11) à partir des `volumeStatus`. Les tolérances d'écart (D5) se vérifient sur le
 jeu de référence (EGR-18).
+
+### Mode `compute` (EGR-16)
+
+`VolumeCalculationService.Prepare` lit `AreaVolumeSettings.ComputeVolumes` :
+
+| Réglage du document | Traitement | `volumeComputation` (`summary`) |
+| --- | --- | --- |
+| vrai | lecture directe de `Room.Volume`, sans transaction | `documentComputeVolumes: true`, `computeApplied: false`, `transactionRolledBack: null` |
+| faux | transaction temporaire : `Start()` (statut `Started` exigé), `SetClearAfterRollback(true)`, `ComputeVolumes = true`, `Document.Regenerate()`, lecture de `Room.Volume` de toutes les pièces (`OST_Rooms`) **avant** `RollBack()`, puis `RollBack()` (statut `RolledBack` vérifié) | `documentComputeVolumes: false`, `computeApplied: true`, `transactionRolledBack: true` (ou `false` si l'annulation n'est pas confirmée : log `VOLUME_COMPUTATION` en Warning) |
+
+Les volumes lus pendant la transaction sont mis en cache par ElementId (`VolumeComputationState.ComputedVolumes`) :
+après l'annulation, `Room.Volume` reflète de nouveau le réglage d'origine et n'est plus lu. Règles :
+
+| Situation (mode `compute`) | `volumeM3` | `volumeStatus` |
+| --- | --- | --- |
+| Volume lu (direct ou pendant la transaction), pièce placée, valeur finie | m³ | `computed` |
+| Pièce non placée, lecture en échec, valeur NaN/infinie ou absente du cache | `null` | `notAvailable` |
+| Activation impossible (transaction non démarrée, `InvalidOperationException`…) | `null` | `notAvailable` (+ `VOLUME_COMPUTE_FAILED`, warning) |
+
+`RegenerationFailedException` (document corrompu, lecture illégale) : annulation puis erreur globale `DOCUMENT_CORRUPTED`
+(étape `document`). Le RVT n'est jamais sauvegardé : la transaction est annulée et le document fermé sans sauvegarde.
 
 ## Limite connue
 

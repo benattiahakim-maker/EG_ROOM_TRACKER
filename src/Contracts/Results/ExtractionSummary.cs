@@ -23,6 +23,11 @@ public sealed record ExtractionSummary
 
     public required AppliedOptions Options { get; init; }
 
+    /// <summary>
+    /// Traçabilité du calcul des volumes (schéma 1.3, EGR-16) ; null si l'extraction a échoué avant la préparation des volumes.
+    /// </summary>
+    public VolumeComputationSummary? VolumeComputation { get; init; }
+
     public required RoomCounts Counts { get; init; }
 
     public required ExtractionStatus Status { get; init; }
@@ -40,6 +45,12 @@ public sealed record AppliedOptions(
     IReadOnlyList<string>? PhaseIds,
     VolumeMode VolumeMode,
     IReadOnlyList<string> SharedParameterKeys);
+
+/// <summary>
+/// Calcul des volumes (schéma 1.3) : réglage <c>ComputeVolumes</c> du document à l'ouverture (null si non lu),
+/// activation temporaire en mode <c>compute</c>, et annulation de la transaction temporaire (null sans transaction).
+/// </summary>
+public sealed record VolumeComputationSummary(bool? DocumentComputeVolumes, bool ComputeApplied, bool? TransactionRolledBack);
 
 public sealed record RoomCounts(int RoomsCollected, int RoomsExported, int RoomsWithAnomalies);
 
