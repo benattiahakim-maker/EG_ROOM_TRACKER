@@ -1,3 +1,5 @@
+using System.Text.Json.Serialization;
+
 namespace EgRoomTracker.Contracts.Results;
 
 /// <summary>
@@ -33,6 +35,14 @@ public sealed record RoomDto
     public ElementRef? Phase { get; init; }
 
     public ElementRef? DesignOption { get; init; }
+
+    /// <summary>
+    /// Identifiant du jeu de variantes (option set) de <see cref="DesignOption"/>, lu côté Revit
+    /// (<c>OPTION_SET_ID</c> de la variante) ; null hors variante ou si illisible. Donnée interne pour
+    /// DUPLICATE_NUMBER (deux variantes d'un même jeu s'excluent) ; non sérialisée, absente de <c>result.json</c>.
+    /// </summary>
+    [JsonIgnore]
+    public string? DesignOptionSetId { get; init; }
 
     /// <summary>Une entrée par clé de mapping de <c>settings.json</c>.</summary>
     public IReadOnlyDictionary<string, SharedParameterValue> SharedParameters { get; init; } =

@@ -35,35 +35,16 @@ public class RecetteFixturesTests
     }
 
     /// <summary>
-    /// Raison du saut des tests qui rejouent le vrai contrôle qualité sur les cas marqués <c>pendingImplementation</c>
-    /// dans le manifeste : règle DUPLICATE_NUMBER par contexte (phase, variante) décidée par le lead en EGR-18, dont
-    /// l'implémentation dans <c>QualityCheckService</c> est confiée à EGR Dev. Retirer le saut quand elle est fusionnée.
+    /// Jeux d'options des gabarits (<c>designOptionSets.sets</c> du manifeste : nom du jeu → ElementId des variantes),
+    /// renvoyés en table variante → jeu. Le jeu n'est pas exporté dans result.json (champ interne
+    /// <c>RoomDto.DesignOptionSetId</c>) : le manifeste le fournit au contrôle qualité. Variante absente : jeu inconnu.
     /// </summary>
-    private const string PendingDuplicateRule =
-        "En attente d'EGR Dev : règle DUPLICATE_NUMBER par contexte (phase, variante) décidée en EGR-18 " +
-        "(seules les variantes différentes d'un même jeu d'options sont exclues ; jeux différents comparés ; modèle " +
-        "principal comparé à tout) ; QualityCheckService signale encore Bureau variante A/B (même jeu) en doublon. " +
-        "Cas concernés : pendingImplementation dans docs/recette/cases.json.";
-
-    /// <summary>Cas dont l'attendu suit une règle pas encore implémentée (champ <c>pendingImplementation</c>).</summary>
-    public static TheoryData<string> CasesPendingImplementation() => Filter(pending: true);
-
-    /// <summary>Cas dont l'attendu suit le code actuel.</summary>
-    public static TheoryData<string> CasesMatchingCurrentCode() => Filter(pending: false);
-
-    private static TheoryData<string> Filter(bool pending)
-    {
-        var data = new TheoryData<string>();
-        foreach (var c in Manifest().RootElement.GetProperty("cases").EnumerateArray())
-        {
-            if (c.TryGetProperty("pendingImplementation", out _) == pending)
-            {
-                data.Add(c.GetProperty("id").GetString()!);
-            }
-        }
-
-        return data;
-    }
+    private static Dictionary<string, string> DesignOptionSets() =>
+        Manifest().RootElement.TryGetProperty("designOptionSets", out var root) && root.TryGetProperty("sets", out var sets)
+            ? sets.EnumerateObject()
+                .SelectMany(set => set.Value.EnumerateArray().Select(option => (Option: option.GetString()!, Set: set.Name)))
+                .ToDictionary(x => x.Option, x => x.Set)
+            : [];
 
     [Fact]
     public void Manifest_ListsEveryExpectedFile()
@@ -94,21 +75,27 @@ public class RecetteFixturesTests
         AssertJsonEquivalent(json, exported);
     }
 
+    /// <summary>
+    /// Rejoue le vrai contrôle qualité sur tous les cas, y compris R01, R02, R06 et R11 (règle DUPLICATE_NUMBER par
+    /// contexte phase / variante, ex-<c>pendingImplementation</c>, implémentée par la PR #45).
+    /// </summary>
     [Theory]
-    [MemberData(nameof(CasesMatchingCurrentCode))]
+    [MemberData(nameof(Cases))]
     public void Expected_ReproducesQualityCheck_AndStatus(string id) => AssertQualityCheckReproduces(id);
 
-    [Theory(Skip = PendingDuplicateRule)]
-    [MemberData(nameof(CasesPendingImplementation))]
-    public void Expected_ReproducesQualityCheck_PendingDuplicateRule(string id) => AssertQualityCheckReproduces(id);
+    [Fact]
+    public void NoCaseIsPendingImplementation() =>
+        Assert.DoesNotContain(Manifest().RootElement.GetProperty("cases").EnumerateArray(), c => c.TryGetProperty("pendingImplementation", out _));
 
     [Fact]
-    public void PendingImplementation_IsDeclaredOnlyForTheDuplicateRule()
+    public void DesignOptionSets_CoverEveryVariantOfTheCase()
     {
-        var pending = Manifest().RootElement.GetProperty("cases").EnumerateArray()
-            .Where(c => c.TryGetProperty("pendingImplementation", out _)).ToList();
-        Assert.NotEmpty(pending);
-        Assert.All(pending, c => Assert.Equal(QualityFlagCodes.DuplicateNumber, c.GetProperty("pendingImplementation").GetProperty("code").GetString()));
+        var sets = DesignOptionSets();
+        foreach (var id in CaseIds())
+        {
+            var expected = ContractJson.Deserialize(File.ReadAllText(ExpectedPath(id)));
+            Assert.All(expected.Rooms.Where(r => r.DesignOption is not null), r => Assert.True(sets.ContainsKey(r.DesignOption!.ElementId), $"{id} : jeu de la variante {r.DesignOption.ElementId} non déclaré"));
+        }
     }
 
     private static void AssertQualityCheckReproduces(string id)
@@ -125,7 +112,12 @@ public class RecetteFixturesTests
         // Entrée du contrôle qualité : sortie de la lecture (indicateurs et anomalies de lecture, anomalies document
         // hors VOLUME_NOT_COMPUTED), état du volume déduit de l'anomalie VOLUME_NOT_COMPUTED.
         var volumesComputed = expected.Anomalies.All(a => a.Code != DocumentAnomalyCodes.VolumeNotComputed);
-        var rooms = expected.Rooms.Select(r => r with { QualityFlags = r.QualityFlags.Where(ReadingCodes.Contains).ToList() }).ToList();
+        var sets = DesignOptionSets();
+        var rooms = expected.Rooms.Select(r => r with
+        {
+            QualityFlags = r.QualityFlags.Where(ReadingCodes.Contains).ToList(),
+            DesignOptionSetId = r.DesignOption is { } option ? sets.GetValueOrDefault(option.ElementId) : null,
+        }).ToList();
         var input = expected.Anomalies
             .Where(a => a.Scope == AnomalyScope.Document ? a.Code != DocumentAnomalyCodes.VolumeNotComputed : ReadingCodes.Contains(a.Code))
             .ToList();

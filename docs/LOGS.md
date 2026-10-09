@@ -57,6 +57,10 @@ par le filtre de phase, filtre appliqué). Une phase demandée absente du docume
 `CONFIG_INVALID` (`EXTRACTION_FAILED`). `LINKED_DOCUMENT_FAILURES` (Warning) compte les messages d'échec émis par des
 liens à l'ouverture.
 
+Événement qualité : `DUPLICATE_OPTION_SET_UNKNOWN` (Warning, étape `quality`, au plus une ligne) signale des
+`DUPLICATE_NUMBER` posés entre variantes différentes dont le jeu d'options n'a pas pu être lu (détail
+`optionSetUnknown: true` dans `result.json`) ; `data.roomsAffected`, `data.elementIds`.
+
 Événements de volume (EGR-16), étape `document`, après `DOCUMENT_ACCESSIBLE` :
 
 - `VOLUME_COMPUTATION` (Info ; Warning si l'annulation de la transaction temporaire n'est pas confirmée) : `data`

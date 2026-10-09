@@ -1,4 +1,5 @@
 using EgRoomTracker.Application;
+using EgRoomTracker.Application.Quality;
 using EgRoomTracker.Application.Revit;
 using EgRoomTracker.Contracts.Codes;
 using EgRoomTracker.Contracts.Configuration;
@@ -44,6 +45,46 @@ public class RoomExtractionServiceTests
             pipeline.Logs.Select(l => l.EventCode));
         var anomalies = pipeline.Logs.Single(l => l.EventCode == LogEventCodes.AnomaliesDetected);
         Assert.Equal(LogLevel.Info, anomalies.Level);
+    }
+
+    [Fact]
+    public void Run_DuplicateWithUnknownOptionSet_LogsOneWarningLine()
+    {
+        AnomalyDto Duplicate(long id, bool unknown) => new()
+        {
+            Code = QualityFlagCodes.DuplicateNumber,
+            Severity = AnomalySeverity.Warning,
+            Scope = AnomalyScope.Room,
+            ElementId = id.ToString(System.Globalization.CultureInfo.InvariantCulture),
+            Message = "Numéro 101 partagé par 2 pièces.",
+            Details = unknown
+                ? new Dictionary<string, object?> { ["number"] = "101", [QualityCheckService.OptionSetUnknownDetail] = true }
+                : new Dictionary<string, object?> { ["number"] = "101" },
+        };
+        var pipeline = new Pipeline
+        {
+            ReadRoom = room => new RoomReadResult(
+                new RoomDto { ElementId = room.ElementId.ToString(System.Globalization.CultureInfo.InvariantCulture), UniqueId = room.UniqueId, VolumeStatus = VolumeStatus.NotComputed },
+                [Duplicate(room.ElementId, unknown: room.ElementId == 412345)]),
+        };
+
+        pipeline.CreateService().Run(Pipeline.Request);
+
+        var log = Assert.Single(pipeline.Logs, l => l.EventCode == LogEventCodes.DuplicateOptionSetUnknown);
+        Assert.Equal(LogLevel.Warning, log.Level);
+        Assert.Equal(Stages.Quality, log.Stage);
+        Assert.Equal(1, log.Data!["roomsAffected"]);
+        Assert.Equal(new[] { "412345" }, (IEnumerable<string?>)log.Data["elementIds"]!);
+    }
+
+    [Fact]
+    public void Run_WithoutUnknownOptionSet_DoesNotLogDuplicateOptionSetUnknown()
+    {
+        var pipeline = new Pipeline();
+
+        pipeline.CreateService().Run(Pipeline.Request);
+
+        Assert.DoesNotContain(pipeline.Logs, l => l.EventCode == LogEventCodes.DuplicateOptionSetUnknown);
     }
 
     [Fact]

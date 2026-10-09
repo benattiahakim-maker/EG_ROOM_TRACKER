@@ -352,7 +352,7 @@ class ManifestTests(unittest.TestCase):
     def test_duplicate_numbers_follow_the_context_rule(self):
         """Règle du lead (EGR-18) : doublon si même phase et même numéro non vide, sauf entre deux variantes
         différentes d'un MÊME jeu d'options ; des variantes de jeux différents sont comparées ; une pièce du modèle
-        principal est comparée à tout. Implémentation EGR Dev en attente (cas marqués pendingImplementation)."""
+        principal est comparée à tout. Implémentée (PR #45) : plus aucun cas marqué pendingImplementation."""
         set_of = {o: name for name, options in MANIFEST["designOptionSets"]["sets"].items() for o in options}
 
         def option(r):
@@ -390,7 +390,7 @@ class ManifestTests(unittest.TestCase):
                     self.assertNotEqual(set_of[a2["designOption"]["elementId"]], set_of[c["designOption"]["elementId"]])
                     self.assertIn("DUPLICATE_NUMBER", a2["qualityFlags"])
                     self.assertIn("DUPLICATE_NUMBER", c["qualityFlags"])
-                    self.assertIn("pendingImplementation", case)
+                    self.assertNotIn("pendingImplementation", case)
         self.assertEqual({"R01", "R02", "R06", "R11"}, checked)
 
     def test_options_reflect_the_settings_when_they_are_loaded(self):
