@@ -1,0 +1,86 @@
+# Intégration continue EG_ROOM_TRACKER (EGR-15).
+# Emplacement d'activation : .github/workflows/ci.yml (copie à faire par le porteur, voir docs/PUBLISHING.md section 9).
+# Build, tests .NET et Python, validation des exemples contre le schéma, construction et contrôle des trois
+# AppBundles (artefacts). Aucune publication APS et aucun secret : le déploiement reste manuel (docs/PUBLISHING.md).
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  DOTNET_NOLOGO: "true"
+  DOTNET_CLI_TELEMETRY_OPTOUT: "true"
+  DOTNET_SKIP_FIRST_TIME_EXPERIENCE: "true"
+
+jobs:
+  build-test-package:
+    name: Build, tests et AppBundles
+    # Linux suffit : les cibles net*-windows se compilent grâce à EnableWindowsTargeting (build/Revit.props), les
+    # références Revit et DesignAutomationBridge sont des paquets NuGet publics, et les scripts sont en bash/python3.
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - name: Récupération du dépôt
+        uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+
+      - name: SDK .NET (global.json) et runtime .NET 8 des tests
+        uses: actions/setup-dotnet@v6
+        with:
+          global-json-file: global.json
+          dotnet-version: 8.0.x
+
+      - name: Python 3
+        uses: actions/setup-python@v7
+        with:
+          python-version: "3.12"
+
+      - name: Dépendance de validation des exemples
+        run: python -m pip install --disable-pip-version-check "jsonschema==4.26.0"
+
+      - name: Build de la solution (cœur, tests, EntryPoint Revit 2027)
+        run: dotnet build EgRoomTracker.sln -c Release
+
+      - name: Tests .NET
+        run: >
+          dotnet test src/Tests/EgRoomTracker.Tests.csproj -c Release --no-build
+          --logger "trx;LogFileName=tests.trx" --results-directory artifacts/test-results
+
+      - name: Tests des scripts de packaging (sans réseau)
+        run: python -m unittest discover -s src/Packaging/scripts/tests -v
+
+      - name: Exemples conformes au schéma result.json
+        run: python docs/schema/validate_examples.py
+
+      - name: AppBundles Revit 2025, 2026, 2027 (build et contrôle du contenu)
+        env:
+          PYTHON: python
+        run: bash src/Packaging/scripts/build-appbundle.sh 2025 2026 2027
+
+      - name: Artefacts AppBundles
+        uses: actions/upload-artifact@v7
+        with:
+          name: appbundles-${{ github.sha }}
+          path: artifacts/appbundles/*.zip
+          if-no-files-found: error
+          retention-days: 14
+
+      - name: Résultats des tests .NET
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: test-results-${{ github.sha }}
+          path: artifacts/test-results/
+          if-no-files-found: ignore
+          retention-days: 14

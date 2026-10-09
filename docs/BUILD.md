@@ -60,6 +60,11 @@ python3 -m unittest discover -s src/Packaging/scripts/tests
 Les cibles Windows se compilent aussi sous Linux/macOS (`EnableWindowsTargeting`), car seules des assemblies de
 référence sont utilisées. L'exécution réelle requiert Revit / Design Automation.
 
+Publication sur l'Automation API, recette, promotion, retour arrière et intégration continue :
+[`PUBLISHING.md`](PUBLISHING.md). La CI ([`docs/ci/ci.yml`](ci/ci.yml), à copier dans `.github/workflows/`) exécute le build,
+les tests .NET et Python, la validation des exemples et la construction contrôlée des trois AppBundles, sans secret
+ni déploiement.
+
 ## Tests unitaires du cœur (EGR-17)
 
 `dotnet test src/Tests/EgRoomTracker.Tests.csproj` — sans Revit ni APS, sous Windows, Linux ou macOS.
