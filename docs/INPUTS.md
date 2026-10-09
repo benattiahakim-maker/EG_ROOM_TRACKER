@@ -61,6 +61,31 @@ et ne contiennent aucun chemin absolu du WorkItem.
   - Avec 2 candidats ou plus : `RVT_AMBIGUOUS`. Le message cite au plus 10 candidats, en ordre stable, et demande de renseigner `mainModelPath`. **Aucun RVT n'est jamais choisi arbitrairement.**
 - `MainModelLocation` (EGR-06) refait un contrôle défensif sur `ResolvedMainModelPath` avant l'ouverture.
 
+## Contraintes du ZIP sur les machines APS
+
+Le ZIP est décompressé par le service APS sur une machine Windows, avant le démarrage de l'extracteur. Deux règles
+de préparation en découlent ; une erreur à ce stade n'est pas détectable par l'extracteur.
+
+- **Chemins courts (limite Windows de 260 caractères).** La documentation APS demande de préférer des chemins courts
+  pour ne pas dépasser la limite de 260 caractères des chemins Windows. Cette limite s'applique au chemin complet sur
+  la machine du service : dossier de travail du WorkItem, puis `input/`, puis le chemin relatif dans le ZIP. Le dossier
+  de travail n'est pas documenté et sa longueur n'est pas connue à l'avance. Il faut donc garder les chemins relatifs
+  du ZIP nettement plus courts que 260 caractères : peu de niveaux de dossiers, noms de dossiers et de fichiers
+  concis. Ne pas zipper l'arborescence complète du serveur de fichiers au-dessus du dossier commun du projet (D4,
+  point 1).
+- **Noms de fichiers non ASCII (accents, etc.).** La plupart des archiveurs n'enregistrent pas les noms en UTF-8 et
+  n'indiquent pas de page de code. Le service a alors besoin d'une indication pour décompresser correctement les
+  noms non ASCII. Il faut l'une des deux mesures suivantes :
+  - forcer l'UTF-8 dans l'archiveur (par exemple 7-Zip avec l'option `cu`) ;
+  - ou ajouter au ZIP un fichier vide `XYZ.codepage`, où `XYZ` est le nom ou le numéro de la page de code utilisée
+    pour les noms (par exemple `CP866.codepage` ou `866.codepage` pour le cyrillique).
+
+  Sans l'une de ces mesures, un nom accentué peut être mal décompressé : `mainModelPath` ne correspond alors plus au
+  fichier (`RVT_NOT_FOUND`), ou un lien n'est pas retrouvé (`LINK_MISSING`). En cas de doute, préférer des noms ASCII.
+
+Sources : APS, *Automation API > Developer's Guide > Restrictions* et *Automation API > Developer's Guide >
+Troubleshooting* (« Non-English filenames in ZIP files »).
+
 ## D4 — Arborescence des liens dans le ZIP (tranchée, EGR-05)
 
 1. **La racine du ZIP correspond au dossier commun au projet.** L'arborescence du serveur de fichiers est conservée sous cette racine : le RVT principal et ses liens Revit gardent leurs positions relatives.
@@ -73,5 +98,5 @@ et ne contiennent aucun chemin absolu du WorkItem.
 ### À vérifier dans un vrai WorkItem (EGR-06, EGR-14)
 
 - Comment RevitCoreConsole résout les liens en chemin relatif après décompression ; s'il se replie sur le dossier de l'hôte pour un lien en chemin absolu.
-- Comment les noms de fichiers non ASCII dans le ZIP sont décompressés : un ZIP doit porter l'indicateur UTF-8 ; ce point est à tester avec des accents.
+- Le comportement réel avec des noms accentués : ZIP en UTF-8, ZIP avec fichier `.codepage`, puis ZIP sans indication (voir « Contraintes du ZIP sur les machines APS »).
 - La sensibilité à la casse : le moteur APS tourne sous Windows, qui ne distingue pas la casse, alors que les tests tournent aussi sous Linux.
