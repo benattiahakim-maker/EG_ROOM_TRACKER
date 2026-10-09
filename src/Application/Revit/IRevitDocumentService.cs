@@ -15,7 +15,7 @@ namespace EgRoomTracker.Application.Revit;
 public interface IRevitDocumentService
 {
     /// <summary>
-    /// Ouvre le RVT principal. <see cref="ExtractionSettings.MainModelPath"/> doit être résolu par
+    /// Ouvre le RVT principal. <see cref="ExtractionSettings.ResolvedMainModelPath"/> est résolu par
     /// <c>IInputConfigurationService</c> (EGR-05), y compris pour un ZIP à RVT unique.
     /// </summary>
     DocumentDescriptor Open(ExtractionSettings settings, string inputDirectory);

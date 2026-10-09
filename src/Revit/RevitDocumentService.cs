@@ -20,7 +20,7 @@ public sealed class RevitDocumentService(RevitExecutionContext context, ILogServ
 {
     public DocumentDescriptor Open(ExtractionSettings settings, string inputDirectory)
     {
-        var (fullPath, relativePath) = MainModelLocation.Resolve(inputDirectory, settings.MainModelPath);
+        var (fullPath, relativePath) = MainModelLocation.Resolve(inputDirectory, settings.ResolvedMainModelPath);
         var fileInfo = ReadFileInfo(fullPath);
         var versionCheck = RevitVersionCompatibility.Check(fileInfo.Format, fileInfo.IsSavedInLaterVersion, context.Application.VersionNumber);
         if (versionCheck.UpgradedInMemory)
