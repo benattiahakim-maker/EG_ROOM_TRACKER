@@ -1,0 +1,43 @@
+<Project>
+  <!--
+    Isolation des références Revit par version.
+    Importé uniquement par les projets dépendants de Revit (EntryPoint, Revit).
+    Sélection : dotnet build -p:RevitVersion=2025|2026|2027 (défaut dans Directory.Build.props).
+  -->
+  <PropertyGroup>
+    <!-- Revit 2025 : .NET 8. Revit 2026 : API compilée en .NET 8, moteur APS migré vers 2026.5 / .NET 10 (chargement net8 compatible, à valider EGR-02/EGR-14). Revit 2027 : .NET 10. -->
+    <TargetFramework Condition="'$(RevitVersion)' == '2025'">net8.0-windows</TargetFramework>
+    <TargetFramework Condition="'$(RevitVersion)' == '2026'">net8.0-windows</TargetFramework>
+    <TargetFramework Condition="'$(RevitVersion)' == '2027'">net10.0-windows</TargetFramework>
+    <!-- Valeur de repli : laisse la cible EgrValidateRevitVersion signaler une version non prise en charge. -->
+    <TargetFramework Condition="'$(TargetFramework)' == ''">net8.0-windows</TargetFramework>
+
+    <PlatformTarget>x64</PlatformTarget>
+    <!-- Permet de compiler la cible Windows sur Linux/macOS (CI) : seules des assemblies de référence sont utilisées. -->
+    <EnableWindowsTargeting>true</EnableWindowsTargeting>
+    <DefineConstants>$(DefineConstants);REVIT$(RevitVersion)</DefineConstants>
+    <!-- Sorties séparées par version : bin/<RevitVersion>/<Configuration>/ (obj séparé dans Directory.Build.props). -->
+    <BaseOutputPath>bin\$(RevitVersion)\</BaseOutputPath>
+    <AppendTargetFrameworkToOutputPath>false</AppendTargetFrameworkToOutputPath>
+    <!-- Exclut les sorties des autres versions (obj/<v>, bin/<v>) des fichiers compilés. -->
+    <DefaultItemExcludes>$(DefaultItemExcludes);bin/**;obj/**</DefaultItemExcludes>
+  </PropertyGroup>
+
+  <Target Name="EgrValidateRevitVersion" BeforeTargets="Restore;_CheckForInvalidConfigurationAndPlatform"
+          Condition="'$(RevitVersion)' != '2025' And '$(RevitVersion)' != '2026' And '$(RevitVersion)' != '2027'">
+    <Error Text="RevitVersion '$(RevitVersion)' non prise en charge (attendu : 2025, 2026 ou 2027)." />
+  </Target>
+
+  <!-- Source par défaut : packages NuGet de référence. -->
+  <ItemGroup Condition="'$(RevitApiDir)' == ''">
+    <PackageReference Include="Nice3point.Revit.Api.RevitAPI" PrivateAssets="all" ExcludeAssets="runtime" />
+  </ItemGroup>
+
+  <!-- Alternative : assemblies d'une installation Revit / SDK local (ex. -p:RevitApiDir="C:\Program Files\Autodesk\Revit 2026"). -->
+  <ItemGroup Condition="'$(RevitApiDir)' != ''">
+    <Reference Include="RevitAPI">
+      <HintPath>$(RevitApiDir)\RevitAPI.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+  </ItemGroup>
+</Project>

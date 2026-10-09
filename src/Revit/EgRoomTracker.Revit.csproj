@@ -1,0 +1,10 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <!-- Adaptations Revit API (document, collecte, lecture des paramètres, volumes). Compilé par version : -p:RevitVersion=2025|2026|2027. -->
+  <Import Project="..\..\build\Revit.props" />
+  <PropertyGroup>
+    <RootNamespace>EgRoomTracker.Revit</RootNamespace>
+  </PropertyGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\Application\EgRoomTracker.Application.csproj" />
+  </ItemGroup>
+</Project>

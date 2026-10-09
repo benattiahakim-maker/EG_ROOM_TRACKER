@@ -1,0 +1,7 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <!-- DTO, configuration typée et codes du contrat. Aucune référence Revit. -->
+  <PropertyGroup>
+    <TargetFramework>$(CoreTargetFramework)</TargetFramework>
+    <RootNamespace>EgRoomTracker.Contracts</RootNamespace>
+  </PropertyGroup>
+</Project>

@@ -1,0 +1,26 @@
+<Project>
+  <!-- Propriétés communes à tous les projets de la solution. -->
+  <PropertyGroup>
+    <Product>EG_ROOM_TRACKER</Product>
+    <Company>EG</Company>
+    <Version>0.1.0</Version>
+    <LangVersion>latest</LangVersion>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
+    <Deterministic>true</Deterministic>
+    <GenerateDocumentationFile>false</GenerateDocumentationFile>
+
+    <!-- Cœur indépendant de Revit : net8.0, chargeable par les moteurs .NET 8 (Revit 2025) et .NET 10 (Revit 2026.5, 2027). -->
+    <CoreTargetFramework>net8.0</CoreTargetFramework>
+
+    <!-- Version Revit ciblée par les projets dépendants de Revit (EntryPoint, Revit). 2025, 2026 ou 2027. -->
+    <RevitVersion Condition="'$(RevitVersion)' == ''">2027</RevitVersion>
+    <IsRevitProject Condition="'$(MSBuildProjectName)' == 'EgRoomTracker.EntryPoint' Or '$(MSBuildProjectName)' == 'EgRoomTracker.Revit'">true</IsRevitProject>
+  </PropertyGroup>
+
+  <!-- Projets dépendants de Revit : restauration et objets intermédiaires séparés par version (doit précéder le SDK). -->
+  <PropertyGroup Condition="'$(IsRevitProject)' == 'true'">
+    <BaseIntermediateOutputPath>obj\$(RevitVersion)\</BaseIntermediateOutputPath>
+  </PropertyGroup>
+</Project>

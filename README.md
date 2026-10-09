@@ -7,6 +7,7 @@ Extraction des pièces d’une maquette RVT reçue dans un ZIP : identité, nom,
 ## Documentation
 
 - [Spécifications techniques](docs/SPECIFICATIONS.md) (v0.2)
+- [Build et tests](docs/BUILD.md)
 - [Schéma JSON du résultat](docs/schema/result.schema.json)
 - [Exemple de configuration](docs/examples/settings.example.json) et [exemple de résultat](docs/examples/result.example.json), données illustratives
 - [Backlog et issues GitHub](docs/BACKLOG.md) — [détail des cartes](docs/TRELLO_BACKLOG.md) — [tableau Trello](https://trello.com/b/dsFoEv4N/egroomtracker)
@@ -15,7 +16,7 @@ Validation de l’exemple contre le schéma : `pip install jsonschema && python 
 
 ## État
 
-Phase de spécification. Le composant Revit et les AppBundles ne sont pas encore implémentés. Les 18 cartes sont disponibles dans les issues GitHub et sur Trello.
+Solution C# organisée par services (`EgRoomTracker.sln`, voir [Build et tests](docs/BUILD.md)) ; services Revit, export et AppBundles en cours d'implémentation. Les 18 cartes sont disponibles dans les issues GitHub et sur Trello.
 
 ## Principes
 
