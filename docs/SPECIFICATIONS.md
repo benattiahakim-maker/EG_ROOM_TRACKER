@@ -97,7 +97,7 @@ Les appels Revit API restent sur le contexte d'exécution autorisé : aucun trai
 
 Interdiction de `MessageBox`, `TaskDialog`, fenêtres, sélecteurs de fichiers et demandes de confirmation. Toute information passe par `ILogService`.
 
-Les logs ne font pas partie du résultat : ils sont écrits **sur la console uniquement**, une ligne JSON par événement, et récupérés via le rapport APS du WorkItem. Champs : `timestampUtc`, `level` (`Info`, `Warning`, `Error`), `eventCode`, `correlationId`, `stage`, `message`, `documentPath` relatif, `roomElementId` si pertinent, durée et exception détaillée si présente. Flush en fin de traitement et dans le bloc de terminaison. Ne pas journaliser tokens, secrets ni URL signées. Un fichier de log de débogage séparé n'est pas produit dans le MVP ; il pourra être ajouté comme sortie facultative sans modifier le contrat `result.json` (décision D8).
+Les logs ne font pas partie du résultat : ils sont écrits **sur la console uniquement**, une ligne JSON par événement, et récupérés via le rapport APS du WorkItem. Champs : `timestampUtc`, `level` (`Info`, `Warning`, `Error`), `eventCode`, `correlationId`, `stage`, `message`, `documentPath` relatif, `roomElementId` si pertinent, durée et exception détaillée si présente. Flush en fin de traitement et dans le bloc de terminaison. Ne pas journaliser tokens, secrets ni URL signées. Aucun fichier de log de débogage n'est produit : console uniquement (décision D8, tranchée). Le champ `stage` des logs et de `summary.errors` utilise les identifiants d'étape de la section 9.2.
 
 Événements minimaux : début, configuration validée, document accessible, collecte terminée, anomalies, export terminé, échec et bilan final. Une pièce défectueuse ne doit pas produire des milliers de messages redondants : détail limité et compteur agrégé. Le détail exploitable des anomalies est porté par `result.json`.
 
@@ -148,20 +148,22 @@ Les codes de portée pièce figurent dans `rooms[].qualityFlags` et sont détail
 
 ### 9.2 Erreurs globales
 
-Une erreur globale termine le traitement avec `status: failed` ; le code figure dans `summary.errors`.
+Une erreur globale termine le traitement avec `status: failed` ; le code figure dans `summary.errors`, avec l'identifiant d'étape (`stage`).
 
-| Code | Étape | Cause |
+| Code | `stage` | Cause |
 | --- | --- | --- |
-| `CONFIG_INVALID` | configuration | `settings.json` absent, illisible ou non conforme |
-| `CONFIG_SCHEMA_UNSUPPORTED` | configuration | Version majeure de `schemaVersion` non prise en charge |
-| `PATH_OUTSIDE_INPUT` | configuration | Chemin sortant du répertoire d'entrée |
-| `RVT_NOT_FOUND` | entrée | Aucun RVT, ou `mainModelPath` introuvable |
-| `RVT_AMBIGUOUS` | entrée | Plusieurs RVT sans `mainModelPath` |
-| `REVIT_VERSION_INCOMPATIBLE` | document | RVT enregistré dans une version postérieure au moteur ou non ouvrable par lui |
-| `DOCUMENT_OPEN_FAILED` | document | Échec d'ouverture ou d'accès au document |
-| `DOCUMENT_CORRUPTED` | document | Corruption ou erreur bloquante à l'ouverture |
-| `EXPORT_FAILED` | export | Écriture ou finalisation de `result.json` impossible |
-| `UNEXPECTED_ERROR` | toutes | Exception non prévue hors du périmètre d'une pièce |
+| `CONFIG_INVALID` | `configuration` (configuration) | `settings.json` absent, illisible ou non conforme |
+| `CONFIG_SCHEMA_UNSUPPORTED` | `configuration` (configuration) | Version majeure de `schemaVersion` non prise en charge |
+| `PATH_OUTSIDE_INPUT` | `configuration` (configuration) | Chemin sortant du répertoire d'entrée |
+| `RVT_NOT_FOUND` | `input` (entrée) | Aucun RVT, ou `mainModelPath` introuvable |
+| `RVT_AMBIGUOUS` | `input` (entrée) | Plusieurs RVT sans `mainModelPath` |
+| `REVIT_VERSION_INCOMPATIBLE` | `document` (document) | RVT enregistré dans une version postérieure au moteur ou non ouvrable par lui |
+| `DOCUMENT_OPEN_FAILED` | `document` (document) | Échec d'ouverture ou d'accès au document |
+| `DOCUMENT_CORRUPTED` | `document` (document) | Corruption ou erreur bloquante à l'ouverture |
+| `EXPORT_FAILED` | `export` (export) | Écriture ou finalisation de `result.json` impossible |
+| `UNEXPECTED_ERROR` | étape en cours : `startup`, `configuration`, `input`, `document`, `collection`, `quality`, `export` ou `completion` (toutes) | Exception non prévue hors du périmètre d'une pièce |
+
+Identifiants d'étape : `startup` (démarrage), `configuration` (configuration), `input` (entrée), `document` (document), `collection` (collecte), `quality` (qualité), `export` (export), `completion` (bilan), `logging` (journal, logs uniquement).
 
 ### 9.3 Statuts finaux
 
@@ -321,14 +323,14 @@ Chaque décision est tranchée et documentée dans la carte indiquée, puis repo
 
 | ID | Décision à prendre | Carte |
 | --- | --- | --- |
-| D1 | Stratégie d'ouverture du RVT (`DesignAutomationData.RevitDoc` ou ouverture explicite), propriétaire de fermeture, traitement des maquettes collaboratives (détachement, worksets) | EGR-06 |
-| D2 | Politique des avertissements et erreurs Revit à l'ouverture : avertissements tolérés, journalisés en `REVIT_WARNING_ON_OPEN`, ou bloquants | EGR-06 |
+| D1 | Stratégie d'ouverture du RVT (`DesignAutomationData.RevitDoc` ou ouverture explicite), propriétaire de fermeture, traitement des maquettes collaboratives (détachement, worksets) — **Proposition EGR-06, à valider** : ouverture explicite du RVT principal (Activity sans `/i`), détachement avec conservation des worksets et ouverture de tous les worksets, fermeture sans sauvegarde par l'application ; détail dans [`docs/DOCUMENT.md`](DOCUMENT.md) | EGR-06 |
+| D2 | Politique des avertissements et erreurs Revit à l'ouverture : avertissements tolérés, journalisés en `REVIT_WARNING_ON_OPEN`, ou bloquants — **Proposition EGR-06, à valider** : avertissements tolérés et agrégés en `REVIT_WARNING_ON_OPEN` ; erreurs et corruptions bloquantes, annulation et `DOCUMENT_CORRUPTED` ; détail dans [`docs/DOCUMENT.md`](DOCUMENT.md) | EGR-06 |
 | D3 | Choix métier par défaut de la section 12 (document principal, phases, hauteur non bornée, occupation et finitions textuelles, mode de volume) | EGR-01 |
 | D4 | Arborescence des liens dans le ZIP et résolution de leurs chemins | EGR-05 |
 | D5 | Tolérances de comparaison des quantités, confirmées sur le jeu de référence | EGR-18 |
 | D6 | Comportement de sortie en échec : remontée de `result.json` par APS quand le SDK signale l'échec, ou alternative documentée | EGR-13 |
 | D7 | Précision numérique de sérialisation (valeur brute convertie ou arrondi fixe) | EGR-01 |
-| D8 | Besoin d'un fichier de log de débogage facultatif en plus de la console | EGR-04 |
+| D8 | ~~Besoin d'un fichier de log de débogage facultatif en plus de la console~~ — **Tranchée (EGR-04)** : console uniquement, aucun fichier de log de débogage dans le MVP | EGR-04 |
 | D9 | Objectifs de performance (temps, taille de maquette) après mesure | EGR-14 |
 
 ## 12. Hypothèses métier à confirmer

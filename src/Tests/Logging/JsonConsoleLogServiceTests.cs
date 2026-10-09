@@ -29,6 +29,25 @@ public class JsonConsoleLogServiceTests
     }
 
     [Fact]
+    public void Log_WritesPureAsciiLines()
+    {
+        var (log, output) = Create();
+
+        log.Log(new LogEvent(LogLevel.Info, "TEST", "collection", "Pièce « Réserve » — étage R+0")
+        {
+            DocumentPath = "Projet/Bâtiment.rvt",
+            Data = new Dictionary<string, object?> { ["nom"] = "Local technique é" },
+        });
+
+        var text = output.ToString();
+        Assert.All(text, c => Assert.True(c < 128, $"Caractère non ASCII : U+{(int)c:X4}"));
+        Assert.Contains("\\u00E9", text, StringComparison.OrdinalIgnoreCase);
+        var line = Parse(Lines(output).Single());
+        Assert.Equal("Pièce « Réserve » — étage R+0", line.GetProperty("message").GetString());
+        Assert.Equal("Projet/Bâtiment.rvt", line.GetProperty("documentPath").GetString());
+    }
+
+    [Fact]
     public void Log_WritesContextDurationDataAndException()
     {
         var (log, output) = Create();

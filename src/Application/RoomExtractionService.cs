@@ -1,4 +1,5 @@
 using System.Diagnostics;
+using System.Globalization;
 using System.Reflection;
 using EgRoomTracker.Application.Configuration;
 using EgRoomTracker.Application.Quality;
@@ -84,13 +85,20 @@ public sealed class RoomExtractionService
             var volumeState = _volume.Prepare(settings.VolumeMode);
 
             stage = Stages.Collection;
-            var roomIds = _collection.CollectRoomIds(settings.PhaseIds);
-            roomsCollected = roomIds.Count;
-            var rooms = new List<RoomDto>(roomIds.Count);
+            var collected = _collection.CollectRooms(settings.PhaseIds);
+            roomsCollected = collected.Count;
+            var rooms = new List<RoomDto>(collected.Count);
             var anomalies = new List<AnomalyDto>(document.Anomalies);
-            foreach (var roomId in roomIds.OrderBy(id => id))
+            var roomErrors = 0;
+            foreach (var room in collected.OrderBy(r => r.ElementId))
             {
-                var read = _reader.Read(roomId, settings.SharedParameters, volumeState);
+                var read = ReadRoom(room, settings.SharedParameters, volumeState, document.Source.RelativePath);
+                if (read is null)
+                {
+                    roomErrors++;
+                    read = ExtractionErrorRoom(room);
+                }
+
                 rooms.Add(read.Room);
                 anomalies.AddRange(read.Anomalies);
             }
@@ -107,7 +115,11 @@ public sealed class RoomExtractionService
                 LogAnomalySummary(report.Anomalies);
             }
 
-            result = BuildResult(request, settings, document, startedAt, report.Status, report.Rooms, report.Anomalies, roomsCollected, []);
+            // Une pièce en erreur n'est jamais présentée comme un succès sans réserve (section 6).
+            var status = roomErrors > 0 && report.Status == ExtractionStatus.Succeeded
+                ? ExtractionStatus.SucceededWithWarnings
+                : report.Status;
+            result = BuildResult(request, settings, document, startedAt, status, report.Rooms, report.Anomalies, roomsCollected, []);
         }
         catch (ExtractionFailedException ex)
         {
@@ -120,6 +132,9 @@ public sealed class RoomExtractionService
             LogFailure(error, ex);
             result = BuildResult(request, settings, document, startedAt, ExtractionStatus.Failed, [], [], roomsCollected, [error]);
         }
+
+        // Fermeture du document par son propriétaire (D1) dès la fin de la lecture, avant l'export.
+        CloseDocument();
 
         try
         {
@@ -158,6 +173,63 @@ public sealed class RoomExtractionService
                 },
             };
         }
+    }
+
+    private void CloseDocument()
+    {
+        try
+        {
+            _document.Close();
+        }
+        catch (Exception ex)
+        {
+            // Sans effet sur le résultat : le RVT source n'est jamais sauvegardé.
+            _log.Log(new LogEvent(LogLevel.Warning, LogEventCodes.DocumentCloseFailed, Stages.Document, "Fermeture du document impossible.")
+            {
+                Exception = ex,
+            });
+        }
+    }
+
+    /// <summary>Lit une pièce ; retourne null si une exception limitée à la pièce survient (filet de sécurité).</summary>
+    private RoomReadResult? ReadRoom(CollectedRoom room, IReadOnlyList<SharedParameterMapping> sharedParameters, VolumeComputationState volumeState, string documentPath)
+    {
+        try
+        {
+            return _reader.Read(room, sharedParameters, volumeState);
+        }
+        catch (Exception ex)
+        {
+            _log.Log(new LogEvent(LogLevel.Warning, LogEventCodes.RoomExtractionFailed, Stages.Collection, "Lecture de la pièce impossible ; identité exportée, indicateur EXTRACTION_ERROR.")
+            {
+                DocumentPath = documentPath,
+                RoomElementId = room.ElementId.ToString(CultureInfo.InvariantCulture),
+                Exception = ex,
+            });
+            return null;
+        }
+    }
+
+    /// <summary>Pièce réduite à son identité, champs illisibles à null (section 6).</summary>
+    private static RoomReadResult ExtractionErrorRoom(CollectedRoom room)
+    {
+        var elementId = room.ElementId.ToString(CultureInfo.InvariantCulture);
+        var dto = new RoomDto
+        {
+            ElementId = elementId,
+            UniqueId = room.UniqueId,
+            VolumeStatus = VolumeStatus.NotAvailable,
+            QualityFlags = [QualityFlagCodes.ExtractionError],
+        };
+        var anomaly = new AnomalyDto
+        {
+            Code = QualityFlagCodes.ExtractionError,
+            Severity = AnomalySeverity.Error,
+            Scope = AnomalyScope.Room,
+            ElementId = elementId,
+            Message = "Erreur de lecture limitée à la pièce ; identité exportée, champs illisibles à null.",
+        };
+        return new RoomReadResult(dto, [anomaly]);
     }
 
     private void LogFailure(GlobalError error, Exception exception) =>
@@ -233,7 +305,7 @@ public sealed class RoomExtractionService
             Duration = duration,
             Data = new Dictionary<string, object?>
             {
-                ["status"] = summary.Status.ToString(),
+                ["status"] = ToCamelCase(summary.Status.ToString()),
                 ["roomsCollected"] = summary.Counts.RoomsCollected,
                 ["roomsExported"] = summary.Counts.RoomsExported,
                 ["roomsWithAnomalies"] = summary.Counts.RoomsWithAnomalies,
@@ -241,6 +313,10 @@ public sealed class RoomExtractionService
             },
         });
     }
+
+    /// <summary>Statut au format de <c>result.json</c> (<c>succeededWithWarnings</c>).</summary>
+    internal static string ToCamelCase(string value) =>
+        string.IsNullOrEmpty(value) ? value : char.ToLowerInvariant(value[0]) + value[1..];
 
     private static string ReadExtractorVersion()
     {

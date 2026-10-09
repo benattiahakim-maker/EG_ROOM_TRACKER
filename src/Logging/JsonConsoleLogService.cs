@@ -22,7 +22,8 @@ public sealed class JsonConsoleLogService : ILogService, IDisposable
 
     private static readonly JsonWriterOptions WriterOptions = new()
     {
-        Encoder = JavaScriptEncoder.UnsafeRelaxedJsonEscaping,
+        // Encodeur par défaut : lignes ASCII pures (accents en \uXXXX), sûres pour le rapport APS.
+        Encoder = JavaScriptEncoder.Default,
         Indented = false,
     };
 

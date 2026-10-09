@@ -9,7 +9,7 @@ public sealed class RoomCollectionService(RevitExecutionContext context) : IRoom
     /// <summary>Catégorie collectée : pièces uniquement (pas d'espaces MEP, surfaces ni étiquettes).</summary>
     internal const BuiltInCategory RoomCategory = BuiltInCategory.OST_Rooms;
 
-    public IReadOnlyList<long> CollectRoomIds(IReadOnlyList<string>? phaseIds)
+    public IReadOnlyList<CollectedRoom> CollectRooms(IReadOnlyList<string>? phaseIds)
     {
         _ = context;
         throw new NotImplementedException("EGR-07 : collecte de toutes les pièces.");

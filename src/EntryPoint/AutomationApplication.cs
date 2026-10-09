@@ -28,10 +28,12 @@ public sealed class AutomationApplication : IExternalDBApplication
     private static void OnDesignAutomationReady(object? sender, DesignAutomationReadyEventArgs e)
     {
         e.Succeeded = false;
-        var request = ActivityContract.CreateRequest(e.DesignAutomationData);
-        using var log = new JsonConsoleLogService(request.CorrelationId);
+        // Corrélation créée avant toute adaptation du contexte : le journal existe même si celle-ci échoue.
+        var correlationId = $"run-{Guid.NewGuid():N}";
+        using var log = new JsonConsoleLogService(correlationId);
         try
         {
+            var request = ActivityContract.CreateRequest(e.DesignAutomationData) with { CorrelationId = correlationId };
             var service = CompositionRoot.CreateExtractionService(e.DesignAutomationData, log);
             var result = service.Run(request);
             e.Succeeded = result.Summary.Status != ExtractionStatus.Failed;
