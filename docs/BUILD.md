@@ -17,6 +17,8 @@
 | `EgRoomTracker.Revit` | `src/Revit` | par version | oui — implémentations Revit API |
 | `EgRoomTracker.EntryPoint` | `src/EntryPoint` | par version | oui — `AutomationApplication`, assembly `EgRoomTracker.dll` |
 | `EgRoomTracker.Tests` | `src/Tests` | `net8.0` | non — tests unitaires hors Revit/APS |
+| `EgRoomTracker.Aps` | `tools/EgRoomTracker.Aps` | `net8.0` | non — client APS des outils développeur (EGR-19/EGR-20, voir [`tools/EgRoomTracker.Aps/README.md`](../tools/EgRoomTracker.Aps/README.md)) |
+| `EgRoomTracker.Aps.Tests` | `tools/EgRoomTracker.Aps.Tests` | `net8.0` | non — tests sur HTTP simulé |
 | — | `src/Packaging` | — | manifestes, définitions d'AppBundle et d'Activity, scripts d'assemblage, de contrôle et de publication (EGR-13, voir [`src/Packaging/README.md`](../src/Packaging/README.md)) |
 
 Dépendances : `Contracts` ← `Export` ← `Application` (← `Logging`) ← `Revit` ← `EntryPoint`. Le cœur ne référence jamais
@@ -44,7 +46,7 @@ Sorties séparées : `src/<Projet>/bin/<RevitVersion>/<Configuration>/`, `obj/<R
 
 ```bash
 dotnet build EgRoomTracker.sln                      # cœur + Revit 2027
-dotnet test EgRoomTracker.sln                       # tests du cœur
+dotnet test EgRoomTracker.sln                       # tests du cœur et de la bibliothèque APS
 for v in 2025 2026 2027; do
   dotnet build src/EntryPoint/EgRoomTracker.EntryPoint.csproj -c Release -p:RevitVersion=$v
 done
