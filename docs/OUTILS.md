@@ -39,10 +39,13 @@ APS.
 2. Noter le **Client ID** et le **Client Secret**. Le secret ne doit jamais aller dans le dépôt, dans un fichier
    versionné ou dans un message.
 3. Choisir un **nickname** : un nom court, unique chez APS, qui préfixe tous les identifiants
-   (`<nickname>.ExtractRooms_R2026+test`). Il ne peut être attribué **que tant que l'application n'a aucune donnée**,
-   donc avant la première publication. Aucun outil du dépôt ne le crée. Voici l'appel une fois pour toutes
-   (`PATCH /forgeapps/me`, documentation de l'Automation API), dans une session PowerShell où `APS_CLIENT_ID` et
-   `APS_CLIENT_SECRET` sont définis (section 2) :
+   (`<nickname>.ExtractRooms_R2026+test`). Lettres, chiffres et `_` uniquement. Il ne peut être attribué **que tant
+   que l'application n'a aucune donnée**, donc avant la première publication : c'est une opération unique. Il sera
+   attribué avec DaManager, bouton **Définir le nickname…** (section 4, étape 2), une fois les variables définies
+   (section 2) et le dépôt construit (section 3).
+
+   Secours, sans DaManager : le même appel (`PATCH /forgeapps/me`, documentation de l'Automation API) en PowerShell,
+   dans une session où `APS_CLIENT_ID` et `APS_CLIENT_SECRET` sont définis :
 
    ```powershell
    $basic = [Convert]::ToBase64String([Text.Encoding]::UTF8.GetBytes("$($env:APS_CLIENT_ID):$($env:APS_CLIENT_SECRET)"))
@@ -54,7 +57,8 @@ APS.
    Remove-Variable token, basic
    ```
 
-   Une erreur `409 Conflict` signifie que ce nickname est déjà pris : en choisir un autre.
+   Une erreur `409 Conflict` signifie que ce nickname est déjà pris par une autre application, ou que l'application a
+   déjà des données.
 
 ## 2. Variables d'environnement
 
@@ -137,9 +141,17 @@ dotnet run --project tools\EgRoomTracker.DaManager\EgRoomTracker.DaManager.cspro
 1. **Vérifier l'en-tête** : la source des identifiants (`APS_CLIENT_ID / APS_CLIENT_SECRET (OAuth 2-legged)`), l'URL
    de l'API et le **commit** du dépôt.
 2. **Configuration** : nickname, racine du dépôt, dossier des ZIP (`artifacts\appbundles`), versions Revit cochées.
+   **Premier déploiement seulement** : saisir le nickname choisi (section 1) dans le champ Nickname et cliquer sur
+   **Définir le nickname…**. Le plan montre le nickname actuel (« aucun nickname » pour une application neuve), le
+   nickname cible, la requête `PATCH /forgeapps/me` et l'avertissement : opération unique, acceptée seulement tant que
+   l'application n'a aucune donnée. Cliquer sur **Confirmer** ; DaManager relit ensuite le nickname. Si
+   `APS_NICKNAME` n'était pas encore défini, le définir maintenant (section 2) pour les lancements suivants.
 3. **Actualiser** : la liste des engines `Autodesk.Revit+2025/2026/2027` doit être complète. Si un engine manque,
    décocher cette version (PUBLISHING section 4). Au premier déploiement, toutes les ressources sont « inexistant ».
-4. **Journal de publication** : vérifier que le champ « Fichier » pointe sur le dossier OneDrive partagé.
+4. **Journal de publication** : vérifier que le champ « Fichier » pointe sur le dossier OneDrive partagé. Le
+   fichier est partagé en « dernier écrit gagnant » : DaManager le relit juste avant d'écrire et fusionne les lignes,
+   mais deux postes ne doivent pas publier en même temps, et il faut laisser OneDrive synchroniser entre deux
+   publications (détails : PUBLISHING section 8).
 5. **Publier en test** : DaManager contrôle les ZIP puis affiche le plan (création des AppBundles et des Activities,
    alias `test`). Le relire et cliquer sur **Confirmer**. Rien n'est écrit sans cette confirmation.
 6. L'état est relu automatiquement. Le tableau doit montrer `EgRoomTracker_R<année>` et `ExtractRooms_R<année>` en
@@ -199,4 +211,6 @@ dotnet run --project tools\EgRoomTracker.WorkItemRunner\EgRoomTracker.WorkItemRu
 | `409` à la création du bucket | clé de bucket déjà prise par une autre application : choisir un autre `APS_BUCKET` |
 | « Bucket … invalide » | clé hors de `[-_.a-z0-9]{3,128}` (majuscules, espaces…) |
 | WorkItem en échec, `result.json` absent | lire l'onglet Rapport APS ; c'est aussi le comportement à relever pour D6 |
+| `409` sur « Définir le nickname… » | nickname déjà pris par une autre application : en choisir un autre ; ou application qui a déjà des données : garder le nickname actuel (seul `DELETE /forgeapps/me`, qui efface tout, permettrait d'en changer) |
+| Copie en conflit du journal dans OneDrive (`publication-journal-<poste>.json`) | deux postes ont écrit presque en même temps : DaManager « Importer… » cette copie (fusion sans doublon), puis la supprimer |
 | Journal « illisible » dans DaManager | fichier modifié à la main ou corrompu : corriger ou restaurer la version OneDrive précédente. Le nettoyage est bloqué tant qu'il est illisible |

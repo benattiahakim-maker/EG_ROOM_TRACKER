@@ -43,6 +43,55 @@ public sealed class DesignAutomationClient
 
     public static string RevitEngine(string revitVersion) => $"Autodesk.Revit+{revitVersion}";
 
+    // ---- ForgeApps (nickname) -------------------------------------------------------------------------------------
+
+    /// <summary>
+    /// <c>GET /forgeapps/me</c> : nickname de l'application, ou son ID client si aucun nickname n'est défini (la réponse
+    /// est une chaîne JSON).
+    /// </summary>
+    public async Task<string> GetNicknameAsync(CancellationToken cancellationToken = default)
+    {
+        var response = await _http.CallAsync(HttpMethod.Get, "/forgeapps/me", null, cancellationToken).ConfigureAwait(false);
+        return response.Body is JsonValue value && value.TryGetValue<string>(out var nickname) && !string.IsNullOrWhiteSpace(nickname)
+            ? nickname.Trim()
+            : throw new ApsException("GET /forgeapps/me : nickname absent de la réponse.");
+    }
+
+    /// <summary>
+    /// <c>PATCH /forgeapps/me</c> avec <c>{"nickname": "…"}</c> (nickname dans le corps, pas dans l'URL). Accepté
+    /// seulement si l'application n'a encore aucune donnée Design Automation ; ensuite, seul <c>DELETE /forgeapps/me</c>
+    /// (qui supprime toutes les données) permet d'en changer. Nickname déjà pris : 409 Conflict.
+    /// </summary>
+    public async Task SetNicknameAsync(string nickname, CancellationToken cancellationToken = default)
+    {
+        if (!IsValidNickname(nickname))
+        {
+            throw new ApsException($"nickname « {nickname} » refusé : lettres, chiffres et « _ » uniquement ({MaxNicknameLength} caractères au plus).");
+        }
+
+        try
+        {
+            await _http.CallAsync(HttpMethod.Patch, "/forgeapps/me", new JsonObject { ["nickname"] = nickname }, [HttpStatusCode.OK, HttpStatusCode.NoContent], cancellationToken).ConfigureAwait(false);
+        }
+        catch (ApsException exception) when (exception.StatusCode == HttpStatusCode.Conflict)
+        {
+            throw new ApsException(
+                $"PATCH /forgeapps/me : HTTP 409, nickname « {nickname} » refusé : déjà utilisé par une autre application, ou application qui a déjà des données Design Automation.",
+                HttpStatusCode.Conflict,
+                exception);
+        }
+    }
+
+    /// <summary>Longueur maximale acceptée par les outils (règle prudente, la documentation APS n'en fixe pas).</summary>
+    public const int MaxNicknameLength = 64;
+
+    /// <summary>
+    /// Règle prudente des outils : lettres ASCII, chiffres et « _ », comme les identifiants d'AppBundle et d'Activity
+    /// (le nickname préfixe <c>nickname.Activity+alias</c> : ni point, ni « + », ni espace).
+    /// </summary>
+    public static bool IsValidNickname(string? nickname) =>
+        !string.IsNullOrEmpty(nickname) && nickname.Length <= MaxNicknameLength && nickname.All(c => char.IsAsciiLetterOrDigit(c) || c == '_');
+
     // ---- Lecture des ressources ----------------------------------------------------------------------------------
 
     /// <summary><c>GET /appbundles</c> ou <c>GET /activities</c> : identifiants qualifiés, toutes pages.</summary>

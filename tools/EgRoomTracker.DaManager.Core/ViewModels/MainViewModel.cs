@@ -24,6 +24,7 @@ public sealed class MainViewModel : ObservableObject
     private readonly IFileDialogService? _files;
     private readonly TimeProvider _time;
     private readonly SynchronizationContext? _uiContext;
+    private DesignAutomationClient? _client;
     private DaManagerService? _service;
     private string _nickname;
     private string _repositoryRoot;
@@ -70,6 +71,7 @@ public sealed class MainViewModel : ObservableObject
             RepositoryRoot = _files?.PickFolder("Racine du dépôt EG_ROOM_TRACKER", RepositoryRoot) ?? RepositoryRoot;
             return Task.CompletedTask;
         });
+        SetNicknameCommand = new AsyncRelayCommand(() => RunAsync("Définition du nickname", SetNicknameCoreAsync), () => !IsBusy);
         ImportJournalCommand = new AsyncRelayCommand(() => RunAsync("Import du journal", ImportJournalCoreAsync), () => !IsBusy);
         ExportJournalCommand = new AsyncRelayCommand(() => RunAsync("Export du journal", ExportJournalCoreAsync), () => !IsBusy);
         ReloadJournal();
@@ -106,6 +108,9 @@ public sealed class MainViewModel : ObservableObject
     public AsyncRelayCommand BrowseBundleDirectoryCommand { get; }
 
     public AsyncRelayCommand BrowseRepositoryCommand { get; }
+
+    /// <summary>« Définir le nickname » : plan (nickname actuel, cible, avertissements), confirmation, PATCH /forgeapps/me.</summary>
+    public AsyncRelayCommand SetNicknameCommand { get; }
 
     public AsyncRelayCommand ImportJournalCommand { get; }
 
@@ -327,8 +332,8 @@ public sealed class MainViewModel : ObservableObject
 
         try
         {
-            var journal = PublicationJournal.Load(JournalPath).Merge(entries);
-            journal.Save(JournalPath);
+            // Journal partagé : relu juste avant l'écriture, fusion par identifiant (lignes d'autres postes conservées).
+            var journal = new PublicationJournal(entries).SaveMerged(JournalPath);
             ShowJournal(journal);
             foreach (var entry in entries)
             {
@@ -350,11 +355,10 @@ public sealed class MainViewModel : ObservableObject
         }
 
         var imported = PublicationJournal.Import(source, File.ReadAllText(source));
-        var current = PublicationJournal.Load(target);
-        var merged = current.Merge(imported.Entries);
-        merged.Save(target);
+        var known = PublicationJournal.Load(target).Entries.Count;
+        var merged = imported.SaveMerged(target);
         ShowJournal(merged);
-        AddLog("info", $"Journal importé depuis {Path.GetFileName(source)} : {imported.Entries.Count} ligne(s) lue(s), {merged.Entries.Count - current.Entries.Count} nouvelle(s).");
+        AddLog("info", $"Journal importé depuis {Path.GetFileName(source)} : {imported.Entries.Count} ligne(s) lue(s), {merged.Entries.Count - known} nouvelle(s).");
         return Task.CompletedTask;
     }
 
@@ -396,6 +400,42 @@ public sealed class MainViewModel : ObservableObject
     {
         Replace(Journal, journal.Entries.Reverse());
         JournalStatus = $"{journal.Entries.Count} ligne(s)" + (note is null ? string.Empty : $" ({note})");
+    }
+
+    /// <summary>
+    /// Nickname de l'application : lecture (GET /forgeapps/me et ressources existantes), plan, confirmation, puis
+    /// PATCH /forgeapps/me et relecture. Le nickname cible est celui du champ Nickname.
+    /// </summary>
+    private async Task SetNicknameCoreAsync()
+    {
+        var target = Nickname;
+        if (!DesignAutomationClient.IsValidNickname(target))
+        {
+            throw new InvalidOperationException($"Saisir le nickname voulu dans le champ Nickname : lettres, chiffres et « _ » uniquement ({DesignAutomationClient.MaxNicknameLength} caractères au plus).");
+        }
+
+        var client = Client();
+        var current = await client.GetNicknameAsync();
+        if (current == target)
+        {
+            AddLog("info", $"Le nickname de l'application est déjà « {target} » : rien à faire.");
+            return;
+        }
+
+        // Ressources qualifiées par le nickname actuel (ou l'ID client) : celles de l'application.
+        var owned = (await client.ListAsync(DaResourceKind.AppBundle)).Concat(await client.ListAsync(DaResourceKind.Activity))
+            .Count(id => id.StartsWith(current + ".", StringComparison.Ordinal));
+        var plan = PlanBuilder.SetNickname(current, target, _options.Aps.ClientId, owned);
+        if (await ConfirmAsync(plan))
+        {
+            await client.SetNicknameAsync(target);
+            if (await client.GetNicknameAsync() != target)
+            {
+                throw new ApsException("PATCH /forgeapps/me accepté, mais GET /forgeapps/me renvoie un autre nickname : vérifier sur APS avant de publier.");
+            }
+
+            AddLog("info", $"Nickname de l'application : « {target} ». Définir APS_NICKNAME={target} (variable utilisateur) pour les prochains lancements.");
+        }
     }
 
     private async Task SetAliasCoreAsync()
@@ -490,11 +530,13 @@ public sealed class MainViewModel : ObservableObject
             throw new InvalidOperationException("Racine du dépôt introuvable (src/Packaging/definitions) : la choisir ou définir EGR_REPO_ROOT.");
         }
 
-        var tokens = _options.Aps.CreateTokenProvider(_httpClient, ApsScopes.DesignAutomation);
-        var client = new DesignAutomationClient(_httpClient, tokens, _options.Aps.DaBaseUrl);
-        _service = new DaManagerService(client, DefinitionLoader.ForRepository(RepositoryRoot), message => AddLog("info", message));
+        _service = new DaManagerService(Client(), DefinitionLoader.ForRepository(RepositoryRoot), message => AddLog("info", message));
         return _service;
     }
+
+    /// <summary>Client Automation API (ne dépend pas du dépôt : sert aussi au nickname).</summary>
+    private DesignAutomationClient Client() =>
+        _client ??= new DesignAutomationClient(_httpClient, _options.Aps.CreateTokenProvider(_httpClient, ApsScopes.DesignAutomation), _options.Aps.DaBaseUrl);
 
     private string RequireNickname() =>
         string.IsNullOrEmpty(Nickname) ? throw new InvalidOperationException("APS_NICKNAME est obligatoire (champ Nickname).") : Nickname;
@@ -554,7 +596,7 @@ public sealed class MainViewModel : ObservableObject
 
     private void RaiseCanExecuteChanged()
     {
-        foreach (var command in new[] { RefreshCommand, PublishCommand, PromoteCommand, SetAliasCommand, CleanupCommand, ImportJournalCommand, ExportJournalCommand })
+        foreach (var command in new[] { RefreshCommand, PublishCommand, PromoteCommand, SetAliasCommand, CleanupCommand, SetNicknameCommand, ImportJournalCommand, ExportJournalCommand })
         {
             command?.RaiseCanExecuteChanged();
         }
