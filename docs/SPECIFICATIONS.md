@@ -24,11 +24,11 @@ Paramètres de `settings.json` (exemple en section 10.1) :
 | --- | --- | --- |
 | `schemaVersion` | chaîne | Obligatoire ; `1.0` pour cette version. Version majeure inconnue : `CONFIG_SCHEMA_UNSUPPORTED` |
 | `mainModelPath` | chaîne ou null | Chemin relatif au répertoire d'entrée ; obligatoire si le ZIP contient plusieurs RVT ; un RVT unique est détecté automatiquement |
-| `phaseIds` | tableau d'ElementId (chaînes) ou null | Null ou absent : toutes les phases ; sinon tableau non vide d'entiers positifs sans doublon |
+| `phaseIds` | tableau d'ElementId (chaînes) ou null | Null ou absent : toutes les phases. Sinon entiers positifs sans doublon. Tableau vide : `CONFIG_INVALID` (étape `configuration`). Phase absente du document : `CONFIG_INVALID` (étape `collection`), identifiants inconnus listés dans le message ; jamais de résultat vide présenté comme réussi |
 | `volumeMode` | `preserve` ou `compute` | `preserve` par défaut ; `compute` en P2 (EGR-16) |
 | `sharedParameters` | tableau `{ key, guid }` | Facultatif ; mapping de paramètres partagés par GUID, `key` unique |
 
-Les chemins restent confinés au répertoire d'entrée. Les liens présents dans le ZIP conservent une arborescence documentée (décision D4, proposition EGR-05 dans [`docs/INPUTS.md`](INPUTS.md), avec les règles détaillées de validation) ; les liens absents sont signalés (`LINK_MISSING`). Le MVP collecte les pièces du document principal uniquement, sans parcourir les pièces des documents liés.
+Les chemins restent confinés au répertoire d'entrée. Les liens présents dans le ZIP conservent une arborescence documentée (décision D4, règles détaillées de validation dans [`docs/INPUTS.md`](INPUTS.md)) ; les liens absents sont signalés (`LINK_MISSING`), les liens présents mais déchargés sont indiqués (`LINK_NOT_LOADED`, info). Le MVP collecte les pièces du document principal uniquement, sans parcourir les pièces des documents liés.
 
 Sortie : **un seul fichier `result.json`**, paramètre de sortie de l'Activity, UTF-8 sans BOM. C'est l'unique contrat de résultat, décrit par le schéma [`docs/schema/result.schema.json`](schema/result.schema.json) (JSON Schema draft 2020-12) et illustré en section 10.2. Il contient trois blocs :
 
@@ -36,7 +36,7 @@ Sortie : **un seul fichier `result.json`**, paramètre de sortie de l'Activity, 
 - `rooms` : toutes les pièces collectées (section 3), triées par `elementId` numérique croissant ;
 - `anomalies` : anomalies non bloquantes détaillées, au niveau pièce ou document (section 9.1).
 
-`schemaVersion` figure à la racine. Toute modification incompatible du contrat incrémente la version majeure ; un ajout de champ facultatif incrémente la mineure. Aucun autre fichier de résultat (`rooms.csv`, `summary.json`, `execution.jsonl`) n'est produit. Le rapport natif APS, qui contient les logs console, reste disponible via le WorkItem ; son téléchargement appartient au consommateur, hors bundle.
+`schemaVersion` figure à la racine. Toute modification incompatible du contrat incrémente la version majeure ; un ajout de champ facultatif ou de code incrémente la mineure. Version courante : `1.1` (ajout de `LINK_NOT_LOADED`). Aucun autre fichier de résultat (`rooms.csv`, `summary.json`, `execution.jsonl`) n'est produit. Le rapport natif APS, qui contient les logs console, reste disponible via le WorkItem ; son téléchargement appartient au consommateur, hors bundle.
 
 ## 3. Données des pièces
 
@@ -143,6 +143,7 @@ Les codes de portée pièce figurent dans `rooms[].qualityFlags` et sont détail
 | `EXTRACTION_ERROR` | pièce | error | Exception limitée à la pièce ; identité exportée, champs illisibles à null |
 | `VOLUME_NOT_COMPUTED` | document | info | Calcul des volumes désactivé en mode `preserve` |
 | `LINK_MISSING` | document | warning | Lien Revit référencé absent du ZIP |
+| `LINK_NOT_LOADED` | document | info | Lien Revit présent mais déchargé (statut `Unloaded` ou `LocallyUnloaded`) ; sans effet sur le statut (schéma 1.1) |
 | `REVIT_WARNING_ON_OPEN` | document | warning | Avertissement Revit toléré par la politique d'ouverture (D2) |
 | `SHARED_PARAMETER_NOT_FOUND` | document | warning | GUID de `sharedParameters` inconnu dans le document |
 
@@ -152,7 +153,7 @@ Une erreur globale termine le traitement avec `status: failed` ; le code figure 
 
 | Code | `stage` | Cause |
 | --- | --- | --- |
-| `CONFIG_INVALID` | `configuration` (configuration) | `settings.json` absent, illisible ou non conforme |
+| `CONFIG_INVALID` | `configuration` (configuration) ; `collection` (collecte) pour une phase inconnue | `settings.json` absent, illisible ou non conforme, dont `phaseIds` vide ; ou `phaseIds` désignant une phase absente du document (identifiants listés dans le message) |
 | `CONFIG_SCHEMA_UNSUPPORTED` | `configuration` (configuration) | Version majeure de `schemaVersion` non prise en charge |
 | `PATH_OUTSIDE_INPUT` | `configuration` (configuration) | Chemin sortant du répertoire d'entrée |
 | `RVT_NOT_FOUND` | `input` (entrée) | Aucun RVT, ou `mainModelPath` introuvable |
@@ -199,7 +200,7 @@ Trois pièces, document sans calcul de volume : « Bureau » complet mais numér
 
 ```json
 {
-  "schemaVersion": "1.0",
+  "schemaVersion": "1.1",
   "summary": {
     "correlationId": "wi-7f3c2a9e5b1d4c08",
     "extractorVersion": "0.2.0",
@@ -323,10 +324,10 @@ Chaque décision est tranchée et documentée dans la carte indiquée, puis repo
 
 | ID | Décision à prendre | Carte |
 | --- | --- | --- |
-| D1 | Stratégie d'ouverture du RVT (`DesignAutomationData.RevitDoc` ou ouverture explicite), propriétaire de fermeture, traitement des maquettes collaboratives (détachement, worksets) — **Proposition EGR-06, à valider** : ouverture explicite du RVT principal (Activity sans `/i`), détachement avec conservation des worksets et ouverture de tous les worksets, fermeture sans sauvegarde par l'application ; détail dans [`docs/DOCUMENT.md`](DOCUMENT.md) | EGR-06 |
-| D2 | Politique des avertissements et erreurs Revit à l'ouverture : avertissements tolérés, journalisés en `REVIT_WARNING_ON_OPEN`, ou bloquants — **Proposition EGR-06, à valider** : avertissements tolérés et agrégés en `REVIT_WARNING_ON_OPEN` ; erreurs et corruptions bloquantes, annulation et `DOCUMENT_CORRUPTED` ; détail dans [`docs/DOCUMENT.md`](DOCUMENT.md) | EGR-06 |
+| D1 | Stratégie d'ouverture du RVT (`DesignAutomationData.RevitDoc` ou ouverture explicite), propriétaire de fermeture, traitement des maquettes collaboratives (détachement, worksets) — **Tranchée (EGR-06)** : ouverture explicite du RVT principal par l'application (Activity sans `/i`) ; maquette collaborative détachée avec conservation des worksets, tous les worksets ouverts ; fermeture sans sauvegarde par l'application, dans un bloc `finally` ; détail dans [`docs/DOCUMENT.md`](DOCUMENT.md) | EGR-06 |
+| D2 | Politique des avertissements et erreurs Revit à l'ouverture : avertissements tolérés, journalisés en `REVIT_WARNING_ON_OPEN`, ou bloquants — **Tranchée (EGR-06), mode strict pour le MVP** : avertissements tolérés et signalés (`REVIT_WARNING_ON_OPEN`) ; toute erreur ou corruption du document principal bloque (annulation, `DOCUMENT_CORRUPTED`). Une tolérance opt-in de certaines erreurs pourra être étudiée après EGR-18. Statut `succeededWithWarnings` forcé par l'orchestration en cas de pièce `EXTRACTION_ERROR` : conservé ; détail dans [`docs/DOCUMENT.md`](DOCUMENT.md) | EGR-06 |
 | D3 | Choix métier par défaut de la section 12 (document principal, phases, hauteur non bornée, occupation et finitions textuelles, mode de volume) | EGR-01 |
-| D4 | Arborescence des liens dans le ZIP et résolution de leurs chemins — **Proposition EGR-05, à valider** : arborescence du projet conservée sous la racine du ZIP, liens Revit en chemin relatif à l'hôte, `mainModelPath` obligatoire dès qu'il y a des liens, lien introuvable signalé `LINK_MISSING` sans échec ; détail dans [`docs/INPUTS.md`](INPUTS.md) | EGR-05 |
+| D4 | ~~Arborescence des liens dans le ZIP et résolution de leurs chemins~~ — **Tranchée (EGR-05)** : arborescence du projet conservée sous la racine du ZIP, liens Revit en chemin relatif à l'hôte, `mainModelPath` obligatoire dès qu'il y a des liens, lien introuvable signalé `LINK_MISSING` sans échec ; détail dans [`docs/INPUTS.md`](INPUTS.md) | EGR-05 |
 | D5 | Tolérances de comparaison des quantités, confirmées sur le jeu de référence | EGR-18 |
 | D6 | Comportement de sortie en échec : remontée de `result.json` par APS quand le SDK signale l'échec, ou alternative documentée | EGR-13 |
 | D7 | Précision numérique de sérialisation (valeur brute convertie ou arrondi fixe) | EGR-01 |

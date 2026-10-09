@@ -9,7 +9,8 @@ namespace EgRoomTracker.Application.Configuration;
 /// <item><c>mainModelPath</c> renseigné : chemin relatif confiné au répertoire d'entrée, y compris après résolution
 /// des liens symboliques ; fichier <c>.rvt</c> existant.</item>
 /// <item><c>mainModelPath</c> null : détection automatique uniquement si le répertoire contient exactement un RVT
-/// candidat ; jamais de choix arbitraire entre plusieurs RVT.</item>
+/// candidat (sauvegardes <c>Nom.NNNN.rvt</c> écartées seulement si <c>Nom.rvt</c> est à côté) ; jamais de choix
+/// arbitraire entre plusieurs RVT.</item>
 /// </list>
 /// Retourne le chemin relatif normalisé (séparateur <c>/</c>), sans composant <c>.</c> ni <c>..</c>.
 /// </summary>
@@ -29,16 +30,32 @@ public static partial class MainModelResolver
         return mainModelPath is null ? Detect(root) : ResolveExplicit(root, mainModelPath);
     }
 
-    /// <summary>Vrai si le chemin est un RVT candidat à la détection automatique (ni sauvegarde Revit, ni métadonnée macOS).</summary>
+    /// <summary>Vrai si le chemin est un RVT candidat à la détection automatique (extension .rvt, hors métadonnées macOS).</summary>
     public static bool IsCandidate(string relativePath)
     {
         var normalized = relativePath.Replace('\\', '/');
         var segments = normalized.Split('/', StringSplitOptions.RemoveEmptyEntries);
         var fileName = segments.Length > 0 ? segments[^1] : string.Empty;
         return fileName.EndsWith(".rvt", StringComparison.OrdinalIgnoreCase)
-            && !BackupPattern().IsMatch(fileName)
             && !fileName.StartsWith("._", StringComparison.Ordinal)
             && !segments.Contains("__MACOSX", StringComparer.OrdinalIgnoreCase);
+    }
+
+    /// <summary>
+    /// Retire les copies de sauvegarde Revit (<c>Nom.NNNN.rvt</c>) dont l'original <c>Nom.rvt</c> est présent dans le
+    /// même dossier. Une sauvegarde isolée, ou un nom comme <c>Projet.2026.rvt</c> sans <c>Projet.rvt</c>, reste candidate.
+    /// </summary>
+    public static IReadOnlyList<string> ExcludeShadowedBackups(IReadOnlyList<string> relativePaths)
+    {
+        var present = new HashSet<string>(relativePaths.Select(p => p.Replace('\\', '/')), StringComparer.OrdinalIgnoreCase);
+        return relativePaths
+            .Where(path =>
+            {
+                var normalized = path.Replace('\\', '/');
+                var match = BackupPattern().Match(normalized);
+                return !match.Success || !present.Contains(normalized[..match.Index] + ".rvt");
+            })
+            .ToList();
     }
 
     private static string ResolveExplicit(string root, string mainModelPath)
@@ -92,11 +109,11 @@ public static partial class MainModelResolver
             AttributesToSkip = FileAttributes.ReparsePoint,
         };
 
-        var candidates = Directory.EnumerateFiles(root, "*.rvt", options)
-            .Select(path => ToRelative(root, path))
-            .Where(IsCandidate)
-            .Order(StringComparer.Ordinal)
-            .ToList();
+        var candidates = ExcludeShadowedBackups(Directory.EnumerateFiles(root, "*.rvt", options)
+                .Select(path => ToRelative(root, path))
+                .Where(IsCandidate)
+                .Order(StringComparer.Ordinal)
+                .ToList());
 
         return candidates.Count switch
         {
@@ -148,7 +165,7 @@ public static partial class MainModelResolver
     private static ExtractionFailedException OutsideInput(string message) =>
         new(ErrorCodes.PathOutsideInput, Stages.Configuration, $"settings.json : {message}");
 
-    /// <summary>Copies de sauvegarde Revit : <c>Nom.0001.rvt</c>.</summary>
+    /// <summary>Suffixe des copies de sauvegarde Revit : <c>Nom.0001.rvt</c>.</summary>
     [GeneratedRegex(@"\.[0-9]{4}\.rvt$", RegexOptions.IgnoreCase | RegexOptions.CultureInvariant)]
     private static partial Regex BackupPattern();
 

@@ -55,18 +55,18 @@ et ne contiennent aucun chemin absolu du WorkItem.
 - **`mainModelPath` null ou absent : détection automatique.**
   - La recherche est récursive dans `input/`, extension `.rvt` sans tenir compte de la casse.
   - Les liens symboliques (fichiers et dossiers) ne sont pas suivis.
-  - Sont exclus : les copies de sauvegarde Revit (`Nom.0001.rvt`, quatre chiffres), les dossiers `__MACOSX/` et les fichiers `._*` (métadonnées d'archives créées sous macOS).
+  - Sont exclus : les dossiers `__MACOSX/` et les fichiers `._*` (métadonnées d'archives créées sous macOS), ainsi que les copies de sauvegarde Revit `Nom.NNNN.rvt` (quatre chiffres) **seulement si `Nom.rvt` est présent dans le même dossier**. Un fichier isolé comme `Projet.2026.rvt` ou `Nom.0001.rvt` sans original reste candidat.
   - Avec 0 candidat : `RVT_NOT_FOUND` (de même si `input/` est absent).
   - Avec 1 candidat : il est retenu.
   - Avec 2 candidats ou plus : `RVT_AMBIGUOUS`. Le message cite au plus 10 candidats, en ordre stable, et demande de renseigner `mainModelPath`. **Aucun RVT n'est jamais choisi arbitrairement.**
 - `MainModelLocation` (EGR-06) refait un contrôle défensif sur `ResolvedMainModelPath` avant l'ouverture.
 
-## D4 — Arborescence des liens dans le ZIP (proposition EGR-05, à valider)
+## D4 — Arborescence des liens dans le ZIP (tranchée, EGR-05)
 
 1. **La racine du ZIP correspond au dossier commun au projet.** L'arborescence du serveur de fichiers est conservée sous cette racine : le RVT principal et ses liens Revit gardent leurs positions relatives.
 2. **Les liens Revit sont enregistrés en chemin relatif.** Dans la maquette hôte, le type de chemin des liens doit être *Relatif* (Gérer les liens → Type de chemin), et chaque lien est placé dans le ZIP à ce chemin relatif par rapport au RVT hôte. Disposition recommandée : liens dans le dossier du RVT hôte ou dans un sous-dossier (`Projet/Liens/…`).
 3. **`mainModelPath` est obligatoire dès que le ZIP contient des liens Revit.** Un lien est lui-même un `.rvt` : un ZIP avec liens contient donc plusieurs RVT, et sans `mainModelPath` la résolution aboutit à `RVT_AMBIGUOUS`.
-4. **Un lien absent ou introuvable ne bloque pas.** Un lien en chemin absolu (`C:\…`, `\\serveur\…`) ou absent du ZIP n'est pas résolu dans le WorkItem. Il est signalé en `LINK_MISSING` (EGR-06), ce qui donne le statut `succeededWithWarnings` sans échec global. Le MVP ne parcourt pas les pièces des liens ; un lien manquant n'affecte que le contexte du document.
+4. **Un lien absent ou introuvable ne bloque pas.** Un lien en chemin absolu (`C:\…`, `\\serveur\…`) ou absent du ZIP n'est pas résolu dans le WorkItem. Il est signalé en `LINK_MISSING` (EGR-06, warning), ce qui donne le statut `succeededWithWarnings` sans échec global. Un lien présent mais déchargé est indiqué en `LINK_NOT_LOADED` (info, #26). Le MVP ne parcourt pas les pièces des liens ; un lien manquant n'affecte que le contexte du document.
 5. **Les liens imbriqués et les autres types de liens sont facultatifs.** Les liens de liens ne sont pas nécessaires. Les liens DWG, IFC et les images sont ignorés par l'extracteur et ne produisent pas `LINK_MISSING`, qui ne concerne que les liens Revit.
 6. **Aucun chemin ne sort de `input/`.** L'extracteur ne lit rien hors du répertoire d'entrée et ne suit pas les liens symboliques lors de la détection.
 

@@ -189,4 +189,48 @@ public class RoomExtractionServiceTests
         Assert.Equal(ExtractionStatus.Succeeded, result.Summary.Status);
         Assert.Contains(pipeline.Logs, l => l.EventCode == LogEventCodes.DocumentCloseFailed && l.Level == LogLevel.Warning);
     }
+
+    [Fact]
+    public void Run_UnknownPhase_FailsWithConfigInvalidInsteadOfEmptySuccess()
+    {
+        var pipeline = new Pipeline
+        {
+            CollectException = new ExtractionFailedException(ErrorCodes.ConfigInvalid, Stages.Collection, "phaseIds : phase(s) absente(s) du document : 99."),
+        };
+
+        var result = pipeline.CreateService().Run(Pipeline.Request);
+
+        Assert.Equal(ExtractionStatus.Failed, result.Summary.Status);
+        var error = Assert.Single(result.Summary.Errors);
+        Assert.Equal(ErrorCodes.ConfigInvalid, error.Code);
+        Assert.Equal(Stages.Collection, error.Stage);
+        Assert.Contains("99", error.Message);
+        Assert.Empty(result.Rooms);
+        Assert.Equal(["config", "document", "volume", "collect", "close", "export"], pipeline.Calls);
+    }
+
+    [Fact]
+    public void Run_ClosesDocumentAndFlushes_EvenWhenFailureHandlingThrows()
+    {
+        var pipeline = new Pipeline { CollectException = new InvalidOperationException("boom"), ThrowOnErrorLog = true };
+
+        Assert.ThrowsAny<Exception>(() => pipeline.CreateService().Run(Pipeline.Request));
+
+        Assert.Contains("close", pipeline.Calls);
+        Assert.Equal(1, pipeline.Flushes);
+    }
+
+    [Fact]
+    public void Run_RoomsAreResortedByNumericElementIdAfterQualityCheck()
+    {
+        var pipeline = new Pipeline
+        {
+            Rooms = [new(9, "u-9"), new(100, "u-100"), new(10, "u-10"), new(1_000_000_000_000, "u-big")],
+            ReverseQualityOrder = true,
+        };
+
+        var result = pipeline.CreateService().Run(Pipeline.Request);
+
+        Assert.Equal(["9", "10", "100", "1000000000000"], result.Rooms.Select(r => r.ElementId));
+    }
 }

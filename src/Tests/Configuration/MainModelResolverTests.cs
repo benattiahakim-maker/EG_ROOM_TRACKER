@@ -27,7 +27,7 @@ public sealed class MainModelResolverTests : IDisposable
     }
 
     [Fact]
-    public void SingleRvt_IgnoresRevitBackupsAndMacOsMetadata()
+    public void SingleRvt_IgnoresItsOwnBackupsAndMacOsMetadata()
     {
         _fixture.AddFiles(
             "Projet/EG_Batiment_A.rvt",
@@ -39,10 +39,37 @@ public sealed class MainModelResolverTests : IDisposable
         Assert.Equal("Projet/EG_Batiment_A.rvt", Resolve(null));
     }
 
+    [Theory]
+    [InlineData("Projet/Projet.2026.rvt")]
+    [InlineData("Projet/EG_Batiment_A.0001.rvt")]
+    public void LoneBackupLikeName_IsResolvedAsMainRvt(string path)
+    {
+        // Sans Nom.rvt à côté, Nom.NNNN.rvt n'est pas une sauvegarde écartée (ex. Projet.2026.rvt).
+        _fixture.AddFile(path);
+
+        Assert.Equal(path, Resolve(null));
+    }
+
+    [Fact]
+    public void BackupInAnotherFolder_DoesNotShadow()
+    {
+        _fixture.AddFiles("Projet/A.rvt", "Archive/A.0001.rvt");
+
+        AssertFails(ErrorCodes.RvtAmbiguous, Stages.Input, null);
+    }
+
+    [Fact]
+    public void SeveralBackupsWithoutOriginal_AreAmbiguous()
+    {
+        _fixture.AddFiles("Projet/A.0001.rvt", "Projet/A.0002.rvt");
+
+        AssertFails(ErrorCodes.RvtAmbiguous, Stages.Input, null);
+    }
+
     [Fact]
     public void NoRvt_IsRvtNotFound()
     {
-        _fixture.AddFiles("Projet/notes.txt", "Projet/EG_Batiment_A.0001.rvt", "Projet/A.rvt.zip");
+        _fixture.AddFiles("Projet/notes.txt", "Projet/A.rfa", "Projet/A.rvt.zip");
 
         AssertFails(ErrorCodes.RvtNotFound, Stages.Input, null);
     }
@@ -212,16 +239,21 @@ public sealed class MainModelResolverTests : IDisposable
     [InlineData("A.rvt", true)]
     [InlineData("Projet/A.RVT", true)]
     [InlineData("Projet\\A.rvt", true)]
-    [InlineData("A.0001.rvt", false)]
-    [InlineData("A.2026.rvt", false)]
-    [InlineData("A.001.rvt", true)]
-    [InlineData("A.v0001.rvt", true)]
+    [InlineData("A.0001.rvt", true)]
+    [InlineData("A.2026.rvt", true)]
     [InlineData("._A.rvt", false)]
     [InlineData("__MACOSX/A.rvt", false)]
     [InlineData("A.rfa", false)]
     [InlineData("A.rvt.bak", false)]
     public void IsCandidate(string relativePath, bool expected) =>
         Assert.Equal(expected, MainModelResolver.IsCandidate(relativePath));
+
+    [Fact]
+    public void ExcludeShadowedBackups_KeepsOriginalsAndLoneBackups() =>
+        Assert.Equal(
+            ["P/A.rvt", "P/B.0001.rvt", "P/C.001.rvt", "P/C.rvt", "Q/A.0001.rvt"],
+            MainModelResolver.ExcludeShadowedBackups(
+                ["P/A.rvt", "P/A.0001.rvt", "P/a.0002.RVT", "P/B.0001.rvt", "P/C.001.rvt", "P/C.rvt", "Q/A.0001.rvt"]));
 
     [Fact]
     public void ResolvedPath_IsAcceptedByDocumentService()

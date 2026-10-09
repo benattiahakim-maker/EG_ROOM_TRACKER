@@ -86,6 +86,19 @@ public sealed class DocumentPolicyTests : IDisposable
     }
 
     [Fact]
+    public void LinkNotLoaded_IsDocumentInfoWithStatus()
+    {
+        var anomaly = DocumentAnomalies.LinkNotLoaded("MEP.rvt", "Liens/MEP.rvt", "Unloaded");
+
+        Assert.Equal(DocumentAnomalyCodes.LinkNotLoaded, anomaly.Code);
+        Assert.Equal(AnomalySeverity.Info, anomaly.Severity);
+        Assert.Equal(AnomalyScope.Document, anomaly.Scope);
+        Assert.Null(anomaly.ElementId);
+        Assert.Equal("Unloaded", anomaly.Details["linkStatus"]);
+        Assert.Equal("Liens/MEP.rvt", anomaly.Details["linkPath"]);
+    }
+
+    [Fact]
     public void RevitWarningsOnOpen_NoWarning_ReturnsNull() =>
         Assert.Null(DocumentAnomalies.RevitWarningsOnOpen([]));
 

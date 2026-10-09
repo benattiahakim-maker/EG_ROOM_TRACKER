@@ -3,7 +3,7 @@
 Implémentation : `EgRoomTracker.Revit.RevitDocumentService` et `OpenFailurePolicy` ; règles indépendantes de Revit
 dans `EgRoomTracker.Application.Revit` (`MainModelLocation`, `RevitVersionCompatibility`, `DocumentAnomalies`).
 
-## D1 — Stratégie d'ouverture (proposition, à valider)
+## D1 — Stratégie d'ouverture (tranchée)
 
 - **Ouverture explicite par l'application** : l'Activity lance RevitCoreConsole **sans `/i`** ; l'entrée ZIP est
   décompressée et l'application ouvre le RVT principal avec `Application.OpenDocumentFile`. Raison : l'entrée est un
@@ -17,12 +17,12 @@ dans `EgRoomTracker.Application.Revit` (`MainModelLocation`, `RevitVersionCompat
   (`DetachAndPreserveWorksets`), tous les worksets ouverts (`OpenAllWorksets`) pour ne manquer aucune pièce.
   Le central n'est jamais modifié.
 - **Propriétaire de fermeture** : `RevitDocumentService`, qui ferme le document sans sauvegarde
-  (`Document.Close(false)`) ; `RoomExtractionService` appelle `Close()` dès la fin de la lecture, en succès comme
+  (`Document.Close(false)`) ; `RoomExtractionService` appelle `Close()` dans un bloc `finally` dès la fin de la lecture, en succès comme
   en échec, avant l'export. Le RVT source n'est jamais sauvegardé.
 - **Document fourni par l'Activity** (`DesignAutomationData.RevitDoc`, si `/i` était utilisé) : réutilisé, sans
   être fermé, uniquement s'il correspond au RVT principal ; sinon `DOCUMENT_OPEN_FAILED`.
 
-## D2 — Avertissements et erreurs à l'ouverture (proposition, à valider)
+## D2 — Avertissements et erreurs à l'ouverture (tranchée : mode strict pour le MVP)
 
 Pendant l'ouverture seulement (abonnement à `Application.FailuresProcessing`) :
 
@@ -31,11 +31,17 @@ Pendant l'ouverture seulement (abonnement à `Application.FailuresProcessing`) :
 - **Erreurs et corruptions** (`Error`, `DocumentCorruption`) : aucune résolution automatique ; annulation
   (`ProceedWithRollBack`) et échec global `DOCUMENT_CORRUPTED`.
 - `CorruptModelException` → `DOCUMENT_CORRUPTED` ; autre exception Revit d'ouverture → `DOCUMENT_OPEN_FAILED`.
+- **Documents liés** : seuls les échecs du document principal sont traités par cette politique. Les messages émis
+  par un document lié pendant son chargement (`FailuresAccessor.GetDocument().IsLinked`) sont laissés au traitement
+  par défaut de Revit et comptés (log `LINKED_DOCUMENT_FAILURES`) : un lien défectueux ne fait pas échouer le
+  document principal.
+- Tolérance opt-in de certaines erreurs : à étudier après EGR-18, hors MVP.
 
 ## Liens
 
 Après ouverture, chaque `RevitLinkType` de premier niveau au statut `NotFound` produit une anomalie `LINK_MISSING`
-(`details.linkName`, `details.linkPath`). Les pièces des liens ne sont pas collectées (MVP). L'arborescence des
+(`details.linkName`, `details.linkPath`). Un lien présent mais déchargé (`Unloaded`, `LocallyUnloaded`) produit
+une anomalie d'information `LINK_NOT_LOADED` (`details.linkStatus` en plus), sans effet sur le statut. Les pièces des liens ne sont pas collectées (MVP). L'arborescence des
 liens dans le ZIP relève de D4 (EGR-05).
 
 ## À valider dans un WorkItem réel (EGR-02/EGR-14)
