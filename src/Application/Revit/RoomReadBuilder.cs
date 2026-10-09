@@ -65,7 +65,6 @@ public sealed class RoomReadBuilder
     /// <summary>Placement vérifié (<c>Location</c>) ; non placée → UNPLACED.</summary>
     public RoomReadBuilder Placement(bool isPlaced)
     {
-        _room = _room with { IsPlaced = isPlaced };
         if (!isPlaced)
         {
             AddRoomAnomaly(QualityFlagCodes.Unplaced, AnomalySeverity.Warning,

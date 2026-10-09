@@ -28,8 +28,8 @@ Paramètres natifs lus par `BuiltInParameter`, jamais par libellé français/ang
 ## Indicateurs posés à la lecture
 
 `UNPLACED` (`Location` nulle, `details.locationIsNull`), `MISSING_PARAMETER`, `LEVEL_NOT_FOUND`.
-`RoomDto.IsPlaced` (interne, non sérialisé) transmet le placement au contrôle qualité (`ZERO_AREA` pour une pièce
-placée, EGR-11). `DUPLICATE_NUMBER`, `ZERO_AREA` et `VOLUME_NOT_COMPUTED` relèvent d'EGR-11 ; une exception sur une
+Le placement n'est transmis au contrôle qualité que par l'indicateur `UNPLACED` (aucun champ interne) :
+`ZERO_AREA` = `areaM2 == 0` et pas `UNPLACED` (EGR-11). `DUPLICATE_NUMBER`, `ZERO_AREA` et `VOLUME_NOT_COMPUTED` relèvent d'EGR-11 ; une exception sur une
 pièce est convertie en `EXTRACTION_ERROR` par l'orchestration.
 
 ## Champs complétés par d'autres cartes
@@ -56,8 +56,8 @@ Règles pures dans `RoomQuantities` (testées sous Linux) :
 
 Surface et hauteur NaN/infinies : `null` (UnitUtils lève `ArgumentException` sur une valeur non finie ; filtrées
 avant l'appel). Une pièce non placée garde la surface lue (0 attendu). L'anomalie document `VOLUME_NOT_COMPUTED` est
-posée par le contrôle qualité (EGR-11) à partir des `volumeStatus`. Mode `compute` (EGR-16) : `CONFIG_INVALID`
-explicite (étape configuration) tant que la carte n'est pas livrée. Les tolérances d'écart (D5) se vérifient sur le
+posée par le contrôle qualité (EGR-11) à partir des `volumeStatus`. Mode `compute` (EGR-16) : refusé en
+`CONFIG_INVALID` dès la validation de configuration (contrôle défensif conservé dans `VolumeCalculationService`). Les tolérances d'écart (D5) se vérifient sur le
 jeu de référence (EGR-18).
 
 ## Limite connue

@@ -17,10 +17,10 @@ public sealed class RoomCollectionService(RevitExecutionContext context, ILogSer
     /// <summary>Catégorie collectée : pièces uniquement (pas d'espaces MEP, surfaces ni étiquettes).</summary>
     internal const BuiltInCategory RoomCategory = BuiltInCategory.OST_Rooms;
 
-    public IReadOnlyList<CollectedRoom> CollectRooms(IReadOnlyList<string>? phaseIds)
+    public IReadOnlyList<CollectedRoom> CollectRooms(IReadOnlyList<long>? phaseElementIds)
     {
         var document = context.RequireDocument();
-        var phases = ResolvePhases(document, PhaseSelection.Parse(phaseIds));
+        var phases = ResolvePhases(document, PhaseSelection.From(phaseElementIds));
 
         var rooms = new List<CollectedRoom>();
         int unplaced = 0, inDesignOption = 0, excludedByPhase = 0;

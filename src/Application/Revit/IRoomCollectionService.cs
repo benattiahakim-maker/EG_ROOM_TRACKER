@@ -6,7 +6,8 @@ namespace EgRoomTracker.Application.Revit;
 /// </summary>
 public interface IRoomCollectionService
 {
-    IReadOnlyList<CollectedRoom> CollectRooms(IReadOnlyList<string>? phaseIds);
+    /// <param name="phaseElementIds">ElementId de phase validés (<c>ExtractionSettings.PhaseElementIds</c>) ; null = toutes les phases.</param>
+    IReadOnlyList<CollectedRoom> CollectRooms(IReadOnlyList<long>? phaseElementIds);
 }
 
 /// <summary>
