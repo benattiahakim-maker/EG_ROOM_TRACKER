@@ -1,8 +1,14 @@
 # EG_ROOM_TRACKER — Spécifications techniques
 
-Version 0.2 — 9 octobre 2026 — Proposition de référence
+Version 0.3 — 9 octobre 2026 — Alignée sur le code de `main` (9205e2c, PR #40) et le schéma `result.json` 1.3
 
-Changements depuis la v0.1 : sortie réduite à un fichier JSON unique `result.json` (bilan, pièces, anomalies) et CSV retiré du MVP ; logs uniquement sur la console ; schéma JSON formel ; exemples de configuration et de résultat ; table des codes et statuts ; décisions ouvertes affectées aux cartes ; cartes EGR-17 (tests unitaires) et EGR-18 (maquettes de référence).
+Historique :
+
+- **v0.3** (9 octobre 2026) : sections 9 et 10 alignées sur le code et le schéma 1.3 (codes, sévérités, détails des anomalies, champs de `summary`, événements de log, exemples de variantes) ; statut des décisions D1 à D9 avec la PR qui les a tranchées ou mises en œuvre (section 11) ; `volumeMode: compute` livré (EGR-16, PR #40).
+- **v0.2** (9 octobre 2026, PR #19) : sortie réduite à un fichier JSON unique `result.json` (bilan, pièces, anomalies) et CSV retiré du MVP ; logs uniquement sur la console ; schéma JSON formel ; exemples de configuration et de résultat ; table des codes et statuts ; décisions ouvertes affectées aux cartes ; cartes EGR-17 (tests unitaires) et EGR-18 (maquettes de référence).
+- **v0.1** : proposition initiale.
+
+Rappel des changements de la v0.2 depuis la v0.1 : sortie réduite à un fichier JSON unique `result.json` (bilan, pièces, anomalies) et CSV retiré du MVP ; logs uniquement sur la console ; schéma JSON formel ; exemples de configuration et de résultat ; table des codes et statuts ; décisions ouvertes affectées aux cartes ; cartes EGR-17 (tests unitaires) et EGR-18 (maquettes de référence).
 
 ## 1. Objectif et périmètre
 
@@ -53,7 +59,7 @@ Collecter les instances `Autodesk.Revit.DB.Architecture.Room`, catégorie `OST_R
 | `level` | objet ou null | `Room.LevelId` puis niveau du document : `elementId`, `uniqueId`, `name` ; null si introuvable (`LEVEL_NOT_FOUND`) |
 | `occupancy` | chaîne ou null | `ROOM_OCCUPANCY` : usage/occupation textuel, pas nombre d'occupants |
 | `volumeM3` | nombre ou null | `Room.Volume`, conversion vers m³ ; null sauf si `volumeStatus` = `computed` |
-| `volumeStatus` | énumération | `computed`, `notComputed` (calcul désactivé dans le document) ou `notAvailable` (lecture impossible) |
+| `volumeStatus` | énumération | `computed`, `notComputed` (calcul désactivé dans le document, mode `preserve`) ou `notAvailable` (pièce non placée, lecture impossible, erreur de pièce ou échec du calcul temporaire en mode `compute`) |
 | `finishes.floor` | chaîne ou null | `ROOM_FINISH_FLOOR` |
 | `finishes.wall` | chaîne ou null | `ROOM_FINISH_WALL` |
 | `finishes.ceiling` | chaîne ou null | `ROOM_FINISH_CEILING` |
@@ -141,21 +147,25 @@ Livrables : solution C#, tests unitaires du cœur, documentation de build et ex�
 
 Les codes de portée pièce figurent dans `rooms[].qualityFlags` et sont détaillés, avec l'`elementId`, dans `anomalies`. Les codes de portée document figurent uniquement dans `anomalies`, avec `elementId: null`. Aucun de ces codes ne provoque d'échec global.
 
-| Code | Portée | Sévérité | Déclenchement |
-| --- | --- | --- | --- |
-| `UNPLACED` | pièce | warning | Absence de placement vérifiée (`Location` nulle) |
-| `ZERO_AREA` | pièce | warning | Surface nulle sur une pièce placée (non fermée ou redondante) |
-| `DUPLICATE_NUMBER` | pièce | warning | Numéro partagé par plusieurs pièces de même phase ; posé sur chacune |
-| `MISSING_PARAMETER` | pièce | warning | Paramètre natif ou partagé attendu absent de la pièce ; détail : paramètre |
-| `LEVEL_NOT_FOUND` | pièce | warning | `LevelId` invalide ou niveau introuvable ; `level: null` |
-| `EXTRACTION_ERROR` | pièce | error | Exception limitée à la pièce ; identité exportée, champs illisibles à null |
-| `VOLUME_NOT_COMPUTED` | document | info | Calcul des volumes désactivé en mode `preserve` |
-| `VOLUME_COMPUTE_FAILED` | document | warning | Mode `compute` : activation temporaire du calcul impossible ; `volumeM3: null` et `volumeStatus: notAvailable` pour toutes les pièces ; détails `volumeMode`, `reason`, `roomsAffected` (schéma 1.3) |
-| `LINK_MISSING` | document | warning | Lien Revit référencé absent du ZIP |
-| `LINK_NOT_LOADED` | document | info | Lien Revit présent mais déchargé (statut `Unloaded` ou `LocallyUnloaded`) ; sans effet sur le statut (schéma 1.1) |
-| `REVIT_WARNING_ON_OPEN` | document | warning | Avertissement Revit toléré par la politique d'ouverture (D2) |
-| `SHARED_PARAMETER_NOT_FOUND` | document | warning | GUID de `sharedParameters` inconnu dans le document |
-| `UNSUPPORTED_PARAMETER_TYPE` | document | info | Paramètre partagé numérique d'un type autre que longueur, surface, volume ou nombre sans unité (angle, pourcentage, monnaie…) : `value: null` pour toutes les pièces ; détails `key`, `guid`, `typeId` (`ForgeTypeId.TypeId`) ; sans effet sur le statut (schéma 1.2) |
+| Code | Portée | Sévérité | Déclenchement | `details` | Produit par |
+| --- | --- | --- | --- | --- | --- |
+| `UNPLACED` | pièce | warning | Absence de placement vérifiée (`Location` nulle) ; surface lue conservée | `locationIsNull` | lecture (EGR-08/09) |
+| `ZERO_AREA` | pièce | warning | `areaM2 == 0` (pas `null`) sur une pièce sans `UNPLACED` (non fermée ou redondante) | `areaM2` | qualité (EGR-11) |
+| `DUPLICATE_NUMBER` | pièce | warning | Même `number` (comparaison exacte, `"001"` ≠ `"1"`) et même phase (`phase.elementId`) ; les pièces sans phase forment un même groupe ; numéros `""` ou `null` ignorés ; posé sur chaque pièce du groupe | `number`, `elementIds` (tri numérique) | qualité (EGR-11) |
+| `MISSING_PARAMETER` | pièce | warning | Paramètre natif ou partagé attendu absent de la pièce | `parameter` (nom du `BuiltInParameter` ou clé du mapping), `guid` pour un paramètre partagé | lecture (EGR-08/10) |
+| `LEVEL_NOT_FOUND` | pièce | warning | `LevelId` invalide ou niveau introuvable ; `level: null` | `levelId` (chaîne ou null) | lecture (EGR-08) |
+| `EXTRACTION_ERROR` | pièce | error | Exception limitée à la pièce ; identité exportée, champs illisibles à null, `volumeStatus: notAvailable` | — | orchestration (filet par pièce) |
+| `VOLUME_NOT_COMPUTED` | document | info | Calcul des volumes désactivé dans le document et non activé (mode `preserve`) ; pièces en `notComputed` | `volumeMode`, `roomsAffected` | qualité (EGR-11) |
+| `VOLUME_COMPUTE_FAILED` | document | warning | Mode `compute` : activation temporaire du calcul impossible ; `volumeM3: null` et `volumeStatus: notAvailable` pour toutes les pièces ; remplace `VOLUME_NOT_COMPUTED` (schéma 1.3) | `volumeMode`, `reason`, `roomsAffected` | qualité (EGR-16) |
+| `LINK_MISSING` | document | warning | Lien Revit référencé absent du ZIP | `linkName`, `linkPath` | document (EGR-05/06) |
+| `LINK_NOT_LOADED` | document | info | Lien Revit présent mais déchargé (statut `Unloaded` ou `LocallyUnloaded`) ; sans effet sur le statut (schéma 1.1) | `linkName`, `linkPath`, `linkStatus` | document (EGR-06) |
+| `REVIT_WARNING_ON_OPEN` | document | warning | Avertissements Revit tolérés par la politique d'ouverture (D2) ; une anomalie agrégée | `warningCount`, `distinctCount`, `warnings` (`description`, `count`) | document (EGR-06) |
+| `SHARED_PARAMETER_NOT_FOUND` | document | warning | GUID de `sharedParameters` inconnu dans le document ; `value: null` pour toutes les pièces, sans `MISSING_PARAMETER` | `key`, `guid` | lecture (EGR-10) |
+| `UNSUPPORTED_PARAMETER_TYPE` | document | info | Paramètre partagé numérique d'un type autre que longueur, surface, volume ou nombre sans unité (angle, pourcentage, monnaie…) : `value: null` pour toutes les pièces ; une fois par GUID ; sans effet sur le statut (schéma 1.2) | `key`, `guid`, `typeId` (`ForgeTypeId.TypeId`) | lecture (EGR-10) |
+
+Codes de référence : `QualityFlagCodes` et `DocumentAnomalyCodes` (`src/Contracts/Codes/QualityFlagCodes.cs`), identiques aux énumérations `qualityFlag` et `documentAnomalyCode` du schéma (vérifié par les tests de contrat).
+
+Ordre : `qualityFlags` sans doublon, indicateurs de lecture puis `ZERO_AREA` et `DUPLICATE_NUMBER` ; `anomalies` = anomalies document (ouverture, paramètres partagés, puis `VOLUME_NOT_COMPUTED` ou `VOLUME_COMPUTE_FAILED`), puis anomalies de pièce dans l'ordre des pièces (lecture puis qualité). Détail : [`docs/QUALITE.md`](QUALITE.md).
 
 ### 9.2 Erreurs globales
 
@@ -163,7 +173,7 @@ Une erreur globale termine le traitement avec `status: failed` ; le code figure 
 
 | Code | `stage` | Cause |
 | --- | --- | --- |
-| `CONFIG_INVALID` | `configuration` (configuration) ; `collection` (collecte) pour une phase inconnue | `settings.json` absent, illisible ou non conforme, dont `phaseIds` vide ; ou `phaseIds` désignant une phase absente du document (identifiants listés dans le message) |
+| `CONFIG_INVALID` | `configuration` (configuration) ; `collection` (collecte) pour une phase inconnue | `settings.json` absent, illisible ou non conforme, dont `phaseIds` vide ou `mainModelPath` contenant des caractères interdits ; ou `phaseIds` désignant une phase absente du document (identifiants listés dans le message) |
 | `CONFIG_SCHEMA_UNSUPPORTED` | `configuration` (configuration) | Version majeure de `schemaVersion` non prise en charge |
 | `PATH_OUTSIDE_INPUT` | `configuration` (configuration) | Chemin sortant du répertoire d'entrée |
 | `RVT_NOT_FOUND` | `input` (entrée) | Aucun RVT, ou `mainModelPath` introuvable |
@@ -172,7 +182,7 @@ Une erreur globale termine le traitement avec `status: failed` ; le code figure 
 | `DOCUMENT_OPEN_FAILED` | `document` (document) | Échec d'ouverture ou d'accès au document |
 | `DOCUMENT_CORRUPTED` | `document` (document) | Corruption ou erreur bloquante à l'ouverture ; échec de régénération pendant le calcul temporaire des volumes (mode `compute`) |
 | `EXPORT_FAILED` | `export` (export) | Écriture ou finalisation de `result.json` impossible |
-| `UNEXPECTED_ERROR` | étape en cours : `startup`, `configuration`, `input`, `document`, `collection`, `quality`, `export` ou `completion` (toutes) | Exception non prévue hors du périmètre d'une pièce |
+| `UNEXPECTED_ERROR` | étape en cours : `startup`, `configuration`, `input`, `document`, `collection`, `quality`, `export` ou `completion` (toutes) | Exception non prévue hors du périmètre d'une pièce. Un échec de composition dans `AutomationApplication` (avant l'orchestration) n'est visible que dans le log console (`EXTRACTION_FAILED`, étape `startup`), sans `result.json` |
 
 Identifiants d'étape : `startup` (démarrage), `configuration` (configuration), `input` (entrée), `document` (document), `collection` (collecte), `quality` (qualité), `export` (export), `completion` (bilan), `logging` (journal, logs uniquement).
 
@@ -184,7 +194,27 @@ Identifiants d'étape : `startup` (démarrage), `configuration` (configuration),
 | `succeededWithWarnings` | Aucune erreur globale, au moins une anomalie warning ou error | Succès |
 | `failed` | Au moins une erreur globale | Échec |
 
-Une anomalie de sévérité info, comme `VOLUME_NOT_COMPUTED`, n'empêche pas `succeeded`.
+Une anomalie de sévérité info (`VOLUME_NOT_COMPUTED`, `LINK_NOT_LOADED`, `UNSUPPORTED_PARAMETER_TYPE`) n'empêche pas `succeeded`. Une pièce `EXTRACTION_ERROR` force `succeededWithWarnings` côté orchestration (D2). `Succeeded` du SDK = statut différent de `failed`.
+
+### 9.4 Champs de `summary`
+
+| Champ | Type | Règle (mise en œuvre) |
+| --- | --- | --- |
+| `correlationId` | chaîne | Identifiant de l'exécution, aussi porté par chaque ligne de log. Actuellement généré par l'add-in (`run-<guid>`) ; reprise de l'identifiant du WorkItem à valider sur APS |
+| `extractorVersion` | chaîne | Version de l'assembly, sans métadonnées de build (`Version` de `Directory.Build.props`) |
+| `revit.version` / `revit.build` | chaîne / chaîne ou null | `Application.VersionNumber` / `VersionBuild` du moteur |
+| `apsEngine` | chaîne ou null | Identifiant du moteur APS lorsqu'il est disponible ; aujourd'hui toujours `null` (non fourni par le contexte SDK) |
+| `source` | objet ou null | `fileName`, `relativePath` (relatif au répertoire d'entrée), `isWorkshared` (null si inconnu) ; null si le RVT n'a pas été résolu |
+| `startedAtUtc` / `completedAtUtc` | date-heure UTC | Début et fin de l'orchestration |
+| `options` | objet | Options appliquées : `phaseIds` (null = toutes), `volumeMode`, `sharedParameterKeys` |
+| `volumeComputation` | objet ou null | Depuis 1.3 : `documentComputeVolumes` (réglage à l'ouverture, null si non lu), `computeApplied` (calcul activé temporairement), `transactionRolledBack` (null sans transaction) ; null si l'échec survient avant la préparation des volumes ; facultatif dans le schéma, toujours émis par l'extracteur 1.3 |
+| `counts` | objet | `roomsCollected`, `roomsExported` (= collectées hors échec global), `roomsWithAnomalies` (pièces avec au moins un `qualityFlag`) |
+| `status` | énumération | Section 9.3 |
+| `errors` | tableau | `code`, `stage`, `message` ; non vide si et seulement si `status = failed` |
+
+### 9.5 Événements de log
+
+Codes (`LogEventCodes`, détail dans [`docs/LOGS.md`](LOGS.md)) : `EXTRACTION_STARTED`, `CONFIGURATION_VALIDATED`, `DOCUMENT_ACCESSIBLE`, `VOLUME_COMPUTATION`, `COLLECTION_COMPLETED`, `ANOMALIES_DETECTED`, `EXPORT_COMPLETED`, `EXTRACTION_SUMMARY` (séquence nominale) ; `EXTRACTION_FAILED`, `ROOM_EXTRACTION_FAILED`, `DOCUMENT_CLOSE_FAILED`, `ROOM_COLLECTION_DETAILS`, `VOLUME_COMPUTE_FAILED`, `LOG_EVENTS_SUPPRESSED` ; côté document, `DOCUMENT_UPGRADE_IN_MEMORY` et `LINKED_DOCUMENT_FAILURES`.
 
 ## 10. Exemples
 
@@ -206,7 +236,7 @@ Données **illustratives** : identifiants, builds et valeurs sont fictifs. Les f
 
 ### 10.2 `result.json`
 
-Trois pièces, document sans calcul de volume : « Bureau » complet mais numéro 001 en doublon, « Local technique » sans anomalie (plafond renseigné vide, plinthe sans valeur), « Réserve » non placée et en doublon.
+Fichier de référence, schéma 1.3. Trois pièces, document sans calcul de volume (mode `preserve`) : « Bureau » complet mais numéro 001 en doublon, « Local technique » sans anomalie (plafond renseigné vide, plinthe sans valeur), « Réserve » non placée et en doublon.
 
 ```json
 {
@@ -329,21 +359,52 @@ Trois pièces, document sans calcul de volume : « Bureau » complet mais numér
 }
 ```
 
-## 11. Décisions ouvertes
+### 10.3 Variantes (extraits)
 
-Chaque décision est tranchée et documentée dans la carte indiquée, puis reportée dans ces spécifications.
+Mode `compute`, réglage du document désactivé, calcul temporaire réussi (pièces placées en `computed`, aucune anomalie de volume) :
 
-| ID | Décision à prendre | Carte |
-| --- | --- | --- |
-| D1 | Stratégie d'ouverture du RVT (`DesignAutomationData.RevitDoc` ou ouverture explicite), propriétaire de fermeture, traitement des maquettes collaboratives (détachement, worksets) — **Tranchée (EGR-06)** : ouverture explicite du RVT principal par l'application (Activity sans `/i`) ; maquette collaborative détachée avec conservation des worksets, tous les worksets ouverts ; fermeture sans sauvegarde par l'application, dans un bloc `finally` ; détail dans [`docs/DOCUMENT.md`](DOCUMENT.md) | EGR-06 |
-| D2 | Politique des avertissements et erreurs Revit à l'ouverture : avertissements tolérés, journalisés en `REVIT_WARNING_ON_OPEN`, ou bloquants — **Tranchée (EGR-06), mode strict pour le MVP** : avertissements tolérés et signalés (`REVIT_WARNING_ON_OPEN`) ; toute erreur ou corruption du document principal bloque (annulation, `DOCUMENT_CORRUPTED`). Une tolérance opt-in de certaines erreurs pourra être étudiée après EGR-18. Statut `succeededWithWarnings` forcé par l'orchestration en cas de pièce `EXTRACTION_ERROR` : conservé ; détail dans [`docs/DOCUMENT.md`](DOCUMENT.md) | EGR-06 |
-| D3 | Choix métier par défaut de la section 12 (document principal, phases, hauteur non bornée, occupation et finitions textuelles, mode de volume) | EGR-01 |
-| D4 | ~~Arborescence des liens dans le ZIP et résolution de leurs chemins~~ — **Tranchée (EGR-05)** : arborescence du projet conservée sous la racine du ZIP, liens Revit en chemin relatif à l'hôte, `mainModelPath` obligatoire dès qu'il y a des liens, lien introuvable signalé `LINK_MISSING` sans échec ; détail dans [`docs/INPUTS.md`](INPUTS.md) | EGR-05 |
-| D5 | Tolérances de comparaison des quantités, confirmées sur le jeu de référence | EGR-18 |
-| D6 | Comportement de sortie en échec : remontée de `result.json` par APS quand le SDK signale l'échec, ou alternative documentée — **À tester (EGR-13)** : la documentation APS ne dit pas si les sorties sont téléversées quand l'add-in signale l'échec (`Succeeded = false`), ni l'effet de `required` sur un paramètre de sortie absent ; protocole de test dans [`src/Packaging/README.md`](../src/Packaging/README.md#d6--sortie-en-échec-à-tester) | EGR-13 |
-| D7 | Précision numérique de sérialisation (valeur brute convertie ou arrondi fixe) | EGR-01 |
-| D8 | ~~Besoin d'un fichier de log de débogage facultatif en plus de la console~~ — **Tranchée (EGR-04)** : console uniquement, aucun fichier de log de débogage dans le MVP | EGR-04 |
-| D9 | Objectifs de performance (temps, taille de maquette) après mesure | EGR-14 |
+```json
+"options": { "phaseIds": null, "volumeMode": "compute", "sharedParameterKeys": [] },
+"volumeComputation": { "documentComputeVolumes": false, "computeApplied": true, "transactionRolledBack": true }
+```
+
+Mode `compute`, activation impossible (statut `succeededWithWarnings`, pièces en `notAvailable`) :
+
+```json
+{
+  "code": "VOLUME_COMPUTE_FAILED",
+  "severity": "warning",
+  "scope": "document",
+  "elementId": null,
+  "message": "Activation temporaire du calcul des volumes impossible ; volumeM3 exporté à null (mode compute).",
+  "details": { "volumeMode": "compute", "reason": "Activation du calcul des volumes impossible (InvalidOperationException).", "roomsAffected": 3 }
+}
+```
+
+Échec global (configuration) : `rooms` et `anomalies` vides, `volumeComputation` null :
+
+```json
+"volumeComputation": null,
+"counts": { "roomsCollected": 0, "roomsExported": 0, "roomsWithAnomalies": 0 },
+"status": "failed",
+"errors": [{ "code": "CONFIG_INVALID", "stage": "configuration", "message": "…" }]
+```
+
+## 11. Décisions
+
+Statuts : **tranchée** (décidée et mise en œuvre), **proposée** (mise en œuvre par défaut, approbation attendue), **à tester / en attente** (dépend d'une exécution APS réelle ou d'une mesure).
+
+| ID | Décision | Statut | Ce qui est décidé ou proposé | Carte / PR |
+| --- | --- | --- | --- | --- |
+| D1 | Stratégie d'ouverture du RVT, propriétaire de fermeture, maquettes collaboratives | **Tranchée** | Ouverture explicite du RVT principal par l'application (Activity sans `/i`) ; maquette collaborative détachée avec conservation des worksets, tous les worksets ouverts ; fermeture sans sauvegarde par l'application dans un bloc `finally` ; détail dans [`docs/DOCUMENT.md`](DOCUMENT.md). Validation dans un WorkItem réel : EGR-14 | EGR-06 — PR #23 (suivi #24) |
+| D2 | Politique des avertissements et erreurs Revit à l'ouverture | **Tranchée** (mode strict MVP) | Avertissements tolérés et signalés (`REVIT_WARNING_ON_OPEN`) ; toute erreur ou corruption du document principal bloque (`DOCUMENT_CORRUPTED`) ; une pièce `EXTRACTION_ERROR` force `succeededWithWarnings`. Tolérance opt-in de certaines erreurs à étudier après EGR-18 | EGR-06 — PR #23 (suivi #24) |
+| D3 | Choix métier par défaut (section 12) | **Proposée** | Mis en œuvre par défaut : pièces du document principal, toutes phases, hauteur non bornée, occupation et finitions textuelles, `volumeMode: preserve` (`compute` disponible, PR #40). Approbation du propriétaire attendue | EGR-01 (en attente du propriétaire) |
+| D4 | Arborescence des liens dans le ZIP et résolution de leurs chemins | **Tranchée** | Arborescence du projet conservée sous la racine du ZIP, liens en chemin relatif à l'hôte, `mainModelPath` obligatoire dès qu'il y a des liens, lien introuvable signalé `LINK_MISSING` sans échec ; détail dans [`docs/INPUTS.md`](INPUTS.md) | EGR-05 — PR #27 |
+| D5 | Tolérances de comparaison des quantités | **Proposée**, à confirmer | 0,001 m, 0,001 m², 0,001 m³ (section 8) ; confirmation sur le jeu de référence | EGR-18 (en attente des maquettes) |
+| D6 | Sortie en échec : remontée de `result.json` par APS quand le SDK signale l'échec | **À tester** | Comportement mis en œuvre : `result.json` `failed` écrit, une seule nouvelle tentative minimale après `EXPORT_FAILED`, puis `Succeeded = false`. La documentation APS ne dit pas si les sorties sont téléversées dans ce cas ; protocole dans [`src/Packaging/README.md`](../src/Packaging/README.md#d6--sortie-en-échec-à-tester) | EGR-13 — PR #34 ; test en EGR-14 |
+| D7 | Précision numérique de sérialisation | **Proposée** | Mis en œuvre : valeur brute convertie par `UnitUtils`, sans arrondi, `double` sérialisé en notation invariante ([`docs/LECTURE.md`](LECTURE.md)) | EGR-09 — PR #29 ; approbation EGR-01 |
+| D8 | Fichier de log de débogage facultatif | **Tranchée** | Console uniquement, aucun fichier de log dans le MVP | EGR-04 — PR #21 (suivi #22) |
+| D9 | Objectifs de performance (temps, taille de maquette) | **En attente** | À fixer après mesure sur une maquette représentative | EGR-14 (en attente de Revit/APS) |
 
 ## 12. Hypothèses métier à confirmer
 

@@ -78,4 +78,4 @@ ni déploiement.
 | `Application/` | Orchestration et bilan (`RoomExtractionService`) : anomalies, statut, compteurs, erreurs globales |
 | `Units/` | Quantités converties via une doublure d'`IUnitConversionService` : précision complète, 0 et null distincts (UnitUtils n'est testable que dans Revit) |
 | `Export/` | `ResultExportService` (EGR-12) : fichier conforme au schéma dans les trois statuts, UTF-8 sans BOM, octets identiques d'une exécution et d'une culture à l'autre, fins de ligne `\n`, ordre reçu conservé, publication atomique sans fichier temporaire résiduel, exemple de la documentation reproduit à l'identique |
-| `Pending/` | Spécification exécutable de `QualityCheckService` (EGR-11), ignorée (`Skip`) tant que ce service est un squelette ; un garde-fou échoue dès qu'il est implémenté pour rappeler de l'activer |
+| `Pending/` | Spécification exécutable de `QualityCheckService` (EGR-11), active depuis #38 (aucun test ignoré) |
