@@ -3,7 +3,8 @@
 Ce guide décrit le parcours complet : build local, tests, AppBundles, publication sur l'Automation API (Design
 Automation), recette, promotion en production et retour arrière. Les détails techniques du packaging (contenu des
 ZIP, définitions d'AppBundle et d'Activity, algorithme de `deploy.py`) sont dans
-[`src/Packaging/README.md`](../src/Packaging/README.md) ; ceux du build .NET dans [`BUILD.md`](BUILD.md).
+[`src/Packaging/README.md`](../src/Packaging/README.md) ; ceux du build .NET dans [`BUILD.md`](BUILD.md). Premier
+déploiement pas à pas avec les outils DaManager et WorkItemRunner : [`OUTILS.md`](OUTILS.md).
 
 ```text
 build + tests (local ou CI) ─► ZIP contrôlés ─► deploy.py test ─► WorkItems de recette (EGR-14)
