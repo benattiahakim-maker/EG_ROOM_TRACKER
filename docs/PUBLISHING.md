@@ -148,13 +148,16 @@ sans changer leurs WorkItems (un alias peut être réassigné à tout moment).
 python3 src/Packaging/scripts/deploy.py --apply status
 ```
 
-Journal de publication recommandé (description de PR, release GitHub ou ticket), une ligne par version Revit :
+Journal de publication recommandé (description de PR, release GitHub ou ticket), une ligne par version Revit et par
+publication (`test` ou promotion `prod`) :
 
-| Date | Commit | Revit | AppBundle test / prod | Activity test / prod | Prod précédente (AppBundle / Activity) |
-| --- | --- | --- | --- | --- | --- |
+| Date | Commit | Revit | Alias | AppBundle test / prod | Activity test / prod | Version précédente de l'alias (AppBundle / Activity) |
+| --- | --- | --- | --- | --- | --- | --- |
 
-DaManager tient ce journal dans un fichier JSON lisible (une ligne ajoutée à chaque promotion), importe et exporte
-cette table en Markdown, et protège automatiquement au nettoyage toutes les versions qu'il cite (voir
+DaManager tient ce journal dans un fichier JSON lisible (une ligne ajoutée à chaque publication en test et à chaque
+promotion), importe et exporte cette table en Markdown (l'ancienne table sans colonne « Alias » reste lisible) et
+protège automatiquement au nettoyage toutes les versions qu'il cite. Le fichier est local par défaut et se choisit
+avec `EGR_PUBLICATION_JOURNAL` ; un dossier OneDrive partagé est recommandé (voir
 [`tools/EgRoomTracker.DaManager/README.md`](../tools/EgRoomTracker.DaManager/README.md)).
 
 Retour arrière : un alias est repointé (`PATCH …/aliases/prod`) sur une version antérieure, qui reste disponible. Rien
