@@ -35,13 +35,15 @@ public class RecetteFixturesTests
     }
 
     /// <summary>
-    /// Jeux d'options du cas (<c>designOptionSets</c> du manifeste : ElementId de variante → ElementId de jeu). Le jeu
-    /// n'est pas exporté dans result.json (champ interne <c>RoomDto.DesignOptionSetId</c>) : le manifeste le fournit au
-    /// contrôle qualité. Variante absente de la table : jeu inconnu (doublon signalé avec <c>optionSetUnknown</c>).
+    /// Jeux d'options des gabarits (<c>designOptionSets.sets</c> du manifeste : nom du jeu → ElementId des variantes),
+    /// renvoyés en table variante → jeu. Le jeu n'est pas exporté dans result.json (champ interne
+    /// <c>RoomDto.DesignOptionSetId</c>) : le manifeste le fournit au contrôle qualité. Variante absente : jeu inconnu.
     /// </summary>
-    private static Dictionary<string, string> DesignOptionSets(string id) =>
-        Case(id).TryGetProperty("designOptionSets", out var sets)
-            ? sets.EnumerateObject().ToDictionary(p => p.Name, p => p.Value.GetString()!)
+    private static Dictionary<string, string> DesignOptionSets() =>
+        Manifest().RootElement.TryGetProperty("designOptionSets", out var root) && root.TryGetProperty("sets", out var sets)
+            ? sets.EnumerateObject()
+                .SelectMany(set => set.Value.EnumerateArray().Select(option => (Option: option.GetString()!, Set: set.Name)))
+                .ToDictionary(x => x.Option, x => x.Set)
             : [];
 
     [Fact]
@@ -88,9 +90,9 @@ public class RecetteFixturesTests
     [Fact]
     public void DesignOptionSets_CoverEveryVariantOfTheCase()
     {
+        var sets = DesignOptionSets();
         foreach (var id in CaseIds())
         {
-            var sets = DesignOptionSets(id);
             var expected = ContractJson.Deserialize(File.ReadAllText(ExpectedPath(id)));
             Assert.All(expected.Rooms.Where(r => r.DesignOption is not null), r => Assert.True(sets.ContainsKey(r.DesignOption!.ElementId), $"{id} : jeu de la variante {r.DesignOption.ElementId} non déclaré"));
         }
@@ -110,7 +112,7 @@ public class RecetteFixturesTests
         // Entrée du contrôle qualité : sortie de la lecture (indicateurs et anomalies de lecture, anomalies document
         // hors VOLUME_NOT_COMPUTED), état du volume déduit de l'anomalie VOLUME_NOT_COMPUTED.
         var volumesComputed = expected.Anomalies.All(a => a.Code != DocumentAnomalyCodes.VolumeNotComputed);
-        var sets = DesignOptionSets(id);
+        var sets = DesignOptionSets();
         var rooms = expected.Rooms.Select(r => r with
         {
             QualityFlags = r.QualityFlags.Where(ReadingCodes.Contains).ToList(),

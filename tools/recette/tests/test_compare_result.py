@@ -350,31 +350,29 @@ class ManifestTests(unittest.TestCase):
         self.assertEqual({"2027"}, set(next(c for c in MANIFEST["cases"] if c["id"] == "R09")["notApplicable"]))
 
     def test_duplicate_numbers_follow_the_context_rule(self):
-        """Règle approuvée (EGR-18, PR #45) : doublon si même phase et même numéro non vide, sauf deux variantes
-        différentes d'un même jeu d'options ; modèle principal comparé à tout ; variantes de jeux différents comparées.
-        Jeux d'options : champ designOptionSets du manifeste (non exporté dans result.json)."""
+        """Règle du lead (EGR-18) : doublon si même phase et même numéro non vide, sauf entre deux variantes
+        différentes d'un MÊME jeu d'options ; des variantes de jeux différents sont comparées ; une pièce du modèle
+        principal est comparée à tout. Implémentée (PR #45) : plus aucun cas marqué pendingImplementation."""
+        set_of = {o: name for name, options in MANIFEST["designOptionSets"]["sets"].items() for o in options}
+
         def option(r):
             return (r["designOption"] or {}).get("elementId")
 
-        def exclusive(a, b, sets):
-            oa, ob = option(a), option(b)
-            return (oa is not None and ob is not None and oa != ob
-                    and sets.get(oa) is not None and sets.get(oa) == sets.get(ob))
-
-        def conflict(a, b, sets):
+        def conflict(a, b):
+            exclusive = (option(a) is not None and option(b) is not None and option(a) != option(b)
+                         and set_of[option(a)] == set_of[option(b)])
             return (a is not b and bool(a["number"]) and a["number"] == b["number"]
                     and (a["phase"] or {}).get("elementId") == (b["phase"] or {}).get("elementId")
-                    and not exclusive(a, b, sets))
+                    and not exclusive)
 
         checked = set()
         for case in MANIFEST["cases"]:
             expected = json.loads((RECETTE / case["expected"]).read_text(encoding="utf-8"))
             rooms = expected["rooms"]
-            sets = case.get("designOptionSets", {})
             duplicates = {a["elementId"]: a for a in expected["anomalies"] if a["code"] == "DUPLICATE_NUMBER"}
             with self.subTest(case=case["id"]):
                 for r in rooms:
-                    group = sorted([r["elementId"]] + [o["elementId"] for o in rooms if conflict(r, o, sets)], key=int)
+                    group = sorted([r["elementId"]] + [o["elementId"] for o in rooms if conflict(r, o)], key=int)
                     if len(group) > 1:
                         self.assertEqual(group, duplicates[r["elementId"]]["details"]["elementIds"])
                         self.assertIn("DUPLICATE_NUMBER", r["qualityFlags"])
@@ -387,6 +385,11 @@ class ManifestTests(unittest.TestCase):
                     self.assertNotIn("DUPLICATE_NUMBER", names["Bureau variante A"]["qualityFlags"])
                     self.assertNotIn("DUPLICATE_NUMBER", names["Bureau variante B"]["qualityFlags"])
                     self.assertIn("DUPLICATE_NUMBER", names["Accueil commun"]["qualityFlags"])
+                    # Variantes de deux jeux d'options différents (Option A / Option C) : comparées, donc doublon.
+                    a2, c = names["Bureau variante A2"], names["Salle aménagement C"]
+                    self.assertNotEqual(set_of[a2["designOption"]["elementId"]], set_of[c["designOption"]["elementId"]])
+                    self.assertIn("DUPLICATE_NUMBER", a2["qualityFlags"])
+                    self.assertIn("DUPLICATE_NUMBER", c["qualityFlags"])
                     self.assertNotIn("pendingImplementation", case)
         self.assertEqual({"R01", "R02", "R06", "R11"}, checked)
 
