@@ -1,0 +1,35 @@
+{
+  "schemaVersion": "1.2",
+  "summary": {
+    "correlationId": "recette-R08",
+    "extractorVersion": "0.1.0",
+    "revit": {
+      "version": "2026",
+      "build": null
+    },
+    "apsEngine": null,
+    "source": null,
+    "startedAtUtc": "2026-10-09T12:00:00Z",
+    "completedAtUtc": "2026-10-09T12:00:30Z",
+    "options": {
+      "phaseIds": null,
+      "volumeMode": "preserve",
+      "sharedParameterKeys": []
+    },
+    "counts": {
+      "roomsCollected": 0,
+      "roomsExported": 0,
+      "roomsWithAnomalies": 0
+    },
+    "status": "failed",
+    "errors": [
+      {
+        "code": "RVT_AMBIGUOUS",
+        "stage": "input",
+        "message": "2 fichiers .rvt dans le ZIP ; préciser mainModelPath dans settings.json. Candidats : EGR_Ref.rvt, EGR_Ref_Volumes.rvt."
+      }
+    ]
+  },
+  "rooms": [],
+  "anomalies": []
+}

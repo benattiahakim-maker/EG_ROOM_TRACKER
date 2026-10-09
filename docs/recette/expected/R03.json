@@ -1,0 +1,77 @@
+{
+  "schemaVersion": "1.2",
+  "summary": {
+    "correlationId": "recette-R03",
+    "extractorVersion": "0.1.0",
+    "revit": {
+      "version": "2026",
+      "build": null
+    },
+    "apsEngine": null,
+    "source": {
+      "fileName": "EGR_Ref.rvt",
+      "relativePath": "EGR_Ref.rvt",
+      "isWorkshared": false
+    },
+    "startedAtUtc": "2026-10-09T12:00:00Z",
+    "completedAtUtc": "2026-10-09T12:00:30Z",
+    "options": {
+      "phaseIds": [
+        "9000011"
+      ],
+      "volumeMode": "preserve",
+      "sharedParameterKeys": []
+    },
+    "counts": {
+      "roomsCollected": 1,
+      "roomsExported": 1,
+      "roomsWithAnomalies": 0
+    },
+    "status": "succeeded",
+    "errors": []
+  },
+  "rooms": [
+    {
+      "elementId": "9000110",
+      "uniqueId": "EGR18-P10",
+      "name": "Archives existantes",
+      "number": "001",
+      "areaM2": 9.0,
+      "unboundedHeightM": 2.7,
+      "level": {
+        "elementId": "9000001",
+        "uniqueId": "EGR18-NIVEAU-R+0",
+        "name": "R+0"
+      },
+      "occupancy": null,
+      "volumeM3": null,
+      "volumeStatus": "notComputed",
+      "finishes": {
+        "floor": null,
+        "wall": null,
+        "ceiling": null,
+        "base": null
+      },
+      "phase": {
+        "elementId": "9000011",
+        "name": "Existant"
+      },
+      "designOption": null,
+      "sharedParameters": {},
+      "qualityFlags": []
+    }
+  ],
+  "anomalies": [
+    {
+      "code": "VOLUME_NOT_COMPUTED",
+      "severity": "info",
+      "scope": "document",
+      "elementId": null,
+      "message": "Calcul des volumes désactivé dans le document ; volumeM3 exporté à null (mode preserve).",
+      "details": {
+        "volumeMode": "preserve",
+        "roomsAffected": 1
+      }
+    }
+  ]
+}

@@ -60,7 +60,10 @@ jobs:
       - name: Tests des scripts de packaging (sans réseau)
         run: python -m unittest discover -s src/Packaging/scripts/tests -v
 
-      - name: Exemples conformes au schéma result.json
+      - name: Tests de l'outil de recette (sans réseau)
+        run: python -m unittest discover -s tools/recette/tests -v
+
+      - name: Exemples et attendus de recette conformes au schéma result.json
         run: python docs/schema/validate_examples.py
 
       - name: AppBundles Revit 2025, 2026, 2027 (build et contrôle du contenu)

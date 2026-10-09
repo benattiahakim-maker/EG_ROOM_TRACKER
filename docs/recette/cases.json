@@ -1,0 +1,256 @@
+{
+  "description": "Matrice de recette EGR-18 / EGR-14 (docs/RECETTE.md). Chemins ignore/pending : syntaxe de tools/recette/compare_result.py.",
+  "tolerances": {
+    "length": 0.001,
+    "area": 0.001,
+    "volume": 0.001,
+    "shared": 0.001
+  },
+  "ignore": [
+    "summary.correlationId",
+    "summary.extractorVersion",
+    "summary.revit.build",
+    "summary.apsEngine",
+    "summary.startedAtUtc",
+    "summary.completedAtUtc"
+  ],
+  "cases": [
+    {
+      "id": "R01",
+      "title": "Maquette de référence : pièces renseignées, accents, zéros initiaux, vides, non placée, surface nulle, doublons, phases, variantes, finitions, paramètres partagés de chaque type, volumes désactivés",
+      "model": "EGR_Ref.rvt",
+      "zip": [
+        "EGR_Ref.rvt"
+      ],
+      "settings": "settings/R01.json",
+      "expected": "expected/R01.json",
+      "years": [
+        "2025",
+        "2026",
+        "2027"
+      ],
+      "pending": [
+        "rooms[name=Local technique].finishes.wall",
+        "rooms[name=Dégagement].number",
+        "rooms[name=Placard].number",
+        "rooms[name=Réserve].areaM2",
+        "rooms[name=Réserve].level",
+        "rooms[name=Réserve].unboundedHeightM",
+        "rooms[name=Couloir].unboundedHeightM",
+        "rooms[name=Bureau variante A].designOption.name",
+        "rooms[name=Bureau variante B].designOption.name",
+        "rooms[name=Local technique].sharedParameters.texte.value",
+        "rooms[name=Local technique].sharedParameters.ouiNon.value",
+        "rooms[name=Réserve].sharedParameters.ouiNon.value",
+        "rooms[name=Couloir].sharedParameters.ouiNon.value",
+        "rooms[name=Archives].sharedParameters.ouiNon.value",
+        "rooms[name=Dégagement].sharedParameters.ouiNon.value",
+        "rooms[name=Placard].sharedParameters.ouiNon.value",
+        "rooms[name=Sans attributs].sharedParameters.ouiNon.value",
+        "rooms[name=Archives existantes].sharedParameters.ouiNon.value",
+        "rooms[name=Bureau variante A].sharedParameters.ouiNon.value",
+        "rooms[name=Bureau variante B].sharedParameters.ouiNon.value",
+        "rooms[name=Combles aménagés].sharedParameters.ouiNon.value",
+        "anomalies[code=UNSUPPORTED_PARAMETER_TYPE].details.typeId"
+      ],
+      "allowExtraAnomalies": [
+        "REVIT_WARNING_ON_OPEN"
+      ]
+    },
+    {
+      "id": "R02",
+      "title": "Même maquette, calcul des volumes activé (tolérances D5)",
+      "model": "EGR_Ref_Volumes.rvt",
+      "zip": [
+        "EGR_Ref_Volumes.rvt"
+      ],
+      "settings": "settings/R02.json",
+      "expected": "expected/R02.json",
+      "years": [
+        "2025",
+        "2026",
+        "2027"
+      ],
+      "pending": [
+        "rooms[name=Local technique].finishes.wall",
+        "rooms[name=Dégagement].number",
+        "rooms[name=Placard].number",
+        "rooms[name=Réserve].areaM2",
+        "rooms[name=Réserve].level",
+        "rooms[name=Réserve].unboundedHeightM",
+        "rooms[name=Couloir].unboundedHeightM",
+        "rooms[name=Bureau variante A].designOption.name",
+        "rooms[name=Bureau variante B].designOption.name",
+        "rooms[name=Couloir].volumeM3",
+        "rooms[name=Couloir].volumeStatus"
+      ],
+      "allowExtraAnomalies": [
+        "REVIT_WARNING_ON_OPEN"
+      ]
+    },
+    {
+      "id": "R03",
+      "title": "Filtre de phase (phase Existant seule)",
+      "model": "EGR_Ref.rvt",
+      "zip": [
+        "EGR_Ref.rvt"
+      ],
+      "settings": "settings/R03.json",
+      "expected": "expected/R03.json",
+      "years": [
+        "2025",
+        "2026",
+        "2027"
+      ],
+      "prerequisite": "Remplacer 9000011 dans settings/R03.json par l'ElementId réel de la phase Existant (journal de bind de R01).",
+      "pending": [],
+      "allowExtraAnomalies": [
+        "REVIT_WARNING_ON_OPEN"
+      ]
+    },
+    {
+      "id": "R04",
+      "title": "Phase inconnue : CONFIG_INVALID (étape collection)",
+      "model": "EGR_Ref.rvt",
+      "zip": [
+        "EGR_Ref.rvt"
+      ],
+      "settings": "settings/R04.json",
+      "expected": "expected/R04.json",
+      "years": [
+        "2025",
+        "2026",
+        "2027"
+      ],
+      "pending": [],
+      "allowExtraAnomalies": []
+    },
+    {
+      "id": "R05",
+      "title": "Liens : présent chargé, manquant (LINK_MISSING), déchargé (LINK_NOT_LOADED) ; pièces des liens non collectées",
+      "model": "Projet/EGR_Liens.rvt",
+      "zip": [
+        "Projet/EGR_Liens.rvt",
+        "Projet/Liens/EGR_Lien_A.rvt",
+        "Projet/Liens/EGR_Lien_C.rvt"
+      ],
+      "settings": "settings/R05.json",
+      "expected": "expected/R05.json",
+      "years": [
+        "2025",
+        "2026",
+        "2027"
+      ],
+      "pending": [
+        "anomalies[code=LINK_MISSING].details.linkName",
+        "anomalies[code=LINK_MISSING].details.linkPath",
+        "anomalies[code=LINK_NOT_LOADED].details.linkName",
+        "anomalies[code=LINK_NOT_LOADED].details.linkPath",
+        "anomalies[code=LINK_NOT_LOADED].details.linkStatus"
+      ],
+      "allowExtraAnomalies": [
+        "REVIT_WARNING_ON_OPEN"
+      ]
+    },
+    {
+      "id": "R06",
+      "title": "Paramètres partagés : GUID inconnu (SHARED_PARAMETER_NOT_FOUND), paramètre absent des pièces (MISSING_PARAMETER)",
+      "model": "EGR_Ref.rvt",
+      "zip": [
+        "EGR_Ref.rvt"
+      ],
+      "settings": "settings/R06.json",
+      "expected": "expected/R06.json",
+      "years": [
+        "2025",
+        "2026",
+        "2027"
+      ],
+      "pending": [
+        "rooms[name=Local technique].finishes.wall",
+        "rooms[name=Dégagement].number",
+        "rooms[name=Placard].number",
+        "rooms[name=Réserve].areaM2",
+        "rooms[name=Réserve].level",
+        "rooms[name=Réserve].unboundedHeightM",
+        "rooms[name=Couloir].unboundedHeightM",
+        "rooms[name=Bureau variante A].designOption.name",
+        "rooms[name=Bureau variante B].designOption.name"
+      ],
+      "allowExtraAnomalies": [
+        "REVIT_WARNING_ON_OPEN"
+      ]
+    },
+    {
+      "id": "R07",
+      "title": "Maquette collaborative (central, workset fermé) : détachée, tous worksets ouverts",
+      "model": "EGR_Collab.rvt",
+      "zip": [
+        "EGR_Collab.rvt"
+      ],
+      "settings": "settings/R07.json",
+      "expected": "expected/R07.json",
+      "years": [
+        "2025",
+        "2026",
+        "2027"
+      ],
+      "pending": [],
+      "allowExtraAnomalies": [
+        "REVIT_WARNING_ON_OPEN"
+      ]
+    },
+    {
+      "id": "R08",
+      "title": "ZIP ambigu (deux RVT, sans mainModelPath) : RVT_AMBIGUOUS",
+      "model": null,
+      "zip": [
+        "EGR_Ref.rvt",
+        "EGR_Ref_Volumes.rvt"
+      ],
+      "settings": "settings/R08.json",
+      "expected": "expected/R08.json",
+      "years": [
+        "2025",
+        "2026",
+        "2027"
+      ],
+      "pending": [],
+      "allowExtraAnomalies": []
+    },
+    {
+      "id": "R09",
+      "title": "RVT incompatible (enregistré dans la version suivante) : REVIT_VERSION_INCOMPATIBLE",
+      "model": "EGR_Futur.rvt",
+      "zip": [
+        "EGR_Futur.rvt"
+      ],
+      "settings": "settings/R09.json",
+      "expected": "expected/R09.json",
+      "years": [
+        "2025",
+        "2026"
+      ],
+      "notes": "Sans objet en 2027 tant qu'aucune version postérieure n'existe.",
+      "pending": [],
+      "allowExtraAnomalies": []
+    },
+    {
+      "id": "R10",
+      "title": "Configuration refusée (schemaVersion 2.0) : CONFIG_SCHEMA_UNSUPPORTED ; protocole D6",
+      "model": "EGR_Ref.rvt",
+      "zip": [
+        "EGR_Ref.rvt"
+      ],
+      "settings": "settings/R10.json",
+      "expected": "expected/R10.json",
+      "years": [
+        "2025",
+        "2026",
+        "2027"
+      ],
+      "pending": [],
+      "allowExtraAnomalies": []
+    }
+  ]
+}

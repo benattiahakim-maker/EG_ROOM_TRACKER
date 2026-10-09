@@ -1,0 +1,41 @@
+{
+  "schemaVersion": "1.2",
+  "summary": {
+    "correlationId": "recette-R04",
+    "extractorVersion": "0.1.0",
+    "revit": {
+      "version": "2026",
+      "build": null
+    },
+    "apsEngine": null,
+    "source": {
+      "fileName": "EGR_Ref.rvt",
+      "relativePath": "EGR_Ref.rvt",
+      "isWorkshared": false
+    },
+    "startedAtUtc": "2026-10-09T12:00:00Z",
+    "completedAtUtc": "2026-10-09T12:00:30Z",
+    "options": {
+      "phaseIds": [
+        "999999999"
+      ],
+      "volumeMode": "preserve",
+      "sharedParameterKeys": []
+    },
+    "counts": {
+      "roomsCollected": 0,
+      "roomsExported": 0,
+      "roomsWithAnomalies": 0
+    },
+    "status": "failed",
+    "errors": [
+      {
+        "code": "CONFIG_INVALID",
+        "stage": "collection",
+        "message": "phaseIds : phase(s) absente(s) du document : 999999999."
+      }
+    ]
+  },
+  "rooms": [],
+  "anomalies": []
+}
