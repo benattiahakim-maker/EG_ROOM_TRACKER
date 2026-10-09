@@ -8,5 +8,4 @@ namespace EgRoomTracker.Tests.Pending;
 internal static class PendingImplementations
 {
     public const string Egr11 = "En attente d'EGR-11 (#11) : QualityCheckService est un squelette (NotImplementedException).";
-    public const string Egr12 = "En attente d'EGR-12 (#12) : ResultExportService est un squelette (NotImplementedException).";
 }

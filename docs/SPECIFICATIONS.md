@@ -111,6 +111,8 @@ En échec global, écrire si possible un `result.json` avec `status: failed`, `e
 
 Écrire `result.json` dans un fichier temporaire puis le renommer localement ; aucun résultat incomplet annoncé comme valide. Le résultat produit est validé contre le schéma dans les tests. Aucun appel réseau métier nécessaire dans le bundle.
 
+Mise en œuvre (EGR-12, `ResultExportService`) : le document est entièrement sérialisé en mémoire avant toute écriture ; il est écrit dans un fichier temporaire caché du dossier de sortie, vidé sur disque, puis renommé sur `result.json` en remplaçant un fichier existant. En cas d'échec, le fichier temporaire est supprimé et l'orchestration rend `EXPORT_FAILED`. Format : indentation de deux espaces, fins de ligne `\n` et saut de ligne final quelle que soit la plateforme, ordre des propriétés fixé par les contrats, pièces et anomalies dans l'ordre reçu (le tri relève de l'orchestration). Une valeur non représentable en JSON (nombre non fini) est refusée sans rien écrire.
+
 ## 7. Builds, AppBundles et Activities
 
 Préparer trois artefacts explicitement versionnés et testés : 2025, 2026, 2027. Références API provenant de chaque SDK cible, non embarquées si fournies par le moteur. Inclure uniquement les dépendances applicatives nécessaires et les manifestes exigés par APS/Revit.

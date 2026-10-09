@@ -1,9 +1,6 @@
 using EgRoomTracker.Application.Quality;
 using EgRoomTracker.Application.Revit;
 using EgRoomTracker.Contracts.Configuration;
-using EgRoomTracker.Contracts.Results;
-using EgRoomTracker.Export;
-using EgRoomTracker.Tests.Support;
 
 namespace EgRoomTracker.Tests.Pending;
 
@@ -18,10 +15,6 @@ public class SkeletonTripwireTests
     [Fact]
     public void QualityCheckService_IsStillASkeleton_Egr11() =>
         AssertSkeleton(() => new QualityCheckService().Evaluate([], [], new VolumeComputationState(VolumeMode.Preserve, false)));
-
-    [Fact]
-    public void ResultExportService_IsStillASkeleton_Egr12() =>
-        AssertSkeleton(() => new ResultExportService().Write(new TestPipeline().Run(), Path.Combine(Path.GetTempPath(), "egr17-tripwire.json")));
 
     private static void AssertSkeleton(Action action)
     {
