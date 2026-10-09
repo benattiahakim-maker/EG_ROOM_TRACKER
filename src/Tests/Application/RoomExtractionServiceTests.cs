@@ -1,4 +1,5 @@
 using EgRoomTracker.Application;
+using EgRoomTracker.Application.Revit;
 using EgRoomTracker.Contracts.Codes;
 using EgRoomTracker.Contracts.Results;
 using EgRoomTracker.Logging;
@@ -71,9 +72,56 @@ public class RoomExtractionServiceTests
     }
 
     [Fact]
+    public void Run_RoomException_MarksRoomExtractionErrorAndContinues()
+    {
+        var pipeline = new Pipeline
+        {
+            ReadRoom = room => room.ElementId == 412345
+                ? throw new InvalidOperationException("paramètre illisible")
+                : new RoomReadResult(new RoomDto { ElementId = "415002", UniqueId = room.UniqueId, Name = "Réserve", VolumeStatus = VolumeStatus.NotComputed }, []),
+        };
+
+        var result = pipeline.CreateService().Run(Pipeline.Request);
+
+        Assert.Equal(ExtractionStatus.SucceededWithWarnings, result.Summary.Status);
+        Assert.Empty(result.Summary.Errors);
+        Assert.Equal(new RoomCounts(2, 2, 1), result.Summary.Counts);
+        var failed = result.Rooms[0];
+        Assert.Equal("412345", failed.ElementId);
+        Assert.Equal("u-412345", failed.UniqueId);
+        Assert.Null(failed.Name);
+        Assert.Null(failed.VolumeM3);
+        Assert.Equal(VolumeStatus.NotAvailable, failed.VolumeStatus);
+        Assert.Equal([QualityFlagCodes.ExtractionError], failed.QualityFlags);
+        Assert.Equal("Réserve", result.Rooms[1].Name);
+        var anomaly = Assert.Single(result.Anomalies, a => a.Code == QualityFlagCodes.ExtractionError);
+        Assert.Equal(AnomalySeverity.Error, anomaly.Severity);
+        Assert.Equal(AnomalyScope.Room, anomaly.Scope);
+        Assert.Equal("412345", anomaly.ElementId);
+        var log = Assert.Single(pipeline.Logs, l => l.EventCode == LogEventCodes.RoomExtractionFailed);
+        Assert.Equal("412345", log.RoomElementId);
+        Assert.IsType<InvalidOperationException>(log.Exception);
+    }
+
+    [Fact]
+    public void Run_RoomException_KeepsQualityStatusWhenAlreadyWarning()
+    {
+        var pipeline = new Pipeline
+        {
+            QualityStatus = ExtractionStatus.SucceededWithWarnings,
+            ReadRoom = _ => throw new InvalidOperationException("boom"),
+        };
+
+        var result = pipeline.CreateService().Run(Pipeline.Request);
+
+        Assert.Equal(ExtractionStatus.SucceededWithWarnings, result.Summary.Status);
+        Assert.All(result.Rooms, r => Assert.Equal([QualityFlagCodes.ExtractionError], r.QualityFlags));
+    }
+
+    [Fact]
     public void Run_UnexpectedException_FailsWithUnexpectedErrorAndCurrentStage()
     {
-        var pipeline = new Pipeline { ReadRoom = _ => throw new InvalidOperationException("boom") };
+        var pipeline = new Pipeline { CollectException = new InvalidOperationException("boom") };
 
         var result = pipeline.CreateService().Run(Pipeline.Request);
 
@@ -81,8 +129,26 @@ public class RoomExtractionServiceTests
         Assert.Equal(ErrorCodes.UnexpectedError, error.Code);
         Assert.Equal(Stages.Collection, error.Stage);
         Assert.Equal(ExtractionStatus.Failed, result.Summary.Status);
-        Assert.Equal(2, result.Summary.Counts.RoomsCollected);
+        Assert.Empty(result.Rooms);
         Assert.Equal(0, result.Summary.Counts.RoomsExported);
+    }
+
+    [Theory]
+    [InlineData(ExtractionStatus.Succeeded, "succeeded")]
+    [InlineData(ExtractionStatus.SucceededWithWarnings, "succeededWithWarnings")]
+    [InlineData(ExtractionStatus.Failed, "failed")]
+    public void Run_SummaryLogsStatusInResultFormat(ExtractionStatus status, string expected)
+    {
+        var pipeline = new Pipeline
+        {
+            QualityStatus = status == ExtractionStatus.Failed ? ExtractionStatus.Succeeded : status,
+            ExportException = status == ExtractionStatus.Failed ? new IOException("disque plein") : null,
+        };
+
+        pipeline.CreateService().Run(Pipeline.Request);
+
+        var summary = Assert.Single(pipeline.Logs, l => l.EventCode == LogEventCodes.ExtractionSummary);
+        Assert.Equal(expected, summary.Data?["status"]);
     }
 
     [Fact]

@@ -26,7 +26,9 @@ public static partial class SecretRedactor
         }
 
         var result = UrlQueryPattern().Replace(text, m => m.Groups["base"].Value + "?" + Mask);
+        result = AuthorizationHeaderPattern().Replace(result, m => m.Groups["prefix"].Value + Mask);
         result = BearerPattern().Replace(result, m => m.Groups["scheme"].Value + " " + Mask);
+        result = BasicTokenPattern().Replace(result, m => m.Groups["scheme"].Value + " " + Mask);
         result = JwtPattern().Replace(result, Mask);
         result = KeyValuePattern().Replace(result, m => m.Groups["key"].Value + m.Groups["sep"].Value + Mask);
         return result;
@@ -39,8 +41,16 @@ public static partial class SecretRedactor
     [GeneratedRegex(@"(?<base>https?://[^\s?""'<>]+)\?[^\s""'<>]*", RegexOptions.IgnoreCase | RegexOptions.CultureInvariant)]
     private static partial Regex UrlQueryPattern();
 
-    [GeneratedRegex(@"(?<scheme>\b(?:Bearer|Basic))\s+[A-Za-z0-9\-._~+/=]+", RegexOptions.IgnoreCase | RegexOptions.CultureInvariant)]
+    // En-tête Authorization: <schéma> <valeur> (quel que soit le schéma).
+    [GeneratedRegex(@"(?<prefix>\bAuthorization[""']?\s*[:=]\s*[""']?(?:[A-Za-z]+\s+)?)[A-Za-z0-9\-._~+/=]+", RegexOptions.IgnoreCase | RegexOptions.CultureInvariant)]
+    private static partial Regex AuthorizationHeaderPattern();
+
+    [GeneratedRegex(@"(?<scheme>\bBearer)\s+(?!\*\*\*)[A-Za-z0-9\-._~+/=]+", RegexOptions.IgnoreCase | RegexOptions.CultureInvariant)]
     private static partial Regex BearerPattern();
+
+    // « Basic » suivi d'un jeton long (base64, 16 caractères min.) ; « Basic Wall » n'est pas masqué.
+    [GeneratedRegex(@"(?<scheme>\bBasic)\s+(?=[A-Za-z0-9+/=]{16,})[A-Za-z0-9+/=]+", RegexOptions.IgnoreCase | RegexOptions.CultureInvariant)]
+    private static partial Regex BasicTokenPattern();
 
     [GeneratedRegex(@"\beyJ[A-Za-z0-9_\-]+\.[A-Za-z0-9_\-]+\.[A-Za-z0-9_\-]+", RegexOptions.CultureInvariant)]
     private static partial Regex JwtPattern();

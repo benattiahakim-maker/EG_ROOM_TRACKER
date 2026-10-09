@@ -24,8 +24,10 @@ internal sealed class Pipeline
         SharedParameters = [new SharedParameterMapping("codeLocal", Guid.Parse("3f2b8c1e-6d4a-4b7e-9a51-2c0d8e7f4a10"))],
     };
 
-    public IReadOnlyList<long> RoomIds { get; set; } = [415002, 412345];
-    public Func<long, RoomReadResult>? ReadRoom { get; set; }
+    public IReadOnlyList<CollectedRoom> Rooms { get; set; } = [new(415002, "u-415002"), new(412345, "u-412345")];
+    public Func<CollectedRoom, RoomReadResult>? ReadRoom { get; set; }
+    public Exception? CollectException { get; set; }
+    public ExtractionStatus QualityStatus { get; set; } = ExtractionStatus.Succeeded;
     public Exception? ExportException { get; set; }
 
     public static ExtractionRequest Request => new()
@@ -69,17 +71,17 @@ internal sealed class Pipeline
             return new VolumeComputationState(mode, VolumesComputed: false);
         }
 
-        public IReadOnlyList<long> CollectRoomIds(IReadOnlyList<string>? phaseIds)
+        public IReadOnlyList<CollectedRoom> CollectRooms(IReadOnlyList<string>? phaseIds)
         {
             p.Calls.Add("collect");
-            return p.RoomIds;
+            return p.CollectException is null ? p.Rooms : throw p.CollectException;
         }
 
-        public RoomReadResult Read(long roomElementId, IReadOnlyList<SharedParameterMapping> sharedParameters, VolumeComputationState volumeState)
+        public RoomReadResult Read(CollectedRoom room, IReadOnlyList<SharedParameterMapping> sharedParameters, VolumeComputationState volumeState)
         {
-            p.Calls.Add($"read:{roomElementId}");
-            return p.ReadRoom?.Invoke(roomElementId) ?? new RoomReadResult(
-                new RoomDto { ElementId = roomElementId.ToString(), UniqueId = $"u-{roomElementId}", VolumeStatus = VolumeStatus.NotComputed },
+            p.Calls.Add($"read:{room.ElementId}");
+            return p.ReadRoom?.Invoke(room) ?? new RoomReadResult(
+                new RoomDto { ElementId = room.ElementId.ToString(), UniqueId = room.UniqueId, VolumeStatus = VolumeStatus.NotComputed },
                 []);
         }
 
@@ -93,7 +95,7 @@ internal sealed class Pipeline
                 Scope = AnomalyScope.Document,
                 Message = "Volumes non calculés.",
             };
-            return new QualityReport(rooms, [.. anomalies, documentAnomaly], ExtractionStatus.Succeeded);
+            return new QualityReport(rooms, [.. anomalies, documentAnomaly], p.QualityStatus);
         }
 
         public void Write(ExtractionResult result, string outputPath)

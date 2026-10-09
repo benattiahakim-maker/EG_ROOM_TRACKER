@@ -58,6 +58,7 @@ public static class Stages
     public const string Quality = "quality";
     public const string Export = "export";
     public const string Completion = "completion";
+    public const string Logging = "logging";
 }
 
 public static class SchemaVersions

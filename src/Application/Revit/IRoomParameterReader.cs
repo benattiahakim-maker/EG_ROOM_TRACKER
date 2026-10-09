@@ -5,12 +5,12 @@ namespace EgRoomTracker.Application.Revit;
 
 /// <summary>
 /// Lecture des champs natifs et des mappings partagés d'une pièce ; production du DTO.
-/// Une erreur limitée à la pièce est capturée ici : identité exportée, champs illisibles à null,
-/// anomalie EXTRACTION_ERROR.
+/// Une erreur limitée à un champ est capturée ici (champ à null, anomalie). Toute exception non capturée
+/// est convertie par <c>RoomExtractionService</c> en pièce EXTRACTION_ERROR (identité seule).
 /// </summary>
 public interface IRoomParameterReader
 {
-    RoomReadResult Read(long roomElementId, IReadOnlyList<SharedParameterMapping> sharedParameters, VolumeComputationState volumeState);
+    RoomReadResult Read(CollectedRoom room, IReadOnlyList<SharedParameterMapping> sharedParameters, VolumeComputationState volumeState);
 }
 
 public sealed record RoomReadResult(RoomDto Room, IReadOnlyList<AnomalyDto> Anomalies);
