@@ -89,6 +89,13 @@ public sealed class DesignAutomationClient
         return result;
     }
 
+    /// <summary>
+    /// <c>DELETE /{kind}/{id}/versions/{version}</c> (204). Aucune vérification ici : passer par
+    /// <see cref="Packaging.VersionCleanupService"/>, qui exclut les versions référencées par un alias.
+    /// </summary>
+    public Task DeleteVersionAsync(DaResourceKind kind, string id, int version, CancellationToken cancellationToken = default) =>
+        _http.CallAsync(HttpMethod.Delete, $"/{kind.PathSegment()}/{Escape(id)}/versions/{version}", null, [HttpStatusCode.NoContent, HttpStatusCode.OK], cancellationToken);
+
     // ---- AppBundles ----------------------------------------------------------------------------------------------
 
     /// <summary><c>POST /appbundles</c> : première version (la définition contient <c>id</c>).</summary>

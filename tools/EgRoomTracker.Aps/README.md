@@ -13,6 +13,7 @@ ordre, mêmes messages.
 | `Oss.OssClient` | Bucket, téléversement par URL S3 signées (une ou plusieurs parties), URL signées de lecture et d'écriture |
 | `Packaging.DefinitionLoader` | Lecture de `src/Packaging/definitions` (`{{NICKNAME}}`, `{{APPBUNDLE_ALIAS}}`). `commandLine` n'est pas modifié |
 | `Packaging.AppBundleChecker` | Port de `appbundle.py check`. Les deux implémentations doivent évoluer ensemble |
+| `Packaging.VersionCleanupPlanner` / `VersionCleanupService` | Nettoyage des anciennes versions (quota APS de 100). Le plan est pur : il garde les N plus récentes (N ≥ 1), **toutes** les versions référencées par un alias et les versions protégées (journal). Avant toute suppression, `ExecuteAsync` relit les alias et refuse s'il en trouve une nouvelle |
 | `Packaging.DeploymentService` | Commandes `test`, `promote`, `rollback` et `status` de `deploy.py` |
 
 ## Variables d'environnement
