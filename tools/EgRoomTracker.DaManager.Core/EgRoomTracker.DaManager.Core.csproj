@@ -1,0 +1,13 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <!-- ViewModels et services de DaManager (EGR-19), sans aucun type WPF : testables sous Linux. -->
+  <PropertyGroup>
+    <TargetFramework>$(CoreTargetFramework)</TargetFramework>
+    <RootNamespace>EgRoomTracker.DaManager</RootNamespace>
+  </PropertyGroup>
+  <ItemGroup>
+    <InternalsVisibleTo Include="EgRoomTracker.DaManager.Tests" />
+  </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\EgRoomTracker.Aps\EgRoomTracker.Aps.csproj" />
+  </ItemGroup>
+</Project>
