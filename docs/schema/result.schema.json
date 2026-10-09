@@ -1,0 +1,252 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/benattiahakim-maker/EG_ROOM_TRACKER/docs/schema/result.schema.json",
+  "title": "EG_ROOM_TRACKER — résultat d'extraction (result.json)",
+  "description": "Contrat unique de sortie de l'extracteur. Version de schéma 1.x. Voir docs/SPECIFICATIONS.md, sections 2, 3 et 9.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schemaVersion", "summary", "rooms", "anomalies"],
+  "properties": {
+    "schemaVersion": {
+      "type": "string",
+      "pattern": "^1\\.[0-9]+$",
+      "description": "Version du contrat de sortie (majeure.mineure)."
+    },
+    "summary": { "$ref": "#/$defs/summary" },
+    "rooms": {
+      "type": "array",
+      "description": "Toutes les pièces collectées, triées par elementId numérique croissant. Vide si status = failed.",
+      "items": { "$ref": "#/$defs/room" }
+    },
+    "anomalies": {
+      "type": "array",
+      "description": "Anomalies non bloquantes, détaillées, au niveau pièce ou document.",
+      "items": { "$ref": "#/$defs/anomaly" }
+    }
+  },
+  "$defs": {
+    "elementId": {
+      "type": "string",
+      "pattern": "^-?[0-9]+$",
+      "description": "ElementId.Value sérialisé en chaîne pour préserver l'entier 64 bits."
+    },
+    "nullableString": { "type": ["string", "null"] },
+    "nonNegativeNumberOrNull": { "type": ["number", "null"], "minimum": 0 },
+    "elementRef": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["elementId", "name"],
+      "properties": {
+        "elementId": { "$ref": "#/$defs/elementId" },
+        "name": { "type": "string" }
+      }
+    },
+    "level": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["elementId", "uniqueId", "name"],
+      "properties": {
+        "elementId": { "$ref": "#/$defs/elementId" },
+        "uniqueId": { "type": "string", "minLength": 1 },
+        "name": { "type": "string" }
+      }
+    },
+    "qualityFlag": {
+      "enum": ["UNPLACED", "ZERO_AREA", "DUPLICATE_NUMBER", "MISSING_PARAMETER", "LEVEL_NOT_FOUND", "EXTRACTION_ERROR"]
+    },
+    "documentAnomalyCode": {
+      "enum": ["VOLUME_NOT_COMPUTED", "LINK_MISSING", "REVIT_WARNING_ON_OPEN", "SHARED_PARAMETER_NOT_FOUND"]
+    },
+    "errorCode": {
+      "enum": [
+        "CONFIG_INVALID",
+        "CONFIG_SCHEMA_UNSUPPORTED",
+        "PATH_OUTSIDE_INPUT",
+        "RVT_NOT_FOUND",
+        "RVT_AMBIGUOUS",
+        "REVIT_VERSION_INCOMPATIBLE",
+        "DOCUMENT_OPEN_FAILED",
+        "DOCUMENT_CORRUPTED",
+        "EXPORT_FAILED",
+        "UNEXPECTED_ERROR"
+      ]
+    },
+    "status": { "enum": ["succeeded", "succeededWithWarnings", "failed"] },
+    "summary": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "correlationId", "extractorVersion", "revit", "apsEngine", "source",
+        "startedAtUtc", "completedAtUtc", "options", "counts", "status", "errors"
+      ],
+      "properties": {
+        "correlationId": { "type": "string", "minLength": 1 },
+        "extractorVersion": { "type": "string", "minLength": 1 },
+        "revit": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["version", "build"],
+          "properties": {
+            "version": { "enum": ["2025", "2026", "2027"] },
+            "build": { "$ref": "#/$defs/nullableString" }
+          }
+        },
+        "apsEngine": {
+          "$ref": "#/$defs/nullableString",
+          "description": "Identifiant du moteur APS lorsqu'il est disponible, par exemple Autodesk.Revit+2026."
+        },
+        "source": {
+          "type": ["object", "null"],
+          "additionalProperties": false,
+          "description": "Null uniquement si le RVT n'a pas pu être résolu.",
+          "required": ["fileName", "relativePath", "isWorkshared"],
+          "properties": {
+            "fileName": { "type": "string", "minLength": 1 },
+            "relativePath": { "type": "string", "minLength": 1 },
+            "isWorkshared": { "type": ["boolean", "null"] }
+          }
+        },
+        "startedAtUtc": { "type": "string", "format": "date-time" },
+        "completedAtUtc": { "type": "string", "format": "date-time" },
+        "options": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["phaseIds", "volumeMode", "sharedParameterKeys"],
+          "properties": {
+            "phaseIds": {
+              "type": ["array", "null"],
+              "items": { "$ref": "#/$defs/elementId" },
+              "description": "Null = toutes les phases."
+            },
+            "volumeMode": { "enum": ["preserve", "compute"] },
+            "sharedParameterKeys": { "type": "array", "items": { "type": "string" } }
+          }
+        },
+        "counts": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["roomsCollected", "roomsExported", "roomsWithAnomalies"],
+          "properties": {
+            "roomsCollected": { "type": "integer", "minimum": 0 },
+            "roomsExported": { "type": "integer", "minimum": 0 },
+            "roomsWithAnomalies": { "type": "integer", "minimum": 0 }
+          }
+        },
+        "status": { "$ref": "#/$defs/status" },
+        "errors": {
+          "type": "array",
+          "description": "Erreurs globales ; non vide si et seulement si status = failed.",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["code", "stage", "message"],
+            "properties": {
+              "code": { "$ref": "#/$defs/errorCode" },
+              "stage": { "type": "string" },
+              "message": { "type": "string" }
+            }
+          }
+        }
+      },
+      "allOf": [
+        {
+          "if": { "properties": { "status": { "const": "failed" } } },
+          "then": { "properties": { "errors": { "minItems": 1 } } },
+          "else": { "properties": { "errors": { "maxItems": 0 } } }
+        }
+      ]
+    },
+    "room": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "elementId", "uniqueId", "name", "number", "areaM2", "unboundedHeightM", "level",
+        "occupancy", "volumeM3", "volumeStatus", "finishes", "phase", "designOption",
+        "sharedParameters", "qualityFlags"
+      ],
+      "properties": {
+        "elementId": { "$ref": "#/$defs/elementId" },
+        "uniqueId": { "type": "string", "minLength": 1 },
+        "name": { "$ref": "#/$defs/nullableString" },
+        "number": { "$ref": "#/$defs/nullableString" },
+        "areaM2": { "$ref": "#/$defs/nonNegativeNumberOrNull" },
+        "unboundedHeightM": { "$ref": "#/$defs/nonNegativeNumberOrNull" },
+        "level": { "oneOf": [{ "$ref": "#/$defs/level" }, { "type": "null" }] },
+        "occupancy": { "$ref": "#/$defs/nullableString" },
+        "volumeM3": { "$ref": "#/$defs/nonNegativeNumberOrNull" },
+        "volumeStatus": {
+          "enum": ["computed", "notComputed", "notAvailable"],
+          "description": "computed : valeur lue ; notComputed : calcul désactivé dans le document ; notAvailable : lecture impossible (erreur)."
+        },
+        "finishes": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["floor", "wall", "ceiling", "base"],
+          "properties": {
+            "floor": { "$ref": "#/$defs/nullableString" },
+            "wall": { "$ref": "#/$defs/nullableString" },
+            "ceiling": { "$ref": "#/$defs/nullableString" },
+            "base": { "$ref": "#/$defs/nullableString" }
+          }
+        },
+        "phase": { "oneOf": [{ "$ref": "#/$defs/elementRef" }, { "type": "null" }] },
+        "designOption": { "oneOf": [{ "$ref": "#/$defs/elementRef" }, { "type": "null" }] },
+        "sharedParameters": {
+          "type": "object",
+          "description": "Clé = clé du mapping de settings.json.",
+          "additionalProperties": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["guid", "value"],
+            "properties": {
+              "guid": { "type": "string", "format": "uuid" },
+              "value": { "type": ["string", "number", "null"] }
+            }
+          }
+        },
+        "qualityFlags": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": { "$ref": "#/$defs/qualityFlag" }
+        }
+      },
+      "allOf": [
+        {
+          "if": { "properties": { "volumeStatus": { "const": "computed" } } },
+          "then": { "properties": { "volumeM3": { "type": "number" } } },
+          "else": { "properties": { "volumeM3": { "type": "null" } } }
+        }
+      ]
+    },
+    "anomaly": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["code", "severity", "scope", "elementId", "message", "details"],
+      "properties": {
+        "code": { "anyOf": [{ "$ref": "#/$defs/qualityFlag" }, { "$ref": "#/$defs/documentAnomalyCode" }] },
+        "severity": { "enum": ["info", "warning", "error"] },
+        "scope": { "enum": ["room", "document"] },
+        "elementId": { "oneOf": [{ "$ref": "#/$defs/elementId" }, { "type": "null" }] },
+        "message": { "type": "string" },
+        "details": { "type": "object" }
+      },
+      "allOf": [
+        {
+          "if": { "properties": { "scope": { "const": "room" } } },
+          "then": {
+            "properties": {
+              "code": { "$ref": "#/$defs/qualityFlag" },
+              "elementId": { "$ref": "#/$defs/elementId" }
+            }
+          },
+          "else": {
+            "properties": {
+              "code": { "$ref": "#/$defs/documentAnomalyCode" },
+              "elementId": { "type": "null" }
+            }
+          }
+        }
+      ]
+    }
+  }
+}
