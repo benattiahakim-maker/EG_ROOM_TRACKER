@@ -153,6 +153,10 @@ Journal de publication recommandé (description de PR, release GitHub ou ticket)
 | Date | Commit | Revit | AppBundle test / prod | Activity test / prod | Prod précédente (AppBundle / Activity) |
 | --- | --- | --- | --- | --- | --- |
 
+DaManager tient ce journal dans un fichier JSON lisible (une ligne ajoutée à chaque promotion), importe et exporte
+cette table en Markdown, et protège automatiquement au nettoyage toutes les versions qu'il cite (voir
+[`tools/EgRoomTracker.DaManager/README.md`](../tools/EgRoomTracker.DaManager/README.md)).
+
 Retour arrière : un alias est repointé (`PATCH …/aliases/prod`) sur une version antérieure, qui reste disponible. Rien
 n'est supprimé.
 

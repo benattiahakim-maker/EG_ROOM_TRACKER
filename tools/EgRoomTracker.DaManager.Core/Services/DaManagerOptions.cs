@@ -6,18 +6,23 @@ namespace EgRoomTracker.DaManager.Services;
 /// <summary>
 /// Configuration de DaManager, lue dans les mêmes variables que <c>deploy.py</c> (docs/PUBLISHING.md section 1) :
 /// identifiants APS (<see cref="ApsSettings"/>), <c>REVIT_VERSIONS</c>, <c>APPBUNDLE_DIR</c>, plus
-/// <c>EGR_REPO_ROOT</c> (racine du dépôt, sinon recherchée à partir du dossier de l'application).
+/// <c>EGR_REPO_ROOT</c> (racine du dépôt, sinon recherchée à partir du dossier de l'application) et
+/// <c>EGR_PUBLICATION_JOURNAL</c> (journal de publication, voir <see cref="PublicationJournal"/>).
 /// </summary>
 public sealed class DaManagerOptions
 {
     public const string RevitVersionsVariable = "REVIT_VERSIONS";
     public const string AppBundleDirVariable = "APPBUNDLE_DIR";
     public const string RepositoryRootVariable = "EGR_REPO_ROOT";
+    public const string JournalVariable = "EGR_PUBLICATION_JOURNAL";
 
     public required ApsSettings Aps { get; init; }
     public required IReadOnlyList<string> RevitVersions { get; init; }
     public string? RepositoryRoot { get; init; }
     public string? BundleDirectory { get; init; }
+
+    /// <summary>Journal de publication (JSON ou table Markdown) ; null : aucun journal.</summary>
+    public string? JournalPath { get; init; }
 
     public static DaManagerOptions FromEnvironment(IReadOnlyDictionary<string, string?>? environment = null, string? startDirectory = null)
     {
@@ -33,8 +38,13 @@ public sealed class DaManagerOptions
             .ToList();
         var root = Get(RepositoryRootVariable) ?? FindRepositoryRoot(startDirectory ?? AppContext.BaseDirectory);
         var bundles = Get(AppBundleDirVariable) ?? (root is null ? null : Path.Combine(root, "artifacts", "appbundles"));
-        return new DaManagerOptions { Aps = ApsSettings.FromEnvironment(environment), RevitVersions = versions, RepositoryRoot = root, BundleDirectory = bundles };
+        var journal = Get(JournalVariable) ?? DefaultJournalPath();
+        return new DaManagerOptions { Aps = ApsSettings.FromEnvironment(environment), RevitVersions = versions, RepositoryRoot = root, BundleDirectory = bundles, JournalPath = journal };
     }
+
+    /// <summary>Journal local par défaut : <c>%LOCALAPPDATA%\EgRoomTracker\DaManager\publication-journal.json</c>.</summary>
+    public static string DefaultJournalPath() =>
+        Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "EgRoomTracker", "DaManager", "publication-journal.json");
 
     /// <summary>Premier dossier parent contenant <c>EgRoomTracker.sln</c> et <c>src/Packaging/definitions</c>.</summary>
     public static string? FindRepositoryRoot(string startDirectory)

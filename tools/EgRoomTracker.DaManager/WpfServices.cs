@@ -26,4 +26,16 @@ public sealed class WpfFileDialogService : IFileDialogService
 
         return dialog.ShowDialog() == true ? dialog.FolderName : null;
     }
+
+    public string? OpenFile(string title, string filter)
+    {
+        var dialog = new OpenFileDialog { Title = title, Filter = filter, CheckFileExists = true };
+        return dialog.ShowDialog() == true ? dialog.FileName : null;
+    }
+
+    public string? SaveFile(string title, string filter, string defaultFileName)
+    {
+        var dialog = new SaveFileDialog { Title = title, Filter = filter, FileName = defaultFileName, OverwritePrompt = true };
+        return dialog.ShowDialog() == true ? dialog.FileName : null;
+    }
 }

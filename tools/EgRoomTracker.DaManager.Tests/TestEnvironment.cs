@@ -29,15 +29,20 @@ internal sealed class TestEnvironment : IDisposable
             RevitVersions = ["2026"],
             RepositoryRoot = Root,
             BundleDirectory = BundleDirectory,
+            JournalPath = JournalPath,
         };
-        ViewModel = new MainViewModel(options, new HttpClient(Server), Confirmation);
+        ViewModel = new MainViewModel(options, new HttpClient(Server), Confirmation, Files);
     }
 
     public string Root => _temp.Path;
 
     public string BundleDirectory => Path.Combine(Root, "artifacts", "appbundles");
 
+    public string JournalPath => Path.Combine(Root, "journal", "publication-journal.json");
+
     public FakeApsServer Server { get; } = new();
+
+    public FakeFiles Files { get; } = new();
 
     public FakeConfirmation Confirmation { get; } = new();
 
@@ -70,4 +75,20 @@ internal sealed class FakeConfirmation : IConfirmationService
         Plans.Add(plan);
         return Task.FromResult(Answer);
     }
+}
+
+/// <summary>Dialogues de fichiers simulés : renvoient le chemin préparé par le test.</summary>
+internal sealed class FakeFiles : IFileDialogService
+{
+    public string? NextFolder { get; set; }
+
+    public string? NextOpen { get; set; }
+
+    public string? NextSave { get; set; }
+
+    public string? PickFolder(string title, string? initialDirectory) => NextFolder;
+
+    public string? OpenFile(string title, string filter) => NextOpen;
+
+    public string? SaveFile(string title, string filter, string defaultFileName) => NextSave;
 }

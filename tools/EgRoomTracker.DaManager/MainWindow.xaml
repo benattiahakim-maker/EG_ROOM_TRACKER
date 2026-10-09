@@ -110,7 +110,7 @@
             <StackPanel>
               <TextBlock Text="Nettoyage des versions" Style="{StaticResource Heading}" />
               <TextBlock Style="{StaticResource Hint}"
-                         Text="Quota APS : 100 versions. Les versions référencées par un alias ne sont jamais supprimées. Indiquer les versions notées au journal de publication." />
+                         Text="Quota APS : 100 versions. Les versions référencées par un alias ou citées par le journal de publication ne sont jamais supprimées. Versions supplémentaires à protéger : ci-dessous." />
               <Grid Margin="0,6,0,0">
                 <Grid.ColumnDefinitions>
                   <ColumnDefinition Width="90" />
@@ -122,11 +122,36 @@
                   <TextBox Text="{Binding KeepLatest, UpdateSourceTrigger=PropertyChanged}" />
                 </StackPanel>
                 <StackPanel Grid.Column="1">
-                  <TextBlock Text="Protégées (journal)" Style="{StaticResource Hint}" />
+                  <TextBlock Text="Autres versions protégées" Style="{StaticResource Hint}" />
                   <TextBox Text="{Binding ProtectedVersions, UpdateSourceTrigger=PropertyChanged}" />
                 </StackPanel>
                 <Button Grid.Column="2" VerticalAlignment="Bottom" Content="Planifier…" Style="{StaticResource DangerButton}" Command="{Binding CleanupCommand}" />
               </Grid>
+            </StackPanel>
+          </Border>
+
+          <Border Style="{StaticResource Card}">
+            <StackPanel>
+              <TextBlock Text="Journal de publication" Style="{StaticResource Heading}" />
+              <TextBlock Style="{StaticResource Hint}" TextWrapping="Wrap"
+                         Text="docs/PUBLISHING.md section 8. Une ligne est ajoutée à chaque promotion ; le nettoyage protège toutes les versions citées. Import et export en JSON ou en table Markdown." />
+              <TextBlock Text="Fichier" Style="{StaticResource Hint}" Margin="0,6,0,0" />
+              <TextBox Text="{Binding JournalPath, UpdateSourceTrigger=LostFocus}" />
+              <TextBlock Text="{Binding JournalStatus}" Style="{StaticResource Hint}" Margin="0,4,0,0" />
+              <ItemsControl ItemsSource="{Binding Journal}" MaxHeight="140" Margin="0,4,0,0">
+                <ItemsControl.Template>
+                  <ControlTemplate><ScrollViewer VerticalScrollBarVisibility="Auto"><ItemsPresenter /></ScrollViewer></ControlTemplate>
+                </ItemsControl.Template>
+                <ItemsControl.ItemTemplate>
+                  <DataTemplate>
+                    <TextBlock Text="{Binding Text}" FontFamily="Consolas" FontSize="11" TextWrapping="Wrap" />
+                  </DataTemplate>
+                </ItemsControl.ItemTemplate>
+              </ItemsControl>
+              <StackPanel Orientation="Horizontal" Margin="0,6,0,0">
+                <Button Content="Importer…" Command="{Binding ImportJournalCommand}" Margin="0,0,6,0" />
+                <Button Content="Exporter…" Command="{Binding ExportJournalCommand}" />
+              </StackPanel>
             </StackPanel>
           </Border>
         </StackPanel>
