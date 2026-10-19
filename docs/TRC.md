@@ -24,23 +24,37 @@ result.zip
 
 ## Fiches
 
-Liste JSON de fiches `{ "model", "pk", "fields" }`, dans l'ordre : tous les `trc.bimobject`, toutes les `trc.bimobjectpropertyvalue`, puis
-`special.setcodefile`. Pas de spécification, d'exigence, de facette, de résultat de conformité ni de `facetsetmatch`.
+Liste JSON de fiches `{ "model", "pk", "fields" }`, dans l'ordre : tous les `trc.bimobject` (les pièces, puis les portes, équipements et
+terminaux), toutes les `trc.bimobjectpropertyvalue`, puis `special.setcodefile`. Pas de spécification, d'exigence, de facette, de résultat de
+conformité ni de `facetsetmatch`.
 
 | Modèle | Champs |
 | --- | --- |
-| `trc.bimobject` | `bim_id` = UniqueId de la pièce, `code_file` |
+| `trc.bimobject` | `bim_id` = UniqueId de la pièce ou de l'élément, `code_file` |
 | `trc.bimobjectpropertyvalue` | `latest_value` et `original_value` (identiques), `bim_object_id` (`pk` de l'objet), `bim_property_code_property` |
 | `special.setcodefile` | `file_name` = `{code_file}.rvt`, `code_file` |
 
 `code_file` : nom du RVT sans extension, `_` remplacés par `-`, `-détaché` retiré (`<GUID>£nom` pour un fichier de la plateforme).
-Les **`pk` sont stables** : GUID déterministe de `code_file`, de la pièce, du code et du rang, donc identiques d'un lancement à l'autre
+Les **`pk` sont stables** : GUID déterministe de `code_file`, de l'objet, du code et du rang, donc identiques d'un lancement à l'autre
 (TRC les tirait au hasard).
 
-## Propriétés (codes en minuscules, `{section}_{propriété}`, section préfixée `a:` ou `b:` pour le tri)
+## Objets BIM et rattachement
+
+Avec `elements`, chaque **porte**, **équipement** et **terminal** est un `trc.bimobject` à part entière, avec ses propres propriétés ; la pièce
+ne porte plus aucune propriété de porte ou d'équipement. Le lien se fait comme `ParentGlobalId` dans les fichiers TRC de la plateforme :
+
+- `Category` sur chaque objet : `Space` (pièce), `Door` (porte), `<discipline> equipement` ou `<discipline> terminal` pour les équipements et
+  terminaux (`cvc equipement`, `plomberie terminal`, `electricite equipement`, `autres terminal`…) ;
+- `Space` sur chaque élément : le `bim_id` (UniqueId) de la pièce qui le contient. C'est une **liste** : une fiche par pièce, sous le même
+  code. Une porte entre deux pièces est **un seul objet** avec deux valeurs `Space`.
+
+Un élément sans pièce n'est pas exporté (anomalie `ELEMENT_WITHOUT_ROOM` dans `result.json`).
+
+## Propriétés d'une pièce (codes en minuscules, `{section}_{propriété}`, section préfixée `a:` ou `b:` pour le tri)
 
 | Code | Valeur | Condition |
 | --- | --- | --- |
+| `Category` | `Space` | toujours |
 | `a:identification data_ouvrage` | paramètre `SGP-DI-Ouvrage` | si renseigné |
 | `a:identification data_building` | `A` (constante, comme TRC) | toujours |
 | `a:identification data_storey` | nom du niveau | si présent |
@@ -54,28 +68,42 @@ Les **`pk` sont stables** : GUID déterministe de `code_file`, de la pièce, du 
 | `b:dimensions_hauteur renseignee` | `ROOM_HEIGHT` | si renseignée |
 | `b:dimensions_hauteur non limitee` | hauteur non limitée | avec `roomHeights` |
 | `b:dimensions_hauteur element limitant` | `Catégorie (modèle ou lien)` | si un obstacle existe |
-| `b:porte_nombre` | nombre de portes de la pièce (`0` si aucune) | avec `elements` contenant `doors` |
-| `b:porte_numero`, `_id`, `_famille`, `_type` | `DOOR_NUMBER`, ElementId, famille, type | une valeur **par porte**, même ordre |
-| `b:porte_largeur` | passage libre, `0.90m` (avec `m`, comme TRC) | une valeur par porte ; vide si inconnu |
-| `b:porte_hauteur` | passage libre, `2.04` (sans unité, comme TRC) | une valeur par porte ; vide si inconnu |
-| `b:equipements_quantite` | `N équipements présents dans le local` (équipements et terminaux, toutes disciplines) | avec `equipment` ou `terminals` |
-| `b:equipements cvc_quantite`, `…plomberie_…`, `…electricite_…`, `…autres_…` | idem par discipline (`0` inclus) | idem |
-| `b:equipements <discipline>_liste` | `Catégorie : Famille [lien] × n` séparés par ` \| ` | si au moins un élément |
 | `c:parametres revit_<nom>` | un code par paramètre de la pièce, nom en minuscules (`c:parametres revit_hauteur limite`) ; nombres sur 4 décimales au plus, sans zéros inutiles | avec `roomParameters: "all"` ; paramètre sans valeur ou texte vide : non écrit |
 
-Règles : **jamais de zéro** pour une dimension inconnue (valeur vide, ou fiche omise) ; un nombre s'écrit en mètres, point décimal, 2 décimales ;
+## Propriétés d'une porte, d'un équipement ou d'un terminal
+
+| Code | Valeur | Condition |
+| --- | --- | --- |
+| `Category` | `Door`, `<discipline> equipement` ou `<discipline> terminal` | toujours |
+| `Space` | `bim_id` de la pièce, une fiche par pièce | toujours |
+| `a:identification data_storey` | nom du niveau de l'instance | si présent |
+| `a:identification data_numero` | numéro de porte (`DOOR_NUMBER`) | portes, si renseigné |
+| `a:identification data_repere` | repère (`ALL_MODEL_MARK`) | si renseigné |
+| `a:identification data_id revit` | ElementId (du modèle lié pour un élément de lien) | toujours |
+| `a:identification data_categorie` | catégorie Revit (`Portes`, `Equipement de génie climatique`…) | toujours |
+| `a:identification data_famille`, `a:identification data_type` | famille et type | si présents |
+| `a:identification data_discipline` | `cvc`, `plomberie`, `electricite` ou `autres` | équipements et terminaux |
+| `a:identification data_lien` | nom du modèle lié d'origine | élément d'un lien |
+| `bim_object_username` | `{niveau}_{famille}_{ElementId}` sans espaces, unique parmi tous les objets | toujours |
+| `b:porte_largeur` | passage libre, `0.90m` (avec `m`, comme TRC) | portes ; omis si inconnu |
+| `b:porte_hauteur` | passage libre, `2.04` (sans unité, comme TRC) | portes ; omis si inconnu |
+| `c:parametres revit_<nom>` | paramètres de l'instance, mêmes règles que pour la pièce | avec `roomParameters: "all"` |
+
+Règles : **jamais de zéro** pour une dimension inconnue (fiche omise) ; un nombre s'écrit en mètres, point décimal, 2 décimales ;
 une valeur de plus de 255 caractères devient « Voir détail en annexe » et son texte complet est dans `Details_Annexes/` (même démarche
-que TRC). Les noms de catégories sont ceux du moteur : l'Activity est lancée en **français** (`/l FRA`), comme celle de TRC.
+que TRC). Les noms de catégories Revit sont ceux du moteur : l'Activity est lancée en **français** (`/l FRA`), comme celle de TRC.
 
 Les propriétés qui dépendent d'une exigence (`b:dimensions_dimensions`, `b:equipements_maintenance`, `b:reseaux_traversant`, résistance au
 feu…) ne sont pas produites : il n'y a pas de valeur cible dans l'extraction.
 
 ## Réglages à activer pour chaque donnée
 
-`roomHeights` (hauteurs), `elements` (portes, équipements, terminaux), `roomImages` (images), `roomParameters: "all"` (un code `c:parametres revit_…` par paramètre de la pièce ; ces codes doivent exister côté TRC). L'identification (`a:`) et la surface n'ont
-besoin d'aucun réglage.
+`roomHeights` (hauteurs), `elements` (objets portes, équipements, terminaux), `roomImages` (images), `roomParameters: "all"` (un code
+`c:parametres revit_…` par paramètre de la pièce et des éléments ; ces codes doivent exister côté TRC). L'identification (`a:`) et la surface
+n'ont besoin d'aucun réglage.
 
 ## WorkItemRunner
 
-Il décompresse le ZIP et affiche `TRCValidationDict.json` : une ligne par objet BIM, une colonne par code (valeurs multiples réunies par
-` | `), sans statut ni anomalies.
+Il décompresse le ZIP et affiche `TRCValidationDict.json` en **arbre** : une ligne par pièce, dépliable (▸) pour voir les portes, équipements
+et terminaux dont le `Space` la désigne (une porte entre deux pièces apparaît sous chacune). Une colonne par code (valeurs multiples réunies
+par ` | `), sans statut ni anomalies. `result.json` s'affiche de la même façon, avec une colonne `objet` (pièce, porte, équipement cvc…).

@@ -24,7 +24,7 @@ public sealed class TrcExportTests
         HeightM = height,
     };
 
-    private static RoomElementDto Equipment(string id, string category, string family, string discipline, string? link = null) => new()
+    private static RoomElementDto Equipment(string id, string category, string family, string? discipline, string? link = null) => new()
     {
         ElementId = id,
         UniqueId = $"u-{id}",
@@ -209,35 +209,35 @@ public sealed class TrcExportTests
     }
 
     [Fact]
-    public void Doors_give_one_value_per_door_in_the_same_order_and_no_zero()
+    public void Doors_become_bim_objects_linked_to_their_rooms_and_no_longer_listed_on_the_room()
     {
-        var room = Room("1", "A", "1") with
-        {
-            Doors = [Door("11", "1.02", 0.9, 2.04), Door("12", "1.03", null, 0)],
-        };
+        var shared = Door("11", "1.02", 0.9, 2.04);
+        var a = Room("1", "A", "1") with { Doors = [shared, Door("12", "1.03", null, 0)] };
+        var b = Room("2", "B", "2") with { Doors = [shared with { Relation = ElementRoomRelation.From }] };
 
-        var values = Values(TrcMapper.Map(Result(room)), "uid-1");
+        var document = TrcMapper.Map(Result(a, b));
+        var door = Values(document, "u-11");
+        var other = Values(document, "u-12");
 
-        Assert.Equal(["2"], values[TrcCodes.DoorCount]);
-        Assert.Equal(["1.02", "1.03"], values[TrcCodes.DoorNumber]);
-        Assert.Equal(["11", "12"], values[TrcCodes.DoorId]);
-        Assert.Equal(["Simple", "Simple"], values[TrcCodes.DoorFamily]);
-        Assert.Equal(["0915 x 2134", "0915 x 2134"], values[TrcCodes.DoorType]);
-        Assert.Equal(["0.90m", null], values[TrcCodes.DoorWidth]);
-        Assert.Equal(["2.04", null], values[TrcCodes.DoorHeight]);
+        Assert.Equal(["uid-1", "uid-2", "u-11", "u-12"], Fiches(document).Where(f => f["model"]!.ToString() == "trc.bimobject").Select(f => f["fields"]!["bim_id"]!.ToString()));
+        Assert.Equal([TrcCategories.Door], door[TrcCodes.Category]);
+        Assert.Equal(["uid-1", "uid-2"], door[TrcCodes.Space]); // une porte entre deux pièces : une seule fiche objet, deux pièces
+        Assert.Equal(["1.02"], door[TrcCodes.Numero]);
+        Assert.Equal(["11"], door[TrcCodes.ElementRevitId]);
+        Assert.Equal(["Portes"], door[TrcCodes.ElementRevitCategory]);
+        Assert.Equal(["Simple"], door[TrcCodes.ElementFamily]);
+        Assert.Equal(["0915 x 2134"], door[TrcCodes.ElementType]);
+        Assert.Equal(["0.90m"], door[TrcCodes.DoorWidth]);
+        Assert.Equal(["2.04"], door[TrcCodes.DoorHeight]);
+        Assert.Equal(["uid-1"], other[TrcCodes.Space]);
+        Assert.DoesNotContain(TrcCodes.DoorWidth, other.Keys); // dimension inconnue : jamais 0
+        Assert.DoesNotContain(TrcCodes.DoorHeight, other.Keys);
+        Assert.Equal([TrcCategories.Space], Values(document, "uid-1")[TrcCodes.Category]);
+        Assert.DoesNotContain(Values(document, "uid-1").Keys, code => code.StartsWith("b:porte", StringComparison.Ordinal) || code == TrcCodes.Space);
     }
 
     [Fact]
-    public void Room_without_door_has_a_count_of_zero_and_no_door_value()
-    {
-        var values = Values(TrcMapper.Map(Result(Room("1", "A", "1") with { Doors = [] })), "uid-1");
-
-        Assert.Equal(["0"], values[TrcCodes.DoorCount]);
-        Assert.DoesNotContain(TrcCodes.DoorWidth, values.Keys);
-    }
-
-    [Fact]
-    public void Equipment_and_terminals_are_ranged_by_discipline_with_the_link_name()
+    public void Equipment_and_terminals_become_bim_objects_with_their_discipline_category_and_link()
     {
         var room = Room("1", "A", "1") with
         {
@@ -245,41 +245,54 @@ public sealed class TrcExportTests
             [
                 Equipment("1", "Équipements mécaniques", "CTA", ElementDisciplines.Cvc),
                 Equipment("2", "Équipements électriques", "Armoire", ElementDisciplines.Electrical, "ELEC_Reseau"),
-                Equipment("3", "Équipements spécialisés", "Extincteur", ElementDisciplines.Other),
             ],
-            Terminals =
-            [
-                Equipment("4", "Terminaux d'air", "Diffuseur", ElementDisciplines.Cvc),
-                Equipment("5", "Terminaux d'air", "Diffuseur", ElementDisciplines.Cvc),
-                Equipment("6", "Luminaires", "LED 600", ElementDisciplines.Electrical, "ELEC_Reseau"),
-            ],
+            Terminals = [Equipment("4", "Terminaux d'air", "Diffuseur", ElementDisciplines.Cvc), Equipment("5", "Luminaires", "LED 600", null)],
         };
 
-        var values = Values(TrcMapper.Map(Result(room)), "uid-1");
+        var document = TrcMapper.Map(Result(room));
 
-        Assert.Equal(["6 équipements présents dans le local"], values[TrcCodes.EquipmentTotal]);
-        Assert.Equal(["3 équipements présents dans le local"], values[TrcCodes.EquipmentQuantity("cvc")]);
-        Assert.Equal(["Terminaux d'air : Diffuseur × 2 | Équipements mécaniques : CTA × 1"], values[TrcCodes.EquipmentList("cvc")]);
-        Assert.Equal(["0 équipements présents dans le local"], values[TrcCodes.EquipmentQuantity("plomberie")]);
-        Assert.DoesNotContain(TrcCodes.EquipmentList("plomberie"), values.Keys);
-        Assert.Equal(["Luminaires : LED 600 [ELEC_Reseau] × 1 | Équipements électriques : Armoire [ELEC_Reseau] × 1"], values[TrcCodes.EquipmentList("electricite")]);
-        Assert.Equal(["Équipements spécialisés : Extincteur × 1"], values[TrcCodes.EquipmentList("autres")]);
+        Assert.Equal(["cvc equipement"], Values(document, "u-1")[TrcCodes.Category]);
+        Assert.Equal(["electricite equipement"], Values(document, "u-2")[TrcCodes.Category]);
+        Assert.Equal(["ELEC_Reseau"], Values(document, "u-2")[TrcCodes.ElementLink]);
+        Assert.Equal(["electricite"], Values(document, "u-2")[TrcCodes.ElementDiscipline]);
+        Assert.Equal(["cvc terminal"], Values(document, "u-4")[TrcCodes.Category]);
+        Assert.Equal(["autres terminal"], Values(document, "u-5")[TrcCodes.Category]);
+        Assert.All(new[] { "u-1", "u-2", "u-4", "u-5" }, id => Assert.Equal(["uid-1"], Values(document, id)[TrcCodes.Space]));
+        Assert.DoesNotContain(TrcCodes.DoorWidth, Values(document, "u-1").Keys);
+        Assert.DoesNotContain(Values(document, "uid-1").Keys, code => code.StartsWith("b:equipements", StringComparison.Ordinal));
+    }
+
+    [Fact]
+    public void Element_parameters_and_usernames_are_exported_on_the_element()
+    {
+        var item = Equipment("7", "Équipements mécaniques", "CTA double flux", ElementDisciplines.Cvc) with
+        {
+            Level = "Niveau 1",
+            Parameters = new Dictionary<string, object?> { ["Débit"] = 0.25, ["Commentaires"] = null },
+        };
+        var room = Room("1", "A", "1") with { Equipment = [item] };
+
+        var values = Values(TrcMapper.Map(Result(room)), "u-7");
+
+        Assert.Equal(["0.25"], values["c:parametres revit_débit"]);
+        Assert.DoesNotContain("c:parametres revit_commentaires", values.Keys);
+        Assert.Equal(["Niveau 1"], values[TrcCodes.Storey]);
+        Assert.Equal(["Niveau1_CTAdoubleflux_7"], values[TrcCodes.Username]);
     }
 
     [Fact]
     public void Long_values_go_to_an_annex()
     {
-        var items = Enumerable.Range(0, 30).Select(i => Equipment(i.ToString(), "Luminaires", $"Famille numéro {i}", ElementDisciplines.Electrical)).ToList();
-        var room = Room("1", "A", "1") with { Equipment = items };
+        var item = Equipment("1", "Luminaires", "LED", ElementDisciplines.Electrical) with { Mark = new string('F', 300) };
+        var room = Room("1", "A", "1") with { Equipment = [item] };
 
         var document = TrcMapper.Map(Result(room));
-        var values = Values(document, "uid-1");
+        var values = Values(document, "u-1");
 
-        Assert.Equal([TrcMapper.AnnexNote], values[TrcCodes.EquipmentList("electricite")]);
+        Assert.Equal([TrcMapper.AnnexNote], values[TrcCodes.ElementMark]);
         var annex = Assert.Single(document.Annexes);
         Assert.EndsWith(".txt", annex.FileName);
-        Assert.Contains("Famille numéro 29", annex.Text);
-        Assert.True(annex.Text.Length > TrcMapper.MaxValueLength);
+        Assert.Equal(300, annex.Text.Length);
         Assert.All(Fiches(document).Where(f => f["model"]!.ToString() == "trc.bimobjectpropertyvalue"),
             f => Assert.True((f["fields"]!["latest_value"]?.ToString().Length ?? 0) <= TrcMapper.MaxValueLength));
     }
@@ -312,8 +325,7 @@ public sealed class TrcExportTests
         var dir = Directory.CreateTempSubdirectory("egr-trc-").FullName;
         try
         {
-            var items = Enumerable.Range(0, 30).Select(i => Equipment(i.ToString(), "Luminaires", $"Famille {i}", ElementDisciplines.Electrical)).ToList();
-            var room = Room("1", "Local opérateurs", "1") with { Equipment = items };
+            var room = Room("1", "Local opérateurs", "1") with { Parameters = new Dictionary<string, object?> { ["Notes"] = new string('x', 400) } };
 
             var file = new TrcExportService().Write(Result(room), Path.Combine(dir, "result"));
 

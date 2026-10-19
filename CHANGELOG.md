@@ -8,6 +8,14 @@ Le format s'inspire de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/).
 
 ### Modifié
 
+- **Format TRC : portes, équipements et terminaux deviennent des objets BIM** (`trc.bimobject`) avec leurs propres propriétés, au lieu
+  d'être listés sur la pièce (`b:porte_*`, `b:equipements_*` retirés de la pièce). Chaque objet porte `Category` (`Space`, `Door`,
+  `<discipline> equipement`, `<discipline> terminal`) ; chaque élément porte `Space`, le `bim_id` de sa pièce, une fiche par pièce (une porte
+  entre deux pièces est un seul objet avec deux `Space`). Identification de l'élément (`a:identification data_id revit`, `_categorie`,
+  `_famille`, `_type`, `_repere`, `_discipline`, `_lien`), passage libre des portes (`b:porte_largeur`, `b:porte_hauteur`) et paramètres de
+  l'instance (`c:parametres revit_…`). Voir [`docs/TRC.md`](docs/TRC.md). Rupture pour les lecteurs du fichier TRC existant.
+- WorkItemRunner : le tableau des résultats devient un **arbre** (pièce ▸ portes, équipements, terminaux), pour `TRCValidationDict.json`
+  (rattachement par `Space`) comme pour `result.json` (colonne `objet`) ; tri des colonnes désactivé pour garder l'ordre de l'arbre.
 - **Clés du JSON en français** (contrat `result.json`, noms des champs de `rooms[]` et de leurs sous-objets) : `id_revit`, `unique_id`, `nom`,
   `numero`, `surface_m2`, `hauteur_non_limitee_m`, `niveau`, `occupation`, `volume_m3`, `statut_volume`, `finitions` (`sol`, `murs`, `plafond`,
   `plinthe`), `phase`, `variante`, `parametres_partages` (`guid`, `valeur`), `indicateurs_qualite`, `parametres`, `hauteurs` (`renseignee_m`,

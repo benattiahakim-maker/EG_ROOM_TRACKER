@@ -47,6 +47,12 @@ public sealed record ResultView(
 
     /// <summary>Valeurs du tableau des pièces : une ligne par pièce, une cellule par colonne de <see cref="RoomColumns"/>.</summary>
     public IReadOnlyList<IReadOnlyList<string?>> RoomValues { get; init; } = [];
+
+    /// <summary>
+    /// Même tableau en arbre : une ligne par pièce (cellules de <see cref="RoomValues"/>), et sous elle une ligne par porte,
+    /// équipement ou terminal qu'elle contient. Une porte entre deux pièces figure sous chacune.
+    /// </summary>
+    public IReadOnlyList<TableRow> RoomTree { get; init; } = [];
 }
 
 /// <summary>
@@ -123,35 +129,50 @@ public sealed class ResultReader(string schemaPath)
             Text(a?["scope"]),
             a?["elementId"]?.ToString(),
             Text(a?["message"]))).ToList();
-        var (columns, values) = BuildRoomTable(root?["rooms"]?.AsArray());
+        var (columns, tree) = BuildRoomTable(root?["rooms"]?.AsArray());
         return new ResultView(summary?["status"]?.ToString(), rows, rooms, anomalies, Validate(json))
         {
             RoomColumns = columns,
-            RoomValues = values,
+            RoomValues = tree.Select(row => row.Cells).ToList(),
+            RoomTree = tree,
         };
     }
 
-    private static (IReadOnlyList<string> Columns, IReadOnlyList<IReadOnlyList<string?>> Rows) BuildRoomTable(JsonArray? rooms)
+    /// <summary>Première colonne du tableau de <c>result.json</c> : nature de la ligne (pièce, porte, équipement ou terminal et sa discipline).</summary>
+    public const string ObjectColumn = "objet";
+
+    /// <summary>Tableaux d'éléments d'une pièce présentés comme lignes enfants, avec le libellé de leur colonne <see cref="ObjectColumn"/>.</summary>
+    private static readonly (string Key, string Label)[] ElementArrays = [("portes", "porte"), ("equipements", "équipement"), ("terminaux", "terminal")];
+
+    private static (IReadOnlyList<string> Columns, IReadOnlyList<TableRow> Rows) BuildRoomTable(JsonArray? rooms)
     {
-        var columns = new List<string>();
-        var known = new HashSet<string>(StringComparer.Ordinal);
-        var flattened = new List<Dictionary<string, string?>>();
-        foreach (var room in rooms ?? [])
+        var columns = new List<string> { ObjectColumn };
+        var known = new HashSet<string>(StringComparer.Ordinal) { ObjectColumn };
+        Dictionary<string, string?> Cells(JsonNode? node, string label)
         {
-            var cells = new Dictionary<string, string?>(StringComparer.Ordinal);
-            Flatten(room, string.Empty, cells);
+            var cells = new Dictionary<string, string?>(StringComparer.Ordinal) { [ObjectColumn] = label };
+            Flatten(node, string.Empty, cells);
             foreach (var key in cells.Keys.Where(known.Add))
             {
                 columns.Add(key);
             }
 
-            flattened.Add(cells);
+            return cells;
         }
 
-        IReadOnlyList<IReadOnlyList<string?>> rows = flattened
-            .Select(cells => (IReadOnlyList<string?>)columns.Select(column => cells.GetValueOrDefault(column)).ToArray())
+        // Les colonnes des pièces d'abord (dans l'ordre d'apparition), puis celles propres aux éléments.
+        var flattened = (rooms ?? []).Select(room => (Room: Cells(room, "pièce"), Node: room)).ToList();
+        var withChildren = flattened.Select(entry => (entry.Room, Children: ElementArrays
+                .SelectMany(array => (entry.Node?[array.Key] as JsonArray ?? [])
+                    .OfType<JsonObject>()
+                    .Select(item => Cells(item, item["discipline"] is JsonValue discipline ? $"{array.Label} {discipline}" : array.Label)))
+                .ToList()))
             .ToList();
-        return (columns, rows);
+
+        IReadOnlyList<string?> Row(Dictionary<string, string?> cells) => columns.Select(column => cells.GetValueOrDefault(column)).ToArray();
+        return (columns, withChildren
+            .Select(entry => new TableRow(Row(entry.Room), entry.Children.Select(child => new TableRow(Row(child), depth: 1)).ToList()))
+            .ToList());
     }
 
     private static void Flatten(JsonNode? node, string path, Dictionary<string, string?> cells)
@@ -229,7 +250,8 @@ public sealed class ResultReader(string schemaPath)
 
     /// <summary>
     /// Lecture de <c>TRCValidationDict.json</c> (fiches de l'application TRC, données seules) : une ligne par objet BIM, une colonne par
-    /// code de propriété (valeurs multiples réunies par « | »). Pas de schéma, de statut ni d'anomalies : il n'y en a pas dans ce format.
+    /// code de propriété (valeurs multiples réunies par « | »), en arbre : portes et équipements sous la pièce désignée par leur
+    /// <c>Space</c>. Pas de schéma, de statut ni d'anomalies : il n'y en a pas dans ce format.
     /// </summary>
     public ResultView ReadTrc(string json)
     {
@@ -275,10 +297,34 @@ public sealed class ResultReader(string schemaPath)
             valueCount++;
         }
 
-        IReadOnlyList<IReadOnlyList<string?>> values = bimIdByPk
-            .Select(pair => (IReadOnlyList<string?>)columns
-                .Select(column => column == "bim_id" ? pair.Value : cells[pair.Key].TryGetValue(column, out var list) ? string.Join(" | ", list) : null)
-                .ToArray())
+        IReadOnlyList<string?> Row(string pk) => columns
+            .Select(column => column == "bim_id" ? bimIdByPk[pk] : cells[pk].TryGetValue(column, out var list) ? string.Join(" | ", list) : null)
+            .ToArray();
+
+        // Arbre : un objet rattaché à une pièce (Space = bim_id de la pièce) est rangé sous elle, sous chacune s'il en a plusieurs ;
+        // un objet sans Space, ou dont aucune pièce n'est dans le fichier, reste à la racine.
+        var bimIds = bimIdByPk.Values.ToHashSet(StringComparer.Ordinal);
+        var spaces = bimIdByPk.Keys.ToDictionary(
+            pk => pk,
+            pk => cells[pk].TryGetValue(EgRoomTracker.Application.Trc.TrcCodes.Space, out var list) ? list.Where(bimIds.Contains).Distinct().ToList() : [],
+            StringComparer.Ordinal);
+        var children = new Dictionary<string, List<TableRow>>(StringComparer.Ordinal);
+        foreach (var (pk, parents) in spaces)
+        {
+            foreach (var parent in parents)
+            {
+                if (!children.TryGetValue(parent, out var list))
+                {
+                    children[parent] = list = [];
+                }
+
+                list.Add(new TableRow(Row(pk), depth: 1));
+            }
+        }
+
+        var tree = bimIdByPk.Keys
+            .Where(pk => spaces[pk].Count == 0)
+            .Select(pk => new TableRow(Row(pk), children.GetValueOrDefault(bimIdByPk[pk])))
             .ToList();
 
         var codeFile = fiches.FirstOrDefault(f => f["model"]?.ToString() == "special.setcodefile")?["fields"]?["code_file"]?.ToString();
@@ -291,7 +337,8 @@ public sealed class ResultReader(string schemaPath)
         return new ResultView(null, rows, [], [], [])
         {
             RoomColumns = columns,
-            RoomValues = values,
+            RoomValues = tree.Select(row => row.Cells).ToList(),
+            RoomTree = tree,
         };
     }
 

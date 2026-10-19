@@ -4,6 +4,14 @@
         Title="EG_ROOM_TRACKER · WorkItemRunner" Width="1360" Height="900" WindowStartupLocation="CenterScreen">
   <Window.Resources>
     <BooleanToVisibilityConverter x:Key="BoolToVisibility" />
+    <!-- Première colonne de l'arbre des résultats : retrait selon la profondeur et flèche de dépliage (TableRow). -->
+    <DataTemplate x:Key="TreeToggleCell">
+      <StackPanel Orientation="Horizontal">
+        <Border Width="{Binding Indent}" />
+        <Button Content="{Binding Glyph}" Click="OnToggleRow" Width="18" Padding="0" BorderThickness="0" Background="Transparent"
+                Cursor="Hand" Visibility="{Binding HasChildren, Converter={StaticResource BoolToVisibility}}" />
+      </StackPanel>
+    </DataTemplate>
   </Window.Resources>
   <DockPanel>
     <Border DockPanel.Dock="Top" Background="#0F172A" Padding="20,14">
@@ -139,9 +147,10 @@
                   <RowDefinition Height="8" />
                   <RowDefinition Height="*" />
                 </Grid.RowDefinitions>
-                <!-- Colonnes générées depuis les clés de rooms[] du result.json (MainWindow.xaml.cs) -->
+                <!-- Arbre pièces → portes / équipements ; colonnes générées depuis les clés du résultat (MainWindow.xaml.cs).
+                     Pas de tri : il casserait l'ordre de l'arbre. -->
                 <DataGrid x:Name="RoomsGrid" AutoGenerateColumns="False" IsReadOnly="True" HeadersVisibility="Column"
-                          CanUserSortColumns="True" />
+                          CanUserSortColumns="False" />
                 <DataGrid Grid.Row="2" ItemsSource="{Binding Result.Anomalies}" AutoGenerateColumns="False" IsReadOnly="True" HeadersVisibility="Column">
                   <DataGrid.Columns>
                     <DataGridTextColumn Header="Code" Binding="{Binding Code}" Width="180" />

@@ -144,6 +144,76 @@ public sealed class ResultAndHistoryTests
     }
 
     [Fact]
+    public void Trc_elements_are_shown_under_each_room_of_their_space()
+    {
+        using var env = new TestEnvironment();
+        const string json = """
+        [
+          { "model": "trc.bimobject", "pk": "trc.bimobject_r1", "fields": { "bim_id": "room-1", "code_file": "F" } },
+          { "model": "trc.bimobject", "pk": "trc.bimobject_r2", "fields": { "bim_id": "room-2", "code_file": "F" } },
+          { "model": "trc.bimobject", "pk": "trc.bimobject_d", "fields": { "bim_id": "door-1", "code_file": "F" } },
+          { "model": "trc.bimobject", "pk": "trc.bimobject_e", "fields": { "bim_id": "equip-1", "code_file": "F" } },
+          { "model": "trc.bimobject", "pk": "trc.bimobject_o", "fields": { "bim_id": "orphan", "code_file": "F" } },
+          { "model": "trc.bimobjectpropertyvalue", "pk": "p1", "fields": { "latest_value": "Space", "original_value": "Space", "bim_object_id": "trc.bimobject_r1", "bim_property_code_property": "Category" } },
+          { "model": "trc.bimobjectpropertyvalue", "pk": "p2", "fields": { "latest_value": "Door", "original_value": "Door", "bim_object_id": "trc.bimobject_d", "bim_property_code_property": "Category" } },
+          { "model": "trc.bimobjectpropertyvalue", "pk": "p3", "fields": { "latest_value": "room-1", "original_value": "room-1", "bim_object_id": "trc.bimobject_d", "bim_property_code_property": "Space" } },
+          { "model": "trc.bimobjectpropertyvalue", "pk": "p4", "fields": { "latest_value": "room-2", "original_value": "room-2", "bim_object_id": "trc.bimobject_d", "bim_property_code_property": "Space" } },
+          { "model": "trc.bimobjectpropertyvalue", "pk": "p5", "fields": { "latest_value": "cvc equipement", "original_value": "cvc equipement", "bim_object_id": "trc.bimobject_e", "bim_property_code_property": "Category" } },
+          { "model": "trc.bimobjectpropertyvalue", "pk": "p6", "fields": { "latest_value": "room-2", "original_value": "room-2", "bim_object_id": "trc.bimobject_e", "bim_property_code_property": "Space" } },
+          { "model": "trc.bimobjectpropertyvalue", "pk": "p7", "fields": { "latest_value": "inconnue", "original_value": "inconnue", "bim_object_id": "trc.bimobject_o", "bim_property_code_property": "Space" } }
+        ]
+        """;
+
+        var view = ResultReader.ForRepository(env.Root).ReadTrc(json);
+
+        Assert.Equal(["room-1", "room-2", "orphan"], view.RoomTree.Select(row => row[0]));
+        Assert.Equal(["door-1"], view.RoomTree[0].Children.Select(row => row[0]));
+        Assert.Equal(["door-1", "equip-1"], view.RoomTree[1].Children.Select(row => row[0]));
+        Assert.All(view.RoomTree[1].Children, child => Assert.Equal(1, child.Depth));
+        Assert.Equal("room-1 | room-2", view.RoomTree[0].Children[0][view.RoomColumns.ToList().IndexOf("Space")]);
+        Assert.False(view.RoomTree[2].HasChildren);
+        Assert.Equal(3, view.RoomValues.Count);
+    }
+
+    [Fact]
+    public void Result_json_elements_are_child_rows_of_their_room()
+    {
+        using var env = new TestEnvironment();
+        var json = JsonNode.Parse(env.ExampleResult)!.AsObject();
+        var room = json["rooms"]!.AsArray()[0]!.AsObject();
+        room["portes"] = new JsonArray(new JsonObject { ["id_revit"] = "10", ["famille"] = "Simple", ["largeur_m"] = 0.9 });
+        room["equipements"] = new JsonArray(new JsonObject { ["id_revit"] = "20", ["famille"] = "CTA", ["discipline"] = "cvc" });
+
+        var view = ResultReader.ForRepository(env.Root).Read(json.ToJsonString());
+
+        var columns = view.RoomColumns.ToList();
+        Assert.Equal(ResultReader.ObjectColumn, columns[0]);
+        Assert.Equal("pièce", view.RoomTree[0][0]);
+        Assert.Equal(["porte", "équipement cvc"], view.RoomTree[0].Children.Select(row => row[0]));
+        Assert.Equal("Simple", view.RoomTree[0].Children[0][columns.IndexOf("famille")]);
+        Assert.Equal("0.9", view.RoomTree[0].Children[0][columns.IndexOf("largeur_m")]);
+        Assert.False(view.RoomTree[1].HasChildren);
+    }
+
+    [Fact]
+    public void Visible_rows_follow_the_expanded_rooms()
+    {
+        var child = new TableRow(["porte"], depth: 1);
+        var room = new TableRow(["pièce"], [child]);
+        var empty = new TableRow(["pièce vide"]);
+
+        Assert.Equal([room, empty], TableRow.Visible([room, empty]));
+        Assert.Equal("▸", room.Glyph);
+        Assert.Equal(string.Empty, empty.Glyph);
+
+        room.IsExpanded = true;
+
+        Assert.Equal([room, child, empty], TableRow.Visible([room, empty]));
+        Assert.Equal("▾", room.Glyph);
+        Assert.Equal(TableRow.IndentPerLevel, child.Indent);
+    }
+
+    [Fact]
     public void Unreadable_trc_file_is_reported_not_thrown()
     {
         using var env = new TestEnvironment();

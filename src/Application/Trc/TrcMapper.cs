@@ -22,12 +22,27 @@ public static class TrcCodes
 {
     public const string Username = "bim_object_username";
 
+    // Type d'objet et rattachement à la pièce (noms des fichiers TRC de la plateforme, comme ParentGlobalId)
+    public const string Category = "Category";
+
+    /// <summary>Pièce(s) contenant une porte, un équipement ou un terminal : <c>bim_id</c> de la pièce, une valeur par pièce.</summary>
+    public const string Space = "Space";
+
     // A : identification
     public const string Building = "a:identification data_building";
     public const string Storey = "a:identification data_storey";
     public const string Classification = "a:identification data_classification";
     public const string Numero = "a:identification data_numero";
     public const string Ouvrage = "a:identification data_ouvrage";
+
+    // A : identification d'un élément (porte, équipement, terminal)
+    public const string ElementRevitId = "a:identification data_id revit";
+    public const string ElementRevitCategory = "a:identification data_categorie";
+    public const string ElementFamily = "a:identification data_famille";
+    public const string ElementType = "a:identification data_type";
+    public const string ElementMark = "a:identification data_repere";
+    public const string ElementDiscipline = "a:identification data_discipline";
+    public const string ElementLink = "a:identification data_lien";
 
     // B : dimensions
     public const string Surface = "b:dimensions_surface";
@@ -38,30 +53,31 @@ public static class TrcCodes
     public const string HeightUnbounded = "b:dimensions_hauteur non limitee";
     public const string HeightLimiting = "b:dimensions_hauteur element limitant";
 
-    // B : porte (une valeur par porte, même ordre pour toutes les propriétés)
-    public const string DoorCount = "b:porte_nombre";
-    public const string DoorNumber = "b:porte_numero";
-    public const string DoorId = "b:porte_id";
-    public const string DoorFamily = "b:porte_famille";
-    public const string DoorType = "b:porte_type";
+    // B : passage libre d'une porte
     public const string DoorWidth = "b:porte_largeur";
     public const string DoorHeight = "b:porte_hauteur";
 
-    // B : équipements (total), puis une section par discipline
-    public const string EquipmentTotal = "b:equipements_quantite";
-
     /// <summary>
-    /// Code d'un paramètre de la pièce (<c>roomParameters: all</c>) : section <c>C:Parametres Revit</c> (<c>c:</c> : après les sections
+    /// Code d'un paramètre Revit de l'objet (<c>roomParameters: all</c>) : section <c>C:Parametres Revit</c> (<c>c:</c> : après les sections
     /// <c>a:</c> et <c>b:</c>), propriété = nom du paramètre en minuscules (ex. <c>c:parametres revit_hauteur limite</c>).
     /// </summary>
     public static string RevitParameter(string name) => $"c:parametres revit_{name.Trim().ToLowerInvariant()}";
-
-    public static string EquipmentQuantity(string discipline) => $"b:equipements {discipline}_quantite";
-
-    public static string EquipmentList(string discipline) => $"b:equipements {discipline}_liste";
 }
 
-/// <summary>Valeur d'une propriété pour une pièce ; <see cref="KeepNull"/> : écrite même sans valeur (alignement des listes de portes).</summary>
+/// <summary>Valeurs de <see cref="TrcCodes.Category"/> : pièce, porte, et équipement ou terminal suivi de sa discipline.</summary>
+public static class TrcCategories
+{
+    public const string Space = "Space";
+    public const string Door = "Door";
+
+    /// <summary>Équipement d'une discipline : <c>cvc equipement</c>, <c>plomberie equipement</c>…</summary>
+    public static string Equipment(string? discipline) => $"{discipline ?? ElementDisciplines.Other} equipement";
+
+    /// <summary>Terminal d'une discipline : <c>cvc terminal</c>, <c>electricite terminal</c>…</summary>
+    public static string Terminal(string? discipline) => $"{discipline ?? ElementDisciplines.Other} terminal";
+}
+
+/// <summary>Valeur d'une propriété d'un objet ; <see cref="KeepNull"/> : écrite même sans valeur.</summary>
 public sealed record TrcValue(string Code, string? Value, bool KeepNull = false);
 
 /// <summary>Fichier d'annexe : texte complet d'une valeur trop longue pour <c>latest_value</c>.</summary>
@@ -72,9 +88,11 @@ public sealed record TrcDocument(JsonArray Fiches, IReadOnlyList<TrcAnnex> Annex
 
 /// <summary>
 /// Conversion de l'extraction en fiches de l'application TRC (<c>TRCValidationDict.json</c>), <b>données seules</b> : pas de
-/// spécification, d'exigence, de statut ni de conformité. Une fiche <c>trc.bimobject</c> par pièce (<c>bim_id</c> = UniqueId,
-/// <c>code_file</c> = nom du RVT), une fiche <c>trc.bimobjectpropertyvalue</c> par valeur, et <c>special.setcodefile</c> en fin.
-/// Les <c>pk</c> sont stables (GUID déterministe de <c>code_file</c>, pièce, code et rang) : un même élément garde le même
+/// spécification, d'exigence, de statut ni de conformité. Une fiche <c>trc.bimobject</c> par pièce, puis une par porte, équipement et
+/// terminal (<c>bim_id</c> = UniqueId, <c>code_file</c> = nom du RVT) ; chaque élément est rattaché à sa ou ses pièces par la propriété
+/// <c>Space</c> (<c>bim_id</c> de la pièce) et n'apparaît qu'une fois, même s'il dessert deux pièces (porte). Une fiche
+/// <c>trc.bimobjectpropertyvalue</c> par valeur, et <c>special.setcodefile</c> en fin.
+/// Les <c>pk</c> sont stables (GUID déterministe de <c>code_file</c>, objet, code et rang) : un même élément garde le même
 /// <c>pk</c> d'un lancement à l'autre. Une valeur de plus de 255 caractères est remplacée par « Voir détail en annexe » et son
 /// texte écrit dans <c>Details_Annexes/</c>.
 /// </summary>
@@ -93,22 +111,28 @@ public static class TrcMapper
         var fiches = new JsonArray();
         var annexes = new List<TrcAnnex>();
 
-        var objectPk = result.Rooms.ToDictionary(room => room.UniqueId, room => Pk("trc.bimobject", $"{codeFile}|{room.UniqueId}"), StringComparer.Ordinal);
-        foreach (var room in result.Rooms)
+        var usernames = new HashSet<string>(StringComparer.Ordinal);
+        var objects = result.Rooms
+            .Select(room => (room.UniqueId, Values: RoomValues(room, Username(room, usernames)).ToList()))
+            .Concat(Elements(result.Rooms).Select(element => (element.Item.UniqueId, Values: ElementValues(element, ElementUsername(element.Item, usernames)).ToList())))
+            .ToList();
+
+        var objectPk = new Dictionary<string, string>(StringComparer.Ordinal);
+        foreach (var (uniqueId, _) in objects)
         {
+            var pk = objectPk[uniqueId] = Pk("trc.bimobject", $"{codeFile}|{uniqueId}");
             fiches.Add(new JsonObject
             {
                 ["model"] = "trc.bimobject",
-                ["pk"] = objectPk[room.UniqueId],
-                ["fields"] = new JsonObject { ["bim_id"] = room.UniqueId, ["code_file"] = codeFile },
+                ["pk"] = pk,
+                ["fields"] = new JsonObject { ["bim_id"] = uniqueId, ["code_file"] = codeFile },
             });
         }
 
-        var usernames = new HashSet<string>(StringComparer.Ordinal);
-        foreach (var room in result.Rooms)
+        foreach (var (uniqueId, values) in objects)
         {
             var rank = new Dictionary<string, int>(StringComparer.Ordinal);
-            foreach (var value in RoomValues(room, Username(room, usernames)))
+            foreach (var value in values)
             {
                 if (value.Value is null && !value.KeepNull)
                 {
@@ -118,7 +142,7 @@ public static class TrcMapper
                 var text = value.Value;
                 if (text is { Length: > MaxValueLength })
                 {
-                    annexes.Add(new TrcAnnex(AnnexFileName(room.UniqueId, value.Code, rank), text));
+                    annexes.Add(new TrcAnnex(AnnexFileName(uniqueId, value.Code, rank), text));
                     text = AnnexNote;
                 }
 
@@ -126,12 +150,12 @@ public static class TrcMapper
                 fiches.Add(new JsonObject
                 {
                     ["model"] = "trc.bimobjectpropertyvalue",
-                    ["pk"] = Pk("trc.bimobjectpropertyvalue", $"{codeFile}|{room.UniqueId}|{value.Code}|{n}"),
+                    ["pk"] = Pk("trc.bimobjectpropertyvalue", $"{codeFile}|{uniqueId}|{value.Code}|{n}"),
                     ["fields"] = new JsonObject
                     {
                         ["latest_value"] = text,
                         ["original_value"] = text,
-                        ["bim_object_id"] = objectPk[room.UniqueId],
+                        ["bim_object_id"] = objectPk[uniqueId],
                         ["bim_property_code_property"] = value.Code,
                     },
                 });
@@ -146,13 +170,52 @@ public static class TrcMapper
         return new TrcDocument(fiches, annexes);
     }
 
+    /// <summary>Porte, équipement ou terminal exporté comme objet BIM, avec sa catégorie TRC et les pièces qui le contiennent.</summary>
+    public sealed record TrcElement(RoomElementDto Item, string Category, IReadOnlyList<string> Spaces);
+
+    /// <summary>
+    /// Éléments des pièces, chacun une seule fois (clé : UniqueId), dans l'ordre de première apparition (pièces dans l'ordre du
+    /// résultat ; portes, puis équipements, puis terminaux) ; une porte entre deux pièces garde les deux pièces dans <c>Spaces</c>.
+    /// </summary>
+    public static IReadOnlyList<TrcElement> Elements(IEnumerable<RoomDto> rooms)
+    {
+        var order = new List<string>();
+        var byId = new Dictionary<string, (RoomElementDto Item, string Category, List<string> Spaces)>(StringComparer.Ordinal);
+        foreach (var room in rooms)
+        {
+            var items = (room.Doors ?? []).Select(item => (item, Category: TrcCategories.Door))
+                .Concat((room.Equipment ?? []).Select(item => (item, Category: TrcCategories.Equipment(item.Discipline))))
+                .Concat((room.Terminals ?? []).Select(item => (item, Category: TrcCategories.Terminal(item.Discipline))));
+            foreach (var (item, category) in items)
+            {
+                if (!byId.TryGetValue(item.UniqueId, out var entry))
+                {
+                    byId[item.UniqueId] = entry = (item, category, []);
+                    order.Add(item.UniqueId);
+                }
+
+                if (!entry.Spaces.Contains(room.UniqueId, StringComparer.Ordinal))
+                {
+                    entry.Spaces.Add(room.UniqueId);
+                }
+            }
+        }
+
+        return order.Select(id => byId[id]).Select(entry => new TrcElement(entry.Item, entry.Category, entry.Spaces)).ToList();
+    }
+
     /// <summary>
     /// Nom d'objet BIM : <c>{niveau}_{nom}_{numéro}</c> sans espaces (nom de secours de l'application TRC, celui qu'elle produit
     /// réellement), suffixé <c>_1</c>, <c>_2</c>… en cas de doublon.
     /// </summary>
-    public static string Username(RoomDto room, HashSet<string> used)
+    public static string Username(RoomDto room, HashSet<string> used) => Unique($"{room.Level?.Name}_{room.Name}_{room.Number}", used);
+
+    /// <summary>Nom d'objet BIM d'un élément : <c>{niveau}_{famille}_{ElementId}</c> sans espaces, unique parmi tous les objets.</summary>
+    public static string ElementUsername(RoomElementDto element, HashSet<string> used) => Unique($"{element.Level}_{element.Family}_{element.ElementId}", used);
+
+    private static string Unique(string raw, HashSet<string> used)
     {
-        var baseName = $"{room.Level?.Name}_{room.Name}_{room.Number}".Replace(" ", string.Empty);
+        var baseName = raw.Replace(" ", string.Empty);
         var name = baseName;
         for (var counter = 1; !used.Add(name); counter++)
         {
@@ -162,11 +225,16 @@ public static class TrcMapper
         return name;
     }
 
-    /// <summary>Valeurs d'une pièce, dans l'ordre de sortie : identification, dimensions, portes, équipements par discipline.</summary>
+    /// <summary>
+    /// Valeurs d'une pièce, dans l'ordre de sortie : catégorie, identification, dimensions, paramètres Revit. Les portes et les
+    /// équipements sont des objets à part (<see cref="ElementValues"/>), rattachés à la pièce par <c>Space</c>.
+    /// </summary>
     public static IEnumerable<TrcValue> RoomValues(RoomDto room, string username)
     {
         var named = room.NamedParameters;
         string? Named(string name) => named is not null && named.TryGetValue(name, out var value) && !string.IsNullOrWhiteSpace(value) ? value : null;
+
+        yield return new(TrcCodes.Category, TrcCategories.Space);
 
         // A : identification (le bâtiment est « A », comme dans TRC)
         yield return new(TrcCodes.Ouvrage, Named(TrcIdentification.Ouvrage));
@@ -188,44 +256,51 @@ public static class TrcMapper
             yield return new(TrcCodes.HeightLimiting, heights.LimitingCategory is null ? null : $"{heights.LimitingCategory} ({heights.LimitingDocument})");
         }
 
-        // B : portes, une valeur par porte dans le même ordre ; une dimension inconnue reste vide (jamais 0)
-        if (room.Doors is { } doors)
-        {
-            yield return new(TrcCodes.DoorCount, doors.Count.ToString(CultureInfo.InvariantCulture));
-            foreach (var code in new[] { TrcCodes.DoorNumber, TrcCodes.DoorId, TrcCodes.DoorFamily, TrcCodes.DoorType, TrcCodes.DoorWidth, TrcCodes.DoorHeight })
-            {
-                foreach (var door in doors)
-                {
-                    yield return new(code, DoorValue(code, door), KeepNull: true);
-                }
-            }
-        }
-
         // C : tous les paramètres de la pièce (roomParameters: all), un code par paramètre, triés par nom
-        if (room.Parameters is { } parameters)
+        foreach (var value in ParameterValues(room.Parameters))
         {
-            foreach (var (name, value) in parameters)
-            {
-                yield return new(TrcCodes.RevitParameter(name), ParameterText(value));
-            }
-        }
-
-        // B : équipements et terminaux, une section par discipline
-        if (room.Equipment is not null || room.Terminals is not null)
-        {
-            var items = (room.Equipment ?? []).Concat(room.Terminals ?? []).ToList();
-            yield return new(TrcCodes.EquipmentTotal, Quantity(items.Count));
-            foreach (var discipline in ElementDisciplines.All)
-            {
-                var ofDiscipline = items.Where(item => (item.Discipline ?? ElementDisciplines.Other) == discipline).ToList();
-                yield return new(TrcCodes.EquipmentQuantity(discipline), Quantity(ofDiscipline.Count));
-                if (ofDiscipline.Count > 0)
-                {
-                    yield return new(TrcCodes.EquipmentList(discipline), Summarize(ofDiscipline));
-                }
-            }
+            yield return value;
         }
     }
+
+    /// <summary>
+    /// Valeurs d'une porte, d'un équipement ou d'un terminal : catégorie, pièce(s) (<c>Space</c>), identification, passage libre
+    /// (portes) et paramètres Revit de l'instance (<c>roomParameters: all</c>). Une dimension inconnue n'est pas écrite (jamais 0).
+    /// </summary>
+    public static IEnumerable<TrcValue> ElementValues(TrcElement element, string username)
+    {
+        var item = element.Item;
+        yield return new(TrcCodes.Category, element.Category);
+        foreach (var space in element.Spaces)
+        {
+            yield return new(TrcCodes.Space, space);
+        }
+
+        // A : identification
+        yield return new(TrcCodes.Storey, string.IsNullOrWhiteSpace(item.Level) ? null : item.Level);
+        yield return new(TrcCodes.Numero, string.IsNullOrWhiteSpace(item.Number) ? null : item.Number);
+        yield return new(TrcCodes.ElementMark, string.IsNullOrWhiteSpace(item.Mark) ? null : item.Mark);
+        yield return new(TrcCodes.ElementRevitId, item.ElementId);
+        yield return new(TrcCodes.ElementRevitCategory, item.Category);
+        yield return new(TrcCodes.ElementFamily, item.Family);
+        yield return new(TrcCodes.ElementType, item.Type);
+        yield return new(TrcCodes.ElementDiscipline, item.Discipline);
+        yield return new(TrcCodes.ElementLink, item.LinkName);
+        yield return new(TrcCodes.Username, username);
+
+        // B : passage libre (portes) ; largeur avec « m », hauteur sans unité, comme TRC
+        yield return new(TrcCodes.DoorWidth, item.WidthM is > 0 ? Number(item.WidthM) + "m" : null);
+        yield return new(TrcCodes.DoorHeight, Number(item.HeightM));
+
+        // C : paramètres de l'instance
+        foreach (var value in ParameterValues(item.Parameters))
+        {
+            yield return value;
+        }
+    }
+
+    private static IEnumerable<TrcValue> ParameterValues(IReadOnlyDictionary<string, object?>? parameters) =>
+        parameters is null ? [] : parameters.Select(pair => new TrcValue(TrcCodes.RevitParameter(pair.Key), ParameterText(pair.Value)));
 
     /// <summary>
     /// Texte d'un paramètre : nombres en notation invariante (4 décimales au plus, sans zéros inutiles), booléens Revit (entiers) tels quels ;
@@ -241,32 +316,9 @@ public static class TrcMapper
         _ => value.ToString(),
     };
 
-    private static string? DoorValue(string code, RoomElementDto door) => code switch
-    {
-        TrcCodes.DoorNumber => door.Number,
-        TrcCodes.DoorId => door.ElementId,
-        TrcCodes.DoorFamily => door.Family,
-        TrcCodes.DoorType => door.Type,
-        TrcCodes.DoorWidth => door.WidthM is > 0 ? Number(door.WidthM) + "m" : null,
-        TrcCodes.DoorHeight => Number(door.HeightM),
-        _ => null,
-    };
-
     /// <summary>Nombre à 2 décimales, point décimal, sans unité ; null si absent ou non positif (jamais 0 pour une dimension inconnue).</summary>
     private static string? Number(double? value) =>
         value is > 0 && double.IsFinite(value.Value) ? value.Value.ToString("F2", CultureInfo.InvariantCulture) : null;
-
-    /// <summary>« N équipements présents dans le local » : formulation des sorties TRC les plus récentes.</summary>
-    private static string Quantity(int count) => $"{count.ToString(CultureInfo.InvariantCulture)} équipements présents dans le local";
-
-    /// <summary>« Catégorie : Famille [lien] × n », groupé et trié, séparé par « | ».</summary>
-    private static string Summarize(IEnumerable<RoomElementDto> items) =>
-        string.Join(" | ", items
-            .GroupBy(item => (item.Category, Family: item.Family ?? "(sans famille)", item.LinkName))
-            .OrderBy(group => group.Key.Category, StringComparer.Ordinal)
-            .ThenBy(group => group.Key.Family, StringComparer.Ordinal)
-            .ThenBy(group => group.Key.LinkName, StringComparer.Ordinal)
-            .Select(group => $"{group.Key.Category} : {group.Key.Family}{(group.Key.LinkName is null ? string.Empty : $" [{group.Key.LinkName}]")} × {group.Count().ToString(CultureInfo.InvariantCulture)}"));
 
     private static string AnnexFileName(string uniqueId, string code, Dictionary<string, int> rank)
     {

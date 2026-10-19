@@ -2,6 +2,7 @@ using System.ComponentModel;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Data;
+using EgRoomTracker.WorkItemRunner.Services;
 using EgRoomTracker.WorkItemRunner.ViewModels;
 
 namespace EgRoomTracker.WorkItemRunner.App;
@@ -50,6 +51,12 @@ public partial class MainWindow : Window
             return;
         }
 
+        // Colonne de l'arbre : retrait et flèche de dépliage (pièce → portes, équipements, terminaux).
+        RoomsGrid.Columns.Add(new DataGridTemplateColumn
+        {
+            CellTemplate = (DataTemplate)FindResource("TreeToggleCell"),
+            Width = DataGridLength.Auto,
+        });
         for (var index = 0; index < result.RoomColumns.Count; index++)
         {
             // L'en-tête est le chemin exact de la clé dans le JSON (TextBlock : le « _ » n'est pas une touche d'accès).
@@ -61,6 +68,16 @@ public partial class MainWindow : Window
             });
         }
 
-        RoomsGrid.ItemsSource = result.RoomValues;
+        RoomsGrid.ItemsSource = TableRow.Visible(result.RoomTree);
+    }
+
+    /// <summary>Déplie ou replie une pièce, puis réaffiche les lignes visibles.</summary>
+    private void OnToggleRow(object sender, RoutedEventArgs e)
+    {
+        if (sender is FrameworkElement { DataContext: TableRow row } && DataContext is MainViewModel { Result: { } result })
+        {
+            row.IsExpanded = !row.IsExpanded;
+            RoomsGrid.ItemsSource = TableRow.Visible(result.RoomTree);
+        }
     }
 }
