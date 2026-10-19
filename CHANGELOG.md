@@ -24,6 +24,8 @@ Le format s'inspire de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/).
   masqués dans la palette Propriétés, et non plus `GetOrderedParameters`) et, pour les portes, équipements et terminaux, **tous les paramètres
   de type** (`parametres_type` dans `result.json`, `d:parametres type_<nom>` dans le fichier TRC, après les paramètres d'occurrence). Un
   paramètre sans valeur est écrit vide dans le fichier TRC, au lieu d'être omis. Non validé dans Design Automation.
+  Valeurs **telles qu'affichées par Revit** pour les paramètres ElementId (nom de la catégorie, du niveau, de la phase, de l'hôte… au lieu de
+  l'identifiant) et pour les entiers à libellé (Oui / Non, listes de choix) ; longueurs, surfaces et volumes restent en SI.
 - WorkItemRunner (maquette Figma v2) : les paramètres ne sont plus dans une fiche Paramètre / Valeur mais **en colonnes** de chaque tableau,
   sous un en-tête à bandes Identification / Paramètres d'occurrence / Paramètres de type ; filtres Occurrence et Type ; défilement horizontal.
 - Livrable : `TRCValidationDict.json` seul. L'exemple `docs/examples/settings.example.json` (bouton « Exemple » de WorkItemRunner) règle

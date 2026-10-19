@@ -11,8 +11,11 @@ namespace EgRoomTracker.Revit;
 /// l'élément (<see cref="Element.Parameters"/>), y compris ceux masqués dans la palette Propriétés ; appelé sur une instance pour ses
 /// paramètres d'occurrence, sur son <see cref="ElementType"/> pour ses paramètres de type.
 /// <list type="bullet">
-/// <item>valeur typée selon le stockage : texte, entier, ElementId en chaîne, double converti en SI pour longueur, surface, volume et
-/// nombre sans unité (comme les paramètres partagés, EGR-10) ;</item>
+/// <item>valeur typée selon le stockage : texte ; double converti en SI pour longueur, surface, volume et nombre sans unité (comme les
+/// paramètres partagés, EGR-10) ;</item>
+/// <item>ElementId : la valeur <b>affichée</b> par Revit (nom de la catégorie, du niveau, de la phase, de l'hôte…), l'identifiant seulement
+/// à défaut ;</item>
+/// <item>entier : la valeur affichée quand Revit lui donne un libellé (Oui / Non, liste de choix), sinon le nombre ;</item>
 /// <item>autre grandeur (angle, pourcentage…) : la valeur affichée par Revit (<c>AsValueString</c>), faute de conversion fiable ;</item>
 /// <item>paramètre sans valeur : <c>null</c> ; paramètre illisible : omis ;</item>
 /// <item>triés par nom (sortie déterministe) ; un nom en double est suffixé « (2) », « (3) ».</item>
@@ -50,14 +53,29 @@ internal static class ParameterDumper
         object? typed = parameter.StorageType switch
         {
             StorageType.String => parameter.AsString(),
-            StorageType.Integer => (long)parameter.AsInteger(),
+            StorageType.Integer => IntegerValue(parameter),
             StorageType.Double => DoubleValue(parameter, units),
-            StorageType.ElementId => parameter.AsElementId()?.Value.ToString(CultureInfo.InvariantCulture),
+            StorageType.ElementId => ElementIdValue(parameter),
             _ => null,
         };
 
         // Grandeur non convertie (angle, pourcentage…) : la valeur affichée par Revit.
         return (name, typed ?? DisplayedValue(parameter));
+    }
+
+    /// <summary>Entier : libellé affiché par Revit s'il diffère du nombre (Oui / Non, liste de choix), sinon le nombre.</summary>
+    private static object IntegerValue(Parameter parameter)
+    {
+        var value = parameter.AsInteger();
+        var shown = DisplayedValue(parameter);
+        return !string.IsNullOrWhiteSpace(shown) && shown != value.ToString(CultureInfo.InvariantCulture) ? shown : (long)value;
+    }
+
+    /// <summary>ElementId : nom affiché par Revit (catégorie, niveau, phase…) ; à défaut l'identifiant, en chaîne.</summary>
+    private static string? ElementIdValue(Parameter parameter)
+    {
+        var shown = DisplayedValue(parameter);
+        return !string.IsNullOrWhiteSpace(shown) ? shown : parameter.AsElementId()?.Value.ToString(CultureInfo.InvariantCulture);
     }
 
     private static object? DoubleValue(Parameter parameter, IUnitConversionService units)
