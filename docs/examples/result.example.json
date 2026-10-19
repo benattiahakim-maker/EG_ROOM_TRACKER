@@ -1,5 +1,5 @@
 {
-  "schemaVersion": "1.3",
+  "schemaVersion": "1.4",
   "summary": {
     "correlationId": "7f3c2a9e5b1d4c08a1b2c3d4e5f60718",
     "extractorVersion": "0.1.0",
@@ -24,61 +24,61 @@
   },
   "rooms": [
     {
-      "elementId": "412345",
-      "uniqueId": "5b1e2f8a-1c3d-4e5f-8a9b-0c1d2e3f4a5b-00064b39",
-      "name": "Bureau",
-      "number": "001",
-      "areaM2": 18.425,
-      "unboundedHeightM": 2.7,
-      "level": { "elementId": "311", "uniqueId": "8d2c4f6a-0b1e-4c3d-9e8f-7a6b5c4d3e2f-00000137", "name": "R+0" },
-      "occupancy": "Bureau individuel",
-      "volumeM3": null,
-      "volumeStatus": "notComputed",
-      "finishes": { "floor": "Parquet chêne", "wall": "Peinture blanche", "ceiling": "Faux plafond 60x60", "base": "Plinthe bois" },
-      "phase": { "elementId": "86961", "name": "Nouvelle construction" },
-      "designOption": null,
-      "sharedParameters": {
-        "codeLocal": { "guid": "3f2b8c1e-6d4a-4b7e-9a51-2c0d8e7f4a10", "value": "A-001" }
+      "id_revit": "412345",
+      "unique_id": "5b1e2f8a-1c3d-4e5f-8a9b-0c1d2e3f4a5b-00064b39",
+      "nom": "Bureau",
+      "numero": "001",
+      "surface_m2": 18.425,
+      "hauteur_non_limitee_m": 2.7,
+      "niveau": { "id_revit": "311", "unique_id": "8d2c4f6a-0b1e-4c3d-9e8f-7a6b5c4d3e2f-00000137", "nom": "R+0" },
+      "occupation": "Bureau individuel",
+      "volume_m3": null,
+      "statut_volume": "notComputed",
+      "finitions": { "sol": "Parquet chêne", "murs": "Peinture blanche", "plafond": "Faux plafond 60x60", "plinthe": "Plinthe bois" },
+      "phase": { "id_revit": "86961", "nom": "Nouvelle construction" },
+      "variante": null,
+      "parametres_partages": {
+        "codeLocal": { "guid": "3f2b8c1e-6d4a-4b7e-9a51-2c0d8e7f4a10", "valeur": "A-001" }
       },
-      "qualityFlags": ["DUPLICATE_NUMBER"]
+      "indicateurs_qualite": ["DUPLICATE_NUMBER"]
     },
     {
-      "elementId": "412398",
-      "uniqueId": "5b1e2f8a-1c3d-4e5f-8a9b-0c1d2e3f4a5b-00064b6e",
-      "name": "Local technique",
-      "number": "002",
-      "areaM2": 6.12,
-      "unboundedHeightM": 2.7,
-      "level": { "elementId": "311", "uniqueId": "8d2c4f6a-0b1e-4c3d-9e8f-7a6b5c4d3e2f-00000137", "name": "R+0" },
-      "occupancy": null,
-      "volumeM3": null,
-      "volumeStatus": "notComputed",
-      "finishes": { "floor": "Résine", "wall": "Peinture blanche", "ceiling": "", "base": null },
-      "phase": { "elementId": "86961", "name": "Nouvelle construction" },
-      "designOption": null,
-      "sharedParameters": {
-        "codeLocal": { "guid": "3f2b8c1e-6d4a-4b7e-9a51-2c0d8e7f4a10", "value": "A-002" }
+      "id_revit": "412398",
+      "unique_id": "5b1e2f8a-1c3d-4e5f-8a9b-0c1d2e3f4a5b-00064b6e",
+      "nom": "Local technique",
+      "numero": "002",
+      "surface_m2": 6.12,
+      "hauteur_non_limitee_m": 2.7,
+      "niveau": { "id_revit": "311", "unique_id": "8d2c4f6a-0b1e-4c3d-9e8f-7a6b5c4d3e2f-00000137", "nom": "R+0" },
+      "occupation": null,
+      "volume_m3": null,
+      "statut_volume": "notComputed",
+      "finitions": { "sol": "Résine", "murs": "Peinture blanche", "plafond": "", "plinthe": null },
+      "phase": { "id_revit": "86961", "nom": "Nouvelle construction" },
+      "variante": null,
+      "parametres_partages": {
+        "codeLocal": { "guid": "3f2b8c1e-6d4a-4b7e-9a51-2c0d8e7f4a10", "valeur": "A-002" }
       },
-      "qualityFlags": []
+      "indicateurs_qualite": []
     },
     {
-      "elementId": "415002",
-      "uniqueId": "5b1e2f8a-1c3d-4e5f-8a9b-0c1d2e3f4a5b-0006551a",
-      "name": "Réserve",
-      "number": "001",
-      "areaM2": 0,
-      "unboundedHeightM": 2.7,
-      "level": { "elementId": "311", "uniqueId": "8d2c4f6a-0b1e-4c3d-9e8f-7a6b5c4d3e2f-00000137", "name": "R+0" },
-      "occupancy": "Stockage",
-      "volumeM3": null,
-      "volumeStatus": "notComputed",
-      "finishes": { "floor": null, "wall": null, "ceiling": null, "base": null },
-      "phase": { "elementId": "86961", "name": "Nouvelle construction" },
-      "designOption": null,
-      "sharedParameters": {
-        "codeLocal": { "guid": "3f2b8c1e-6d4a-4b7e-9a51-2c0d8e7f4a10", "value": null }
+      "id_revit": "415002",
+      "unique_id": "5b1e2f8a-1c3d-4e5f-8a9b-0c1d2e3f4a5b-0006551a",
+      "nom": "Réserve",
+      "numero": "001",
+      "surface_m2": 0,
+      "hauteur_non_limitee_m": 2.7,
+      "niveau": { "id_revit": "311", "unique_id": "8d2c4f6a-0b1e-4c3d-9e8f-7a6b5c4d3e2f-00000137", "nom": "R+0" },
+      "occupation": "Stockage",
+      "volume_m3": null,
+      "statut_volume": "notComputed",
+      "finitions": { "sol": null, "murs": null, "plafond": null, "plinthe": null },
+      "phase": { "id_revit": "86961", "nom": "Nouvelle construction" },
+      "variante": null,
+      "parametres_partages": {
+        "codeLocal": { "guid": "3f2b8c1e-6d4a-4b7e-9a51-2c0d8e7f4a10", "valeur": null }
       },
-      "qualityFlags": ["UNPLACED", "DUPLICATE_NUMBER"]
+      "indicateurs_qualite": ["UNPLACED", "DUPLICATE_NUMBER"]
     }
   ],
   "anomalies": [

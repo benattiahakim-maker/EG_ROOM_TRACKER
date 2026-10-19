@@ -24,6 +24,137 @@ public sealed class ResultAndHistoryTests
     }
 
     [Fact]
+    public void Room_table_columns_follow_the_json_keys()
+    {
+        using var env = new TestEnvironment();
+        var json = JsonNode.Parse(env.ExampleResult)!.AsObject();
+        var room = json["rooms"]!.AsArray()[0]!.AsObject();
+        room["champInconnuDuFutur"] = 42.5;
+
+        var view = ResultReader.ForRepository(env.Root).Read(json.ToJsonString());
+
+        Assert.Contains("champInconnuDuFutur", view.RoomColumns);
+        Assert.Contains("niveau", view.RoomColumns);
+        Assert.Contains("finitions.sol", view.RoomColumns);
+        Assert.Equal(view.Rooms.Count, view.RoomValues.Count);
+        Assert.All(view.RoomValues, row => Assert.Equal(view.RoomColumns.Count, row.Count));
+        var column = view.RoomColumns.ToList().IndexOf("champInconnuDuFutur");
+        Assert.Equal("42.5", view.RoomValues[0][column]);
+        Assert.Null(view.RoomValues[1][column]);
+        var level = view.RoomColumns.ToList().IndexOf("niveau");
+        Assert.Equal("R+0", view.RoomValues[0][level]);
+    }
+
+    [Fact]
+    public async Task Last_config_is_saved_on_confirmed_run_and_restored_at_startup()
+    {
+        using var env = new TestEnvironment();
+        env.ViewModel.SelectedAlias = "prod";
+
+        await env.ViewModel.RunCommand.ExecuteAsync();
+
+        var saved = new LastConfigStore(env.DataDirectory).Load();
+        Assert.NotNull(saved);
+        Assert.Equal("prod", saved!.Alias);
+        Assert.Equal(env.ZipPath, saved.ZipPath);
+        Assert.Contains("schemaVersion", saved.SettingsText, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void Room_table_summarizes_element_arrays_and_parameters()
+    {
+        using var env = new TestEnvironment();
+        var json = JsonNode.Parse(env.ExampleResult)!.AsObject();
+        var room = json["rooms"]!.AsArray()[0]!.AsObject();
+        room["portes"] = new JsonArray(
+            new JsonObject { ["id_revit"] = "1", ["repere"] = "P1", ["type"] = "0915" },
+            new JsonObject { ["id_revit"] = "2", ["repere"] = null, ["type"] = "0915" });
+        room["parametres"] = new JsonArray(new JsonObject { ["name"] = "Commentaires", ["value"] = "x" });
+
+        var view = ResultReader.ForRepository(env.Root).Read(json.ToJsonString());
+
+        var columns = view.RoomColumns.ToList();
+        Assert.Equal("2 : P1, 0915", view.RoomValues[0][columns.IndexOf("portes")]);
+        Assert.Equal("1 élément(s)", view.RoomValues[0][columns.IndexOf("parametres")]);
+    }
+
+    [Fact]
+    public void Equipment_and_terminals_are_split_by_discipline_columns()
+    {
+        using var env = new TestEnvironment();
+        var json = JsonNode.Parse(env.ExampleResult)!.AsObject();
+        var room = json["rooms"]!.AsArray()[0]!.AsObject();
+        room["equipements"] = new JsonArray(
+            new JsonObject { ["id_revit"] = "1", ["type"] = "CTA", ["discipline"] = "cvc" },
+            new JsonObject { ["id_revit"] = "2", ["type"] = "Tableau", ["discipline"] = "electricite" },
+            new JsonObject { ["id_revit"] = "3", ["type"] = "TD", ["discipline"] = "electricite" });
+        room["terminaux"] = new JsonArray(new JsonObject { ["id_revit"] = "4", ["type"] = "Luminaire", ["discipline"] = "electricite" });
+
+        var view = ResultReader.ForRepository(env.Root).Read(json.ToJsonString());
+
+        var columns = view.RoomColumns.ToList();
+        Assert.Equal("1 : CTA", view.RoomValues[0][columns.IndexOf("equipements.cvc")]);
+        Assert.Equal("2 : Tableau, TD", view.RoomValues[0][columns.IndexOf("equipements.electricite")]);
+        Assert.Equal("0", view.RoomValues[0][columns.IndexOf("equipements.plomberie")]);
+        Assert.Equal("1 : Luminaire", view.RoomValues[0][columns.IndexOf("terminaux.electricite")]);
+        Assert.DoesNotContain("equipements", columns);
+    }
+
+    [Fact]
+    public void Room_parameters_become_one_column_each_like_area_and_volume()
+    {
+        using var env = new TestEnvironment();
+        var json = JsonNode.Parse(env.ExampleResult)!.AsObject();
+        var room = json["rooms"]!.AsArray()[0]!.AsObject();
+        room["parametres"] = new JsonObject { ["Commentaires"] = "Salle serveurs", ["Hauteur limite"] = 2.44, ["Occupant"] = null };
+
+        var view = ResultReader.ForRepository(env.Root).Read(json.ToJsonString());
+
+        var columns = view.RoomColumns.ToList();
+        Assert.Contains("surface_m2", columns);
+        Assert.Equal("Salle serveurs", view.RoomValues[0][columns.IndexOf("parametres.Commentaires")]);
+        Assert.Equal("2.44", view.RoomValues[0][columns.IndexOf("parametres.Hauteur limite")]);
+        Assert.Null(view.RoomValues[0][columns.IndexOf("parametres.Occupant")]);
+        Assert.Null(view.RoomValues[1][columns.IndexOf("parametres.Commentaires")]);
+    }
+
+    [Fact]
+    public void Trc_file_is_displayed_as_one_row_per_bim_object_and_one_column_per_code()
+    {
+        using var env = new TestEnvironment();
+        const string json = """
+        [
+          { "model": "trc.bimobject", "pk": "trc.bimobject_a", "fields": { "bim_id": "uid-1", "code_file": "F" } },
+          { "model": "trc.bimobject", "pk": "trc.bimobject_b", "fields": { "bim_id": "uid-2", "code_file": "F" } },
+          { "model": "trc.bimobjectpropertyvalue", "pk": "p1", "fields": { "latest_value": "0.90m", "original_value": "0.90m", "bim_object_id": "trc.bimobject_a", "bim_property_code_property": "b:porte_largeur" } },
+          { "model": "trc.bimobjectpropertyvalue", "pk": "p2", "fields": { "latest_value": "1.40m", "original_value": "1.40m", "bim_object_id": "trc.bimobject_a", "bim_property_code_property": "b:porte_largeur" } },
+          { "model": "trc.bimobjectpropertyvalue", "pk": "p3", "fields": { "latest_value": "30.03", "original_value": "30.03", "bim_object_id": "trc.bimobject_b", "bim_property_code_property": "b:dimensions_surface" } },
+          { "model": "special.setcodefile", "fields": { "file_name": "F.rvt", "code_file": "F" } }
+        ]
+        """;
+
+        var view = ResultReader.ForRepository(env.Root).ReadTrc(json);
+
+        Assert.True(view.IsSchemaValid);
+        Assert.Null(view.Status);
+        Assert.Equal(["bim_id", "b:porte_largeur", "b:dimensions_surface"], view.RoomColumns);
+        Assert.Equal(["uid-1", "0.90m | 1.40m", null], view.RoomValues[0]);
+        Assert.Equal(["uid-2", null, "30.03"], view.RoomValues[1]);
+        Assert.Contains(view.Summary, kv => kv.Key == "Objets BIM / valeurs" && kv.Value == "2 / 3");
+    }
+
+    [Fact]
+    public void Unreadable_trc_file_is_reported_not_thrown()
+    {
+        using var env = new TestEnvironment();
+
+        var view = ResultReader.ForRepository(env.Root).ReadTrc("[ tronqué");
+
+        Assert.False(view.IsSchemaValid);
+        Assert.Empty(view.RoomColumns);
+    }
+
+    [Fact]
     public void Non_conforming_result_lists_schema_errors()
     {
         using var env = new TestEnvironment();

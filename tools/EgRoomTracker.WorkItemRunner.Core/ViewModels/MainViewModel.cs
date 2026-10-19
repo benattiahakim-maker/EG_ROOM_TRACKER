@@ -29,6 +29,7 @@ public sealed class MainViewModel : ObservableObject
     private readonly TimeProvider _time;
     private readonly SynchronizationContext? _uiContext;
     private readonly RunHistory _history;
+    private readonly LastConfigStore _lastConfig;
     private WorkItemRunnerService? _service;
     private ResultReader? _results;
     private ActiveRun? _activeRun;
@@ -61,6 +62,7 @@ public sealed class MainViewModel : ObservableObject
         _bucketKey = options.BucketKey ?? string.Empty;
         _repositoryRoot = options.RepositoryRoot ?? string.Empty;
         _history = new RunHistory(options.DataDirectory); // historique local : aucun client APS au démarrage
+        _lastConfig = new LastConfigStore(options.DataDirectory);
 
         RunCommand = new AsyncRelayCommand(() => RunAsync("Lancement", RunCoreAsync), () => !IsBusy);
         StopFollowingCommand = new AsyncRelayCommand(StopFollowingAsync, () => _follow is not null);
@@ -71,6 +73,7 @@ public sealed class MainViewModel : ObservableObject
         BrowseZipCommand = new AsyncRelayCommand(() =>
         {
             ZipPath = _files?.OpenFile("ZIP de la maquette", "ZIP (*.zip)|*.zip", null) ?? ZipPath;
+            SaveLastConfig();
             return Task.CompletedTask;
         });
         OpenSettingsCommand = new AsyncRelayCommand(() => RunAsync("settings.json", () =>
@@ -78,6 +81,7 @@ public sealed class MainViewModel : ObservableObject
             if (_files?.OpenFile("settings.json", "JSON (*.json)|*.json", null) is { } path)
             {
                 SettingsText = File.ReadAllText(path);
+                SaveLastConfig();
             }
 
             return Task.CompletedTask;
@@ -298,6 +302,7 @@ public sealed class MainViewModel : ObservableObject
     /// </summary>
     public void Initialize()
     {
+        RestoreLastConfig();
         if (HasConfigurationBanner)
         {
             AddLog("warning", ConfigurationBanner);
@@ -312,6 +317,42 @@ public sealed class MainViewModel : ObservableObject
             AddLog("warning", $"Historique local illisible ({_history.RunsDirectory}) : {exception.Message}");
         }
     }
+
+    /// <summary>Rappelle la dernière configuration de lancement (version Revit, alias, ZIP, settings.json).</summary>
+    private void RestoreLastConfig()
+    {
+        if (_lastConfig.Load() is not { } last)
+        {
+            return;
+        }
+
+        if (last.RevitVersion is { } version && RunnerOptions.RevitVersions.Contains(version))
+        {
+            SelectedRevitVersion = version;
+        }
+
+        if (!string.IsNullOrWhiteSpace(last.Alias))
+        {
+            SelectedAlias = last.Alias;
+        }
+
+        if (!string.IsNullOrWhiteSpace(last.ZipPath))
+        {
+            ZipPath = last.ZipPath;
+        }
+
+        if (!string.IsNullOrWhiteSpace(last.SettingsText))
+        {
+            SettingsText = last.SettingsText;
+        }
+    }
+
+    /// <summary>
+    /// Mémorise la configuration choisie par l'utilisateur. Appelée seulement après un choix de fichier ou la
+    /// confirmation d'un lancement : un plan refusé n'écrit rien.
+    /// </summary>
+    private void SaveLastConfig() =>
+        _lastConfig.Save(new LastConfig(SelectedRevitVersion, SelectedAlias, ZipPath, SettingsText));
 
     // ---- Opérations ----------------------------------------------------------------------------------------------
 
@@ -334,6 +375,7 @@ public sealed class MainViewModel : ObservableObject
         }
 
         AddLog("info", "Confirmé : lancement du WorkItem.");
+        SaveLastConfig(); // la configuration d'un lancement confirmé est rappelée au prochain démarrage
         var run = await service.SubmitAsync(prepared, Progress);
         _activeRun = run;
         _follow = new CancellationTokenSource();
@@ -440,11 +482,18 @@ public sealed class MainViewModel : ObservableObject
         try
         {
             var directory = _history.DirectoryOf(run.RunId);
-            var resultPath = Path.Combine(directory, WorkItemRunnerService.ResultLocalName);
+            // Sortie ZIP décompressée dans result/ ; lancements antérieurs : result.json à la racine du lancement.
+            var zippedResult = Path.Combine(directory, WorkItemRunnerService.ResultParameter, WorkItemRunnerService.ResultLocalName);
+            var resultPath = File.Exists(zippedResult) ? zippedResult : Path.Combine(directory, WorkItemRunnerService.ResultLocalName);
             var reportPath = Path.Combine(directory, RunHistory.ReportFileName);
+            var trcPath = Path.Combine(directory, WorkItemRunnerService.ResultParameter, WorkItemRunnerService.TrcLocalName);
             if (File.Exists(resultPath) && Results() is { } reader)
             {
                 Result = reader.Read(File.ReadAllText(resultPath));
+            }
+            else if (File.Exists(trcPath) && Results() is { } trcReader)
+            {
+                Result = trcReader.ReadTrc(File.ReadAllText(trcPath));
             }
 
             ReportText = File.Exists(reportPath) ? SecretRedactor.Redact(File.ReadAllText(reportPath)) : "(rapport non téléchargé)";

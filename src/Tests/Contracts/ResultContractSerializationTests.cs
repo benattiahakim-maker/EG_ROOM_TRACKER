@@ -215,19 +215,19 @@ public class ResultContractSerializationTests
         var json = SerializeSingleRoom(room);
 
         var r = json["rooms"]![0]!;
-        Assert.Equal(JsonValueKind.String, r["name"]!.GetValueKind());
-        Assert.Equal("", r["name"]!.GetValue<string>());
-        Assert.True(r.AsObject().ContainsKey("occupancy"));
-        Assert.Null(r["occupancy"]);
-        Assert.Equal(JsonValueKind.Number, r["areaM2"]!.GetValueKind());
-        Assert.Equal(0d, r["areaM2"]!.GetValue<double>());
-        Assert.True(r.AsObject().ContainsKey("unboundedHeightM"));
-        Assert.Null(r["unboundedHeightM"]);
-        Assert.Equal("", r["finishes"]!["ceiling"]!.GetValue<string>());
-        Assert.Null(r["finishes"]!["base"]);
-        Assert.Null(r["sharedParameters"]!["codeLocal"]!["value"]);
-        Assert.Equal(JsonValueKind.Number, r["sharedParameters"]!["surfaceUtile"]!["value"]!.GetValueKind());
-        Assert.Equal("", r["sharedParameters"]!["commentaire"]!["value"]!.GetValue<string>());
+        Assert.Equal(JsonValueKind.String, r["nom"]!.GetValueKind());
+        Assert.Equal("", r["nom"]!.GetValue<string>());
+        Assert.True(r.AsObject().ContainsKey("occupation"));
+        Assert.Null(r["occupation"]);
+        Assert.Equal(JsonValueKind.Number, r["surface_m2"]!.GetValueKind());
+        Assert.Equal(0d, r["surface_m2"]!.GetValue<double>());
+        Assert.True(r.AsObject().ContainsKey("hauteur_non_limitee_m"));
+        Assert.Null(r["hauteur_non_limitee_m"]);
+        Assert.Equal("", r["finitions"]!["plafond"]!.GetValue<string>());
+        Assert.Null(r["finitions"]!["plinthe"]);
+        Assert.Null(r["parametres_partages"]!["codeLocal"]!["valeur"]);
+        Assert.Equal(JsonValueKind.Number, r["parametres_partages"]!["surfaceUtile"]!["valeur"]!.GetValueKind());
+        Assert.Equal("", r["parametres_partages"]!["commentaire"]!["valeur"]!.GetValue<string>());
         ResultSchema.AssertValid(json);
     }
 
@@ -248,11 +248,11 @@ public class ResultContractSerializationTests
 
             var text = ContractJson.Serialize(Wrap(room));
 
-            Assert.Contains("\"areaM2\":18.4251234567891", text);
-            Assert.Contains("\"unboundedHeightM\":2.7", text);
+            Assert.Contains("\"surface_m2\":18.4251234567891", text);
+            Assert.Contains("\"hauteur_non_limitee_m\":2.7", text);
             Assert.DoesNotContain("18,425", text);
             var json = JsonNode.Parse(text)!;
-            Assert.Equal(1e-7, json["rooms"]![0]!["volumeM3"]!.GetValue<double>());
+            Assert.Equal(1e-7, json["rooms"]![0]!["volume_m3"]!.GetValue<double>());
             ResultSchema.AssertValid(json);
         }
         finally
@@ -268,8 +268,8 @@ public class ResultContractSerializationTests
 
         var json = SerializeSingleRoom(room);
 
-        Assert.Equal("9007199254740993", json["rooms"]![0]!["elementId"]!.GetValue<string>());
-        Assert.Equal("001", json["rooms"]![0]!["number"]!.GetValue<string>());
+        Assert.Equal("9007199254740993", json["rooms"]![0]!["id_revit"]!.GetValue<string>());
+        Assert.Equal("001", json["rooms"]![0]!["numero"]!.GetValue<string>());
     }
 
     [Fact]

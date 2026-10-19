@@ -92,8 +92,8 @@ public class QualityCheckServiceTests
         var json = JsonNode.Parse(ContractJson.Serialize(result))!;
 
         Assert.Equal(ExtractionStatus.SucceededWithWarnings, result.Summary.Status);
-        Assert.Equal(["DUPLICATE_NUMBER"], json["rooms"]![0]!["qualityFlags"]!.AsArray().Select(n => n!.GetValue<string>()));
-        Assert.Equal(["UNPLACED", "DUPLICATE_NUMBER"], json["rooms"]![2]!["qualityFlags"]!.AsArray().Select(n => n!.GetValue<string>()));
+        Assert.Equal(["DUPLICATE_NUMBER"], json["rooms"]![0]!["indicateurs_qualite"]!.AsArray().Select(n => n!.GetValue<string>()));
+        Assert.Equal(["UNPLACED", "DUPLICATE_NUMBER"], json["rooms"]![2]!["indicateurs_qualite"]!.AsArray().Select(n => n!.GetValue<string>()));
         Assert.Equal("VOLUME_NOT_COMPUTED", json["anomalies"]![0]!["code"]!.GetValue<string>());
         ResultSchema.AssertValid(json);
     }
@@ -228,7 +228,7 @@ public class QualityCheckServiceTests
         var json = JsonNode.Parse(ContractJson.Serialize(result))!;
 
         Assert.False(json["rooms"]![0]!.AsObject().ContainsKey("designOptionSetId"));
-        Assert.Equal("500", json["rooms"]![0]!["designOption"]!["elementId"]!.GetValue<string>());
+        Assert.Equal("500", json["rooms"]![0]!["variante"]!["id_revit"]!.GetValue<string>());
         ResultSchema.AssertValid(json);
     }
 }

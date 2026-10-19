@@ -21,6 +21,23 @@ public sealed class MainViewModelTests
     }
 
     [Fact]
+    public async Task Zipped_result_is_extracted_with_its_images()
+    {
+        using var env = new TestEnvironment();
+        env.Server.ResultImages.Add(("uid_code_1_AdjustedCornerView_1.jpg", [1, 2, 3]));
+
+        await env.ViewModel.RunCommand.ExecuteAsync();
+
+        var run = Assert.Single(new RunHistory(env.DataDirectory).Load());
+        var directory = Path.Combine(env.DataDirectory, "runs", run.RunId);
+        Assert.True(File.Exists(Path.Combine(directory, "result", "result.json")));
+        Assert.True(File.Exists(Path.Combine(directory, "result", "Images", "uid_code_1_AdjustedCornerView_1.jpg")));
+        Assert.NotNull(env.ViewModel.Result);
+        Assert.True(env.ViewModel.Result!.IsSchemaValid);
+        Assert.Contains("1 image(s)", env.LogText, StringComparison.Ordinal);
+    }
+
+    [Fact]
     public async Task Declined_plan_writes_nothing()
     {
         using var env = new TestEnvironment();
@@ -33,7 +50,7 @@ public sealed class MainViewModelTests
         Assert.Contains("nick.ExtractRooms_R2026+test (version v3)", plan.Text, StringComparison.Ordinal);
         Assert.Contains("/inputZip.zip", plan.Text, StringComparison.Ordinal);
         Assert.Contains("/settings.json", plan.Text, StringComparison.Ordinal);
-        Assert.Contains("/result.json", plan.Text, StringComparison.Ordinal);
+        Assert.Contains("/result.zip", plan.Text, StringComparison.Ordinal);
         Assert.Contains("60 min", plan.Text, StringComparison.Ordinal);
         Assert.Empty(env.Writes);
         Assert.Empty(env.Server.Buckets);
@@ -77,7 +94,7 @@ public sealed class MainViewModelTests
         Assert.Contains("Relevé : WorkItem success, result.json présent (status succeededWithWarnings)", env.LogText, StringComparison.Ordinal);
 
         var directory = Path.Combine(env.DataDirectory, "runs", run.RunId);
-        Assert.True(File.Exists(Path.Combine(directory, "result.json")));
+        Assert.True(File.Exists(Path.Combine(directory, "result", "result.json")));
         Assert.True(File.Exists(Path.Combine(directory, "settings.json")));
         Assert.True(File.Exists(Path.Combine(directory, RunHistory.ReportFileName)));
         AssertNoSecrets(env);

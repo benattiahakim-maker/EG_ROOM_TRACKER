@@ -121,12 +121,12 @@ public class FinishesAndSharedParametersTests
             (Inconnu, SharedParameterValues.FromInteger(3)),
         ]).Build().Room;
 
-        var json = JsonDocument.Parse(JsonSerializer.Serialize(room)).RootElement.GetProperty("SharedParameters");
+        var json = JsonDocument.Parse(JsonSerializer.Serialize(room)).RootElement.GetProperty("parametres_partages");
 
-        Assert.Equal(JsonValueKind.String, json.GetProperty("codeLocal").GetProperty("Value").ValueKind);
-        Assert.Equal("007", json.GetProperty("codeLocal").GetProperty("Value").GetString());
-        Assert.Equal(JsonValueKind.Number, json.GetProperty("surfaceUtile").GetProperty("Value").ValueKind);
-        Assert.Equal(3, json.GetProperty("inconnu").GetProperty("Value").GetInt64());
+        Assert.Equal(JsonValueKind.String, json.GetProperty("codeLocal").GetProperty("valeur").ValueKind);
+        Assert.Equal("007", json.GetProperty("codeLocal").GetProperty("valeur").GetString());
+        Assert.Equal(JsonValueKind.Number, json.GetProperty("surfaceUtile").GetProperty("valeur").ValueKind);
+        Assert.Equal(3, json.GetProperty("inconnu").GetProperty("valeur").GetInt64());
     }
 
     [Fact]
@@ -183,11 +183,11 @@ public class FinishesAndSharedParametersTests
 
         var json = JsonNode.Parse(ContractJson.Serialize(pipeline.Run()))!;
 
-        var shared = json["rooms"]![0]!["sharedParameters"]!;
-        Assert.Equal("007", shared["codeLocal"]!["value"]!.GetValue<string>());
-        Assert.Equal(100 * 0.3048 * 0.3048, shared["surfaceUtile"]!["value"]!.GetValue<double>());
-        Assert.Null(shared["inconnu"]!["value"]);
-        Assert.Equal("", json["rooms"]![0]!["finishes"]!["ceiling"]!.GetValue<string>());
+        var shared = json["rooms"]![0]!["parametres_partages"]!;
+        Assert.Equal("007", shared["codeLocal"]!["valeur"]!.GetValue<string>());
+        Assert.Equal(100 * 0.3048 * 0.3048, shared["surfaceUtile"]!["valeur"]!.GetValue<double>());
+        Assert.Null(shared["inconnu"]!["valeur"]);
+        Assert.Equal("", json["rooms"]![0]!["finitions"]!["plafond"]!.GetValue<string>());
         ResultSchema.AssertValid(json);
     }
 
@@ -247,7 +247,7 @@ public class FinishesAndSharedParametersTests
         var json = JsonNode.Parse(ContractJson.Serialize(pipeline.Run()))!;
 
         Assert.Equal(SchemaVersions.Result, json["schemaVersion"]!.GetValue<string>());
-        Assert.Null(json["rooms"]![0]!["sharedParameters"]!["surfaceUtile"]!["value"]);
+        Assert.Null(json["rooms"]![0]!["parametres_partages"]!["surfaceUtile"]!["valeur"]);
         var exported = json["anomalies"]!.AsArray().Single(a => a!["code"]!.GetValue<string>() == "UNSUPPORTED_PARAMETER_TYPE")!;
         Assert.Equal("info", exported["severity"]!.GetValue<string>());
         Assert.Equal("autodesk.spec.aec:angle-2.0.0", exported["details"]!["typeId"]!.GetValue<string>());

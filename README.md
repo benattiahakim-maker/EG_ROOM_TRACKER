@@ -2,7 +2,7 @@
 
 Composant C# pour Autodesk Platform Services — Design Automation for Revit 2025, 2026 et 2027.
 
-Extraction des pièces d’une maquette RVT reçue dans un ZIP : identité, nom, numéro, surface, hauteur non bornée, niveau, occupation, volume et finitions, paramètres partagés par GUID. Le résultat est retourné dans un fichier JSON unique, `result.json` (bilan, pièces, anomalies), contrat versionné **1.3**.
+Extraction des pièces d’une maquette RVT reçue dans un ZIP : identité, nom, numéro, surface, hauteur non bornée, niveau, occupation, volume et finitions, paramètres partagés par GUID. Le résultat est retourné dans un fichier JSON unique, `result.json` (bilan, pièces, anomalies), contrat versionné **1.4**.
 
 ## État (9 octobre 2026)
 

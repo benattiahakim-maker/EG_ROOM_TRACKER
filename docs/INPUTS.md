@@ -38,6 +38,20 @@ Le service retourne la configuration **telle que lue**, complétée par deux cha
 | `volumeMode` | `"preserve"` (défaut si absent ou null) ou `"compute"`, casse exacte. `"compute"` : calcul temporaire des volumes (EGR-16, voir `docs/LECTURE.md`) | `CONFIG_INVALID` |
 | `sharedParameters` | null / absent = aucun. Sinon tableau d'objets `{ key, guid }`. `key` : chaîne non vide, sans espace en début ou fin, unique (comparaison sensible à la casse, comme les clés JSON de `rooms[].sharedParameters`). `guid` : format `xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx`, GUID nul refusé | `CONFIG_INVALID` |
 
+| `roomParameters` | null / absent / `"none"` (défaut) ou `"all"` (tous les paramètres de chaque pièce dans `rooms[].parameters`, voir `docs/ELEMENTS.md`) | `CONFIG_INVALID` |
+| `elements` | null / absent = aucun. Sinon tableau sans doublon de `"doors"`, `"equipment"`, `"terminals"` : portes, équipements et terminaux rattachés aux pièces | `CONFIG_INVALID` |
+| `elementCategories` | null / absent = catégories par défaut. Sinon objet `{ famille : [OST_…] }` (familles `doors`, `equipment`, `terminals`), tableaux non vides sans doublon de noms de `BuiltInCategory` | `CONFIG_INVALID` |
+
+| `roomImages` | null / absent / `false` (défaut) ou `true` : une vue 3D par pièce placée dans `Images/` de la sortie ZIP (voir `docs/IMAGES.md`) | `CONFIG_INVALID` |
+| `imageWidthPx` | null / absent = 8000 (valeur de TRC). Sinon entier de 400 à 8000 (largeur des images en pixels) | `CONFIG_INVALID` |
+
+| `roomHeights` | null / absent / `false` (défaut) ou `true` : hauteur renseignée et hauteur minimale mesurée par lancer de rayons, séparées, dans `rooms[].heights` (voir `docs/HEIGHTS.md`) | `CONFIG_INVALID` |
+| `heightStepM` | null / absent = 0,5. Sinon nombre de 0,1 à 2 (pas de la grille de rayons, en mètres) | `CONFIG_INVALID` |
+
+| `linkedElements` | null / absent / `true` (défaut) : les équipements et terminaux des modèles liés sont aussi collectés (`false` : modèle principal seulement) | `CONFIG_INVALID` |
+
+| `outputFormat` | null / absent / `"contract"` (défaut : `result.json`), `"trc"` (`TRCValidationDict.json`, données seules) ou `"both"` (voir `docs/TRC.md`) | `CONFIG_INVALID` |
+
 Les messages d'erreur nomment la propriété en cause (ex. `settings.json : sharedParameters[1].key « a » en double…`)
 et ne contiennent aucun chemin absolu du WorkItem.
 

@@ -8,3 +8,4 @@ obj/
 *.zip
 artifacts/
 __pycache__/
+RVT/

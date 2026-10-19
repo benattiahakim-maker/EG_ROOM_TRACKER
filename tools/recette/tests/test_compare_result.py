@@ -26,7 +26,7 @@ def load(case: str) -> dict:
 
 
 def room(result: dict, name: str) -> dict:
-    return next(r for r in result["rooms"] if r["name"] == name)
+    return next(r for r in result["rooms"] if r["nom"] == name)
 
 
 def fake_actual(template: dict, offset: int = 500000) -> dict:
@@ -34,14 +34,14 @@ def fake_actual(template: dict, offset: int = 500000) -> dict:
     actual = copy.deepcopy(template)
     mapping = {}
     for r in actual["rooms"]:
-        new = str(int(r["elementId"]) - 9000000 + offset)
-        mapping[r["elementId"]] = new
-        r["elementId"], r["uniqueId"] = new, f"5b1e2f8a-{new}"
-        for kind in ("level", "phase", "designOption"):
+        new = str(int(r["id_revit"]) - 9000000 + offset)
+        mapping[r["id_revit"]] = new
+        r["id_revit"], r["unique_id"] = new, f"5b1e2f8a-{new}"
+        for kind in ("niveau", "phase", "variante"):
             if isinstance(r.get(kind), dict):
-                r[kind]["elementId"] = str(int(r[kind]["elementId"]) - 9000000 + 300)
-                if "uniqueId" in r[kind]:
-                    r[kind]["uniqueId"] = f"8d2c4f6a-{r[kind]['elementId']}"
+                r[kind]["id_revit"] = str(int(r[kind]["id_revit"]) - 9000000 + 300)
+                if "unique_id" in r[kind]:
+                    r[kind]["unique_id"] = f"8d2c4f6a-{r[kind]['id_revit']}"
     for a in actual["anomalies"]:
         if a["elementId"] in mapping:
             a["elementId"] = mapping[a["elementId"]]
@@ -75,35 +75,35 @@ class CompareTests(unittest.TestCase):
         self.assertTrue(report.ok, report.mismatches)
 
     def test_quantities_within_d5_tolerance_conform(self):
-        room(self.actual, "Bureau d'étude")["areaM2"] = 20.0009
-        room(self.actual, "Bureau d'étude")["unboundedHeightM"] = 2.6995
+        room(self.actual, "Bureau d'étude")["surface_m2"] = 20.0009
+        room(self.actual, "Bureau d'étude")["hauteur_non_limitee_m"] = 2.6995
         self.assertTrue(self.check().ok)
 
     def test_quantity_beyond_tolerance_is_a_mismatch_with_the_gap(self):
-        room(self.actual, "Bureau d'étude")["areaM2"] = 20.0042
+        room(self.actual, "Bureau d'étude")["surface_m2"] = 20.0042
         report = self.check()
         self.assertEqual(1, len(report.mismatches))
-        self.assertIn("areaM2", report.mismatches[0])
+        self.assertIn("surface_m2", report.mismatches[0])
         self.assertIn("écart 0.0042", report.mismatches[0])
         self.assertIn("Bureau d'étude", report.mismatches[0])
 
     def test_tolerances_are_configurable(self):
-        room(self.actual, "Bureau d'étude")["areaM2"] = 20.0042
+        room(self.actual, "Bureau d'étude")["surface_m2"] = 20.0042
         options = cr.Options()
         options.tolerances["area"] = 0.01
         self.assertTrue(self.check(options).ok)
 
     def test_volume_uses_volume_tolerance(self):
         self.expected, self.actual = load("R02"), load("R02")
-        room(self.actual, "Bureau d'étude")["volumeM3"] = 54.0009
+        room(self.actual, "Bureau d'étude")["volume_m3"] = 54.0009
         self.assertTrue(self.check().ok)
-        room(self.actual, "Bureau d'étude")["volumeM3"] = 54.01
+        room(self.actual, "Bureau d'étude")["volume_m3"] = 54.01
         self.assertFalse(self.check().ok)
 
     def test_shared_numeric_value_uses_shared_tolerance(self):
-        room(self.actual, "Bureau d'étude")["sharedParameters"]["longueur"]["value"] = 1.2500004
+        room(self.actual, "Bureau d'étude")["parametres_partages"]["longueur"]["valeur"] = 1.2500004
         self.assertTrue(self.check().ok)
-        room(self.actual, "Bureau d'étude")["sharedParameters"]["longueur"]["value"] = 1.26
+        room(self.actual, "Bureau d'étude")["parametres_partages"]["longueur"]["valeur"] = 1.26
         self.assertFalse(self.check().ok)
 
     def test_other_numbers_are_exact(self):
@@ -127,20 +127,20 @@ class CompareTests(unittest.TestCase):
             return run_cli("compare", str(e), str(a), *extra)
 
     def test_null_empty_string_and_zero_are_distinct(self):
-        room(self.actual, "Local technique")["finishes"]["wall"] = None
-        room(self.actual, "Sans attributs")["occupancy"] = ""
-        room(self.actual, "Salle de réunion « Été »")["sharedParameters"]["entier"]["value"] = None
+        room(self.actual, "Local technique")["finitions"]["murs"] = None
+        room(self.actual, "Sans attributs")["occupation"] = ""
+        room(self.actual, "Salle de réunion « Été »")["parametres_partages"]["entier"]["valeur"] = None
         report = self.check()
         self.assertEqual(3, len(report.mismatches), report.mismatches)
 
     def test_leading_zeros_matter(self):
-        room(self.actual, "Salle de réunion « Été »")["number"] = "10"
+        room(self.actual, "Salle de réunion « Été »")["numero"] = "10"
         self.assertFalse(self.check().ok)
 
     def test_missing_and_unexpected_rooms_are_reported(self):
         removed = self.actual["rooms"].pop(0)
         extra = copy.deepcopy(removed)
-        extra["elementId"], extra["uniqueId"] = "9999999", "autre"
+        extra["id_revit"], extra["unique_id"] = "9999999", "autre"
         self.actual["rooms"].append(extra)
         report = self.check()
         self.assertTrue(any("pièce attendue absente" in m for m in report.mismatches))
@@ -148,18 +148,18 @@ class CompareTests(unittest.TestCase):
 
     def test_rooms_can_be_matched_by_unique_id(self):
         for r in self.actual["rooms"]:
-            r["elementId"] = str(int(r["elementId"]) + 1)
-        report = self.check(cr.Options(match_by="uniqueId"))
-        self.assertTrue(all(".elementId" in m or "elementId=" in m or "anomalie" in m for m in report.mismatches))
+            r["id_revit"] = str(int(r["id_revit"]) + 1)
+        report = self.check(cr.Options(match_by="unique_id"))
+        self.assertTrue(all(".id_revit" in m or "elementId=" in m or "anomalie" in m for m in report.mismatches))
         self.assertFalse(any("pièce attendue absente" in m for m in report.mismatches))
 
     def test_unsorted_rooms_are_reported(self):
         self.actual["rooms"].reverse()
         report = self.check()
-        self.assertEqual(["rooms : pièces non triées par elementId numérique croissant"], report.mismatches)
+        self.assertEqual(["rooms : pièces non triées par id_revit numérique croissant"], report.mismatches)
 
     def test_quality_flags_order_is_not_significant_but_content_is(self):
-        flags = room(self.actual, "Réserve")["qualityFlags"]
+        flags = room(self.actual, "Réserve")["indicateurs_qualite"]
         flags.reverse()
         self.assertTrue(self.check().ok)
         flags.pop()
@@ -213,8 +213,8 @@ class CompareTests(unittest.TestCase):
         self.assertEqual(1, len(self.check().mismatches))
 
     def test_pending_paths_do_not_fail(self):
-        room(self.actual, "Local technique")["finishes"]["wall"] = None
-        report = self.check(cr.Options(pending=["rooms[name=Local technique].finishes.wall"]))
+        room(self.actual, "Local technique")["finitions"]["murs"] = None
+        report = self.check(cr.Options(pending=["rooms[nom=Local technique].finitions.murs"]))
         self.assertTrue(report.ok)
         self.assertEqual(1, len(report.pending))
 
@@ -224,12 +224,12 @@ class CompareTests(unittest.TestCase):
                 a["severity"] = "error"
         self.assertFalse(self.check().ok)
         self.assertTrue(self.check(cr.Options(ignores=["anomalies[details.number=011]"])).ok)
-        room(self.actual, "Placard")["areaM2"] = 2.0
-        self.assertTrue(self.check(cr.Options(ignores=["anomalies[details.number=011]", "rooms[*].areaM2"])).ok)
+        room(self.actual, "Placard")["surface_m2"] = 2.0
+        self.assertTrue(self.check(cr.Options(ignores=["anomalies[details.number=011]", "rooms[*].surface_m2"])).ok)
 
     def test_null_selector(self):
-        room(self.actual, "Sans attributs")["areaM2"] = 6.0
-        self.assertTrue(self.check(cr.Options(ignores=["rooms[occupancy=null,number=004]"])).ok)
+        room(self.actual, "Sans attributs")["surface_m2"] = 6.0
+        self.assertTrue(self.check(cr.Options(ignores=["rooms[occupation=null,numero=004]"])).ok)
 
     def test_global_errors_are_compared_by_code_and_stage(self):
         self.expected, self.actual = load("R08"), load("R08")
@@ -251,20 +251,20 @@ class BindTests(unittest.TestCase):
         template = load("R01")
         actual = fake_actual(template)
         actual["summary"]["revit"]["version"] = "2025"
-        room(actual, "Bureau d'étude")["areaM2"] = 99.0  # une valeur réelle ne doit jamais être recopiée
+        room(actual, "Bureau d'étude")["surface_m2"] = 99.0  # une valeur réelle ne doit jamais être recopiée
         bound, log = cr.bind(template, actual, "2025")
         self.assertEqual("2025", bound["summary"]["revit"]["version"])
         bureau = room(bound, "Bureau d'étude")
-        self.assertEqual(room(actual, "Bureau d'étude")["elementId"], bureau["elementId"])
-        self.assertEqual(room(actual, "Bureau d'étude")["uniqueId"], bureau["uniqueId"])
-        self.assertEqual(20.0, bureau["areaM2"])
-        self.assertEqual(room(actual, "Bureau d'étude")["level"], bureau["level"])
+        self.assertEqual(room(actual, "Bureau d'étude")["id_revit"], bureau["id_revit"])
+        self.assertEqual(room(actual, "Bureau d'étude")["unique_id"], bureau["unique_id"])
+        self.assertEqual(20.0, bureau["surface_m2"])
+        self.assertEqual(room(actual, "Bureau d'étude")["niveau"], bureau["niveau"])
         dup = next(a for a in bound["anomalies"] if a["code"] == "DUPLICATE_NUMBER" and a["details"]["number"] == "001")
-        self.assertEqual(sorted([room(actual, "Bureau d'étude")["elementId"], room(actual, "Réserve")["elementId"]], key=int),
+        self.assertEqual(sorted([room(actual, "Bureau d'étude")["id_revit"], room(actual, "Réserve")["id_revit"]], key=int),
                          dup["details"]["elementIds"])
         self.assertTrue(any("phase 'Existant'" in line for line in log))
         actual_ok = copy.deepcopy(actual)
-        room(actual_ok, "Bureau d'étude")["areaM2"] = 20.0
+        room(actual_ok, "Bureau d'étude")["surface_m2"] = 20.0
         self.assertTrue(cr.compare(bound, actual_ok).ok)
         actual_ok["summary"]["revit"]["version"] = "2027"
         self.assertEqual(['summary.revit.version : attendu "2025", obtenu "2027"'], cr.compare(bound, actual_ok).mismatches)
@@ -279,7 +279,7 @@ class BindTests(unittest.TestCase):
     def test_bind_refuses_missing_or_ambiguous_rooms(self):
         template = load("R01")
         actual = fake_actual(template)
-        actual["rooms"] = [r for r in actual["rooms"] if r["name"] != "Couloir"]
+        actual["rooms"] = [r for r in actual["rooms"] if r["nom"] != "Couloir"]
         with self.assertRaises(cr.BindError) as ctx:
             cr.bind(template, actual, "2027")
         self.assertIn("Couloir", str(ctx.exception))
@@ -306,8 +306,8 @@ class CliTests(unittest.TestCase):
             e.write_text(json.dumps(bound, ensure_ascii=False), encoding="utf-8")
             a.write_text(json.dumps(actual, ensure_ascii=False), encoding="utf-8")
             self.assertEqual(0, run_cli("compare", "--case", "R01", str(e), str(a))[0])
-            room(actual, "Bureau d'étude")["areaM2"] = 20.5
-            room(actual, "Local technique")["finishes"]["wall"] = None
+            room(actual, "Bureau d'étude")["surface_m2"] = 20.5
+            room(actual, "Local technique")["finitions"]["murs"] = None
             a.write_text(json.dumps(actual, ensure_ascii=False), encoding="utf-8")
             code, output = run_cli("compare", "--case", "R01", str(e), str(a))
             self.assertEqual(1, code)
@@ -356,13 +356,13 @@ class ManifestTests(unittest.TestCase):
         set_of = {o: name for name, options in MANIFEST["designOptionSets"]["sets"].items() for o in options}
 
         def option(r):
-            return (r["designOption"] or {}).get("elementId")
+            return (r["variante"] or {}).get("id_revit")
 
         def conflict(a, b):
             exclusive = (option(a) is not None and option(b) is not None and option(a) != option(b)
                          and set_of[option(a)] == set_of[option(b)])
-            return (a is not b and bool(a["number"]) and a["number"] == b["number"]
-                    and (a["phase"] or {}).get("elementId") == (b["phase"] or {}).get("elementId")
+            return (a is not b and bool(a["numero"]) and a["numero"] == b["numero"]
+                    and (a["phase"] or {}).get("id_revit") == (b["phase"] or {}).get("id_revit")
                     and not exclusive)
 
         checked = set()
@@ -372,24 +372,24 @@ class ManifestTests(unittest.TestCase):
             duplicates = {a["elementId"]: a for a in expected["anomalies"] if a["code"] == "DUPLICATE_NUMBER"}
             with self.subTest(case=case["id"]):
                 for r in rooms:
-                    group = sorted([r["elementId"]] + [o["elementId"] for o in rooms if conflict(r, o)], key=int)
+                    group = sorted([r["id_revit"]] + [o["id_revit"] for o in rooms if conflict(r, o)], key=int)
                     if len(group) > 1:
-                        self.assertEqual(group, duplicates[r["elementId"]]["details"]["elementIds"])
-                        self.assertIn("DUPLICATE_NUMBER", r["qualityFlags"])
+                        self.assertEqual(group, duplicates[r["id_revit"]]["details"]["elementIds"])
+                        self.assertIn("DUPLICATE_NUMBER", r["indicateurs_qualite"])
                     else:
-                        self.assertNotIn(r["elementId"], duplicates)
-                        self.assertNotIn("DUPLICATE_NUMBER", r["qualityFlags"])
-                names = {r["name"]: r for r in rooms}
+                        self.assertNotIn(r["id_revit"], duplicates)
+                        self.assertNotIn("DUPLICATE_NUMBER", r["indicateurs_qualite"])
+                names = {r["nom"]: r for r in rooms}
                 if {"Bureau variante A", "Bureau variante B", "Accueil commun"} <= set(names):
                     checked.add(case["id"])
-                    self.assertNotIn("DUPLICATE_NUMBER", names["Bureau variante A"]["qualityFlags"])
-                    self.assertNotIn("DUPLICATE_NUMBER", names["Bureau variante B"]["qualityFlags"])
-                    self.assertIn("DUPLICATE_NUMBER", names["Accueil commun"]["qualityFlags"])
+                    self.assertNotIn("DUPLICATE_NUMBER", names["Bureau variante A"]["indicateurs_qualite"])
+                    self.assertNotIn("DUPLICATE_NUMBER", names["Bureau variante B"]["indicateurs_qualite"])
+                    self.assertIn("DUPLICATE_NUMBER", names["Accueil commun"]["indicateurs_qualite"])
                     # Variantes de deux jeux d'options différents (Option A / Option C) : comparées, donc doublon.
                     a2, c = names["Bureau variante A2"], names["Salle aménagement C"]
-                    self.assertNotEqual(set_of[a2["designOption"]["elementId"]], set_of[c["designOption"]["elementId"]])
-                    self.assertIn("DUPLICATE_NUMBER", a2["qualityFlags"])
-                    self.assertIn("DUPLICATE_NUMBER", c["qualityFlags"])
+                    self.assertNotEqual(set_of[a2["variante"]["id_revit"]], set_of[c["variante"]["id_revit"]])
+                    self.assertIn("DUPLICATE_NUMBER", a2["indicateurs_qualite"])
+                    self.assertIn("DUPLICATE_NUMBER", c["indicateurs_qualite"])
                     self.assertNotIn("pendingImplementation", case)
         self.assertEqual({"R01", "R02", "R06", "R11"}, checked)
 
@@ -408,7 +408,7 @@ class ManifestTests(unittest.TestCase):
                     self.assertEqual(settings["volumeMode"], options["volumeMode"])
                     self.assertEqual([m["key"] for m in settings["sharedParameters"]], options["sharedParameterKeys"])
                     for r in expected["rooms"]:
-                        self.assertEqual(options["sharedParameterKeys"], list(r["sharedParameters"]))
+                        self.assertEqual(options["sharedParameterKeys"], list(r["parametres_partages"]))
 
     def test_every_pending_and_ignore_pattern_targets_the_expected_file(self):
         for case in MANIFEST["cases"]:
@@ -423,9 +423,9 @@ class ManifestTests(unittest.TestCase):
         for case in MANIFEST["cases"]:
             expected = json.loads((RECETTE / case["expected"]).read_text(encoding="utf-8"))
             for r in expected["rooms"]:
-                with self.subTest(case=case["id"], room=r["name"]):
-                    self.assertTrue(r["uniqueId"].startswith(cr.PLACEHOLDER_PREFIX))
-                    self.assertTrue(r["elementId"].startswith("900"))
+                with self.subTest(case=case["id"], room=r["nom"]):
+                    self.assertTrue(r["unique_id"].startswith(cr.PLACEHOLDER_PREFIX))
+                    self.assertTrue(r["id_revit"].startswith("900"))
 
     def test_shared_parameter_file_declares_the_mapped_guids(self):
         text = (RECETTE / "EGR_Recette_SharedParameters.txt").read_text(encoding="utf-8")

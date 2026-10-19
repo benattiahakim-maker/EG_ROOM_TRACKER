@@ -1,4 +1,5 @@
 using System.Globalization;
+using System.IO.Compression;
 using System.Text;
 using EgRoomTracker.Aps;
 using EgRoomTracker.Aps.DesignAutomation;
@@ -44,6 +45,12 @@ public sealed class WorkItemRunnerService(
     TimeProvider? timeProvider = null)
 {
     public const string ResultLocalName = "result.json";
+
+    /// <summary>Paramètre de sortie de l'Activity : le dossier <c>result/</c> zippé (<c>result.json</c> et <c>Images/</c>).</summary>
+    public const string ResultParameter = "result";
+
+    /// <summary>Fichier de sortie au format TRC (<c>outputFormat</c> <c>trc</c> ou <c>both</c>), à la racine du dossier <c>result/</c>.</summary>
+    public const string TrcLocalName = "TRCValidationDict.json";
     private readonly TimeProvider _time = timeProvider ?? TimeProvider.System;
 
     public RunHistory History => history;
@@ -83,7 +90,9 @@ public sealed class WorkItemRunnerService(
         var parameters = ActivityParameter.FromDefinition(activity);
         foreach (var parameter in parameters.Where(p => p.IsInput))
         {
-            _ = InputFor(parameter, request); // paramètre d'entrée sans source connue : erreur avant tout appel
+            using (InputFor(parameter, request)) // paramètre d'entrée sans source connue : erreur avant tout appel ; flux refermé aussitôt (le ZIP ne reste pas verrouillé)
+            {
+            }
         }
 
         var unqualified = activity["id"]!.GetValue<string>();
@@ -283,20 +292,49 @@ public sealed class WorkItemRunnerService(
                 }
             }
 
+            // Sortie ZIP (dossier result/ : result.json et Images/) ou fichier seul (lancements antérieurs).
+            var isZip = output.ObjectKey.EndsWith(".zip", StringComparison.OrdinalIgnoreCase);
+            var key = isZip && output.Parameter == ResultParameter ? ResultLocalName : output.LocalName;
             try
             {
                 var bytes = await oss.DownloadObjectAsync(record.BucketKey, output.ObjectKey, cancellationToken).ConfigureAwait(false);
-                await File.WriteAllBytesAsync(Path.Combine(directory, output.LocalName), bytes, cancellationToken).ConfigureAwait(false);
-                present[output.LocalName] = true;
-                progress($"Sortie {output.Parameter} récupérée : {output.LocalName} ({Size(bytes.Length)}).");
-                if (output.LocalName == ResultLocalName)
+                if (isZip)
                 {
-                    result = results.Read(Encoding.UTF8.GetString(bytes));
+                    var (resultJson, trcJson) = ExtractOutputZip(directory, output.LocalName, bytes, out var images);
+                    present[key] = output.Parameter != ResultParameter || resultJson is not null || trcJson is not null;
+                    progress($"Sortie {output.Parameter} récupérée : {output.LocalName}.zip ({Size(bytes.Length)}), décompressée dans {output.LocalName}/ ({images} image(s)).");
+                    if (output.Parameter == ResultParameter)
+                    {
+                        // Contrat (result.json) prioritaire ; sinon fichier TRC (données seules, sans statut).
+                        if (resultJson is not null)
+                        {
+                            result = results.Read(resultJson);
+                        }
+                        else if (trcJson is not null)
+                        {
+                            result = results.ReadTrc(trcJson);
+                        }
+                    }
                 }
+                else
+                {
+                    await File.WriteAllBytesAsync(Path.Combine(directory, output.LocalName), bytes, cancellationToken).ConfigureAwait(false);
+                    present[key] = true;
+                    progress($"Sortie {output.Parameter} récupérée : {output.LocalName} ({Size(bytes.Length)}).");
+                    if (output.LocalName == ResultLocalName)
+                    {
+                        result = results.Read(Encoding.UTF8.GetString(bytes));
+                    }
+                }
+            }
+            catch (InvalidDataException)
+            {
+                present[key] = false;
+                progress($"Sortie {output.Parameter} : le fichier téléchargé n'est pas un ZIP valide.");
             }
             catch (ApsException exception)
             {
-                present[output.LocalName] = false;
+                present[key] = false;
                 progress($"Sortie {output.Parameter} absente ({output.LocalName}) : {completion ?? exception.Message}");
             }
         }
@@ -323,11 +361,38 @@ public sealed class WorkItemRunnerService(
     public (ResultView? Result, string? Report) LoadRun(RunRecord record)
     {
         var directory = history.DirectoryOf(record.RunId);
-        var resultPath = Path.Combine(directory, ResultLocalName);
+        var zippedResult = Path.Combine(directory, ResultParameter, ResultLocalName);
+        var resultPath = File.Exists(zippedResult) ? zippedResult : Path.Combine(directory, ResultLocalName);
+        var trcPath = Path.Combine(directory, ResultParameter, TrcLocalName);
         var reportPath = Path.Combine(directory, RunHistory.ReportFileName);
         return (
-            File.Exists(resultPath) ? results.Read(File.ReadAllText(resultPath)) : null,
+            File.Exists(resultPath) ? results.Read(File.ReadAllText(resultPath))
+                : File.Exists(trcPath) ? results.ReadTrc(File.ReadAllText(trcPath))
+                : null,
             File.Exists(reportPath) ? File.ReadAllText(reportPath) : null);
+    }
+
+    /// <summary>
+    /// Écrit le ZIP de sortie et le décompresse dans <c>&lt;lancement&gt;/&lt;nom local&gt;/</c> (l'extraction refuse tout chemin
+    /// qui sortirait du dossier). Retourne le contenu de <c>result.json</c>, null s'il est absent ; <paramref name="images"/> :
+    /// nombre de fichiers du dossier <c>Images/</c>.
+    /// </summary>
+    private static (string? Contract, string? Trc) ExtractOutputZip(string directory, string localName, byte[] bytes, out int images)
+    {
+        var zipPath = Path.Combine(directory, localName + ".zip");
+        File.WriteAllBytes(zipPath, bytes);
+        var target = Path.Combine(directory, localName);
+        if (Directory.Exists(target))
+        {
+            Directory.Delete(target, recursive: true);
+        }
+
+        ZipFile.ExtractToDirectory(zipPath, target);
+        var imagesDirectory = Path.Combine(target, "Images");
+        images = Directory.Exists(imagesDirectory) ? Directory.EnumerateFiles(imagesDirectory).Count() : 0;
+        var inner = Path.Combine(target, ResultLocalName);
+        var trc = Path.Combine(target, TrcLocalName);
+        return (File.Exists(inner) ? File.ReadAllText(inner) : null, File.Exists(trc) ? File.ReadAllText(trc) : null);
     }
 
     private static string ObjectKey(string runId, ActivityParameter parameter) =>

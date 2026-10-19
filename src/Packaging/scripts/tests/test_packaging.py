@@ -124,11 +124,12 @@ class DefinitionTests(unittest.TestCase):
                 command = " ".join(activity["commandLine"])
                 self.assertNotIn("/i ", command)  # D1 : le document est ouvert par l'add-in
                 self.assertIn(f'/al "$(appbundles[{bundle["id"]}].path)"', command)
+                self.assertTrue(command.endswith(" /l FRA"), command)  # moteur en français, comme l'Activity de TRC
                 self.assertEqual([f"nick.{bundle['id']}+test"], activity["appbundles"])
                 params = activity["parameters"]
                 self.assertEqual(("get", True, "input"), (params["inputZip"]["verb"], params["inputZip"]["zip"], params["inputZip"]["localName"]))
                 self.assertEqual(("get", "settings.json"), (params["settings"]["verb"], params["settings"]["localName"]))
-                self.assertEqual(("put", "result.json"), (params["result"]["verb"], params["result"]["localName"]))
+                self.assertEqual(("put", True, "result"), (params["result"]["verb"], params["result"]["zip"], params["result"]["localName"]))
                 for item_id in (activity["id"], bundle["id"]):
                     self.assertRegex(item_id, r"^[A-Za-z0-9_]{1,40}$")
 
@@ -139,7 +140,7 @@ class DefinitionTests(unittest.TestCase):
         params = deploy.load_definition("2026", "activity", "nick", "test")["parameters"]
         self.assertEqual(constants["InputDirectoryName"], params["inputZip"]["localName"])
         self.assertEqual(constants["SettingsFileName"], params["settings"]["localName"])
-        self.assertEqual(constants["ResultFileName"], params["result"]["localName"])
+        self.assertEqual(constants["ResultDirectoryName"], params["result"]["localName"])
 
     def test_addin_manifest_matches_entry_point(self):
         addin = (SCRIPTS.parent / "bundle" / "EgRoomTracker.addin").read_text(encoding="utf-8")

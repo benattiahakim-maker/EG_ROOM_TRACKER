@@ -2,6 +2,7 @@ using EgRoomTracker.Application;
 using EgRoomTracker.Application.Configuration;
 using EgRoomTracker.Application.Quality;
 using EgRoomTracker.Application.Revit;
+using EgRoomTracker.Application.Trc;
 using EgRoomTracker.Contracts.Codes;
 using EgRoomTracker.Contracts.Configuration;
 using EgRoomTracker.Contracts.Results;
@@ -36,6 +37,12 @@ internal sealed class Pipeline
     public Exception? ExportException { get; set; }
     public IReadOnlyList<AnomalyDto> SharedParameterAnomalies { get; set; } = [];
     public Func<VolumeMode, VolumeComputationState>? PrepareVolume { get; set; }
+    public IReadOnlyList<IRoomElementService> ElementServices { get; set; } = [];
+    public Func<long, IReadOnlyDictionary<string, object?>?>? AllParameters { get; set; }
+    public IRoomImageService? ImageService { get; set; }
+    public IRoomHeightService? HeightService { get; set; }
+    public ITrcExportService? TrcExport { get; set; }
+    public Func<long, IReadOnlyList<string>, IReadOnlyDictionary<string, string?>?>? NamedParameters { get; set; }
 
     public static ExtractionRequest Request => new()
     {
@@ -51,7 +58,7 @@ internal sealed class Pipeline
     public RoomExtractionService CreateService()
     {
         var services = new Services(this);
-        return new RoomExtractionService(services, services, services, services, services, services, services, services);
+        return new RoomExtractionService(services, services, services, services, services, services, services, services, elementServices: ElementServices, imageService: ImageService, heightService: HeightService, trcExport: TrcExport);
     }
 
     private sealed class Services(Pipeline p) :
@@ -109,6 +116,11 @@ internal sealed class Pipeline
 
         public IReadOnlyList<AnomalyDto> CheckSharedParameters(IReadOnlyList<SharedParameterMapping> sharedParameters) =>
             p.SharedParameterAnomalies;
+
+        public IReadOnlyDictionary<string, object?>? ReadAllParameters(long roomElementId) => p.AllParameters?.Invoke(roomElementId);
+
+        public IReadOnlyDictionary<string, string?>? ReadNamedParameters(long roomElementId, IReadOnlyList<string> names) =>
+            p.NamedParameters?.Invoke(roomElementId, names);
 
         public QualityReport Evaluate(IReadOnlyList<RoomDto> rooms, IReadOnlyList<AnomalyDto> anomalies, VolumeComputationState volumeState)
         {

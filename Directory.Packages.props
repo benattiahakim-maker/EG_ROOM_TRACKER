@@ -14,6 +14,11 @@
     <PackageVersion Include="JsonSchema.Net" Version="9.4.0" />
   </ItemGroup>
 
+  <!-- Recadrage des images de pièces (System.Drawing) : assemblies de référence seulement, l'assembly est fournie par Revit. -->
+  <ItemGroup>
+    <PackageVersion Include="System.Drawing.Common" Version="8.0.10" />
+  </ItemGroup>
+
   <!--
     Références Revit par version. Assemblies de référence uniquement (dossier ref/), jamais embarquées :
     l'API est fournie par le moteur Design Automation.

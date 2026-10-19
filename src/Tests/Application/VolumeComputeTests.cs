@@ -224,7 +224,7 @@ public sealed class VolumeComputeTests : IDisposable
         var evaluated = report.Evaluate(result.Rooms, [], Failed);
         var json = JsonNode.Parse(ContractJson.Serialize(result with { Anomalies = evaluated.Anomalies }))!;
 
-        Assert.Equal("1.3", json["schemaVersion"]!.GetValue<string>());
+        Assert.Equal("1.4", json["schemaVersion"]!.GetValue<string>());
         Assert.False(json["summary"]!["volumeComputation"]!["computeApplied"]!.GetValue<bool>());
         ResultSchema.AssertValid(json);
     }

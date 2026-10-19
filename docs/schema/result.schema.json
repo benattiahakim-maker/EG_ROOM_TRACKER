@@ -2,7 +2,7 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://github.com/benattiahakim-maker/EG_ROOM_TRACKER/docs/schema/result.schema.json",
   "title": "EG_ROOM_TRACKER — résultat d'extraction (result.json)",
-  "description": "Contrat unique de sortie de l'extracteur. Version de schéma 1.x (courante : 1.3 ; 1.1 ajoute le code LINK_NOT_LOADED ; 1.2 ajoute le code UNSUPPORTED_PARAMETER_TYPE ; 1.3 ajoute summary.volumeComputation et le code VOLUME_COMPUTE_FAILED). Voir docs/SPECIFICATIONS.md, sections 2, 3 et 9.",
+  "description": "Contrat unique de sortie de l'extracteur. Version de schéma 1.x (courante : 1.4 ; 1.1 ajoute le code LINK_NOT_LOADED ; 1.2 ajoute le code UNSUPPORTED_PARAMETER_TYPE ; 1.3 ajoute summary.volumeComputation et le code VOLUME_COMPUTE_FAILED ; 1.4 ajoute, facultatifs, rooms[].parametres, portes, equipements, terminaux, summary.options.roomParameters et elements, et les codes ELEMENT_WITHOUT_ROOM et ELEMENTS_COLLECTION_FAILED). Voir docs/SPECIFICATIONS.md, sections 2, 3 et 9.",
   "type": "object",
   "additionalProperties": false,
   "required": ["schemaVersion", "summary", "rooms", "anomalies"],
@@ -15,7 +15,7 @@
     "summary": { "$ref": "#/$defs/summary" },
     "rooms": {
       "type": "array",
-      "description": "Toutes les pièces collectées, triées par elementId numérique croissant. Vide si status = failed.",
+      "description": "Toutes les pièces collectées, triées par id_revit numérique croissant. Vide si status = failed.",
       "items": { "$ref": "#/$defs/room" }
     },
     "anomalies": {
@@ -35,27 +35,55 @@
     "elementRef": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["elementId", "name"],
+      "required": ["id_revit", "nom"],
       "properties": {
-        "elementId": { "$ref": "#/$defs/elementId" },
-        "name": { "type": "string" }
+        "id_revit": { "$ref": "#/$defs/elementId" },
+        "nom": { "type": "string" }
       }
     },
     "level": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["elementId", "uniqueId", "name"],
+      "required": ["id_revit", "unique_id", "nom"],
       "properties": {
-        "elementId": { "$ref": "#/$defs/elementId" },
-        "uniqueId": { "type": "string", "minLength": 1 },
-        "name": { "type": "string" }
+        "id_revit": { "$ref": "#/$defs/elementId" },
+        "unique_id": { "type": "string", "minLength": 1 },
+        "nom": { "type": "string" }
+      }
+    },
+    "parameterValues": {
+      "type": "object",
+      "description": "Tous les paramètres Revit à plat { nom : valeur }, comme surface_m2 ou volume_m3 (roomParameters: all). Valeur : texte, entier, ElementId en chaîne, nombre converti en SI (longueur en m, surface en m², volume en m³, nombre sans unité) ou, pour une autre grandeur, la valeur affichée par Revit ; null si le paramètre n'a pas de valeur. Triés par nom ; nom en double suffixé (2), (3).",
+      "additionalProperties": { "type": ["string", "number", "null"] }
+    },
+    "roomElement": {
+      "type": "object",
+      "description": "Porte, équipement ou terminal rattaché à une pièce. Une porte entre deux pièces figure dans les deux (relation from ou to).",
+      "additionalProperties": false,
+      "required": ["id_revit", "unique_id", "categorie", "famille", "type", "repere", "niveau", "relation"],
+      "properties": {
+        "id_revit": { "$ref": "#/$defs/elementId" },
+        "unique_id": { "type": "string", "minLength": 1 },
+        "categorie": { "type": "string" },
+        "famille": { "$ref": "#/$defs/nullableString" },
+        "type": { "$ref": "#/$defs/nullableString" },
+        "repere": { "$ref": "#/$defs/nullableString" },
+        "numero": { "$ref": "#/$defs/nullableString", "description": "Numéro de la porte (DOOR_NUMBER) ; portes seulement." },
+        "niveau": { "$ref": "#/$defs/nullableString" },
+        "relation": { "enum": ["from", "to", "in"] },
+        "discipline": { "enum": ["cvc", "plomberie", "electricite", "autres"], "description": "Discipline d'un équipement ou d'un terminal d'après sa catégorie Revit ; absente pour les portes." },
+        "nom_du_lien": { "type": "string", "description": "Titre du modèle lié d'où vient l'élément (id_revit et unique_id sont ceux du modèle lié) ; absent pour le modèle principal." },
+        "source_dimensions": { "enum": ["geometry", "parameter", "mixed"], "description": "Origine de largeur_m et hauteur_m (portes) : mesure sur la géométrie ou repli sur les paramètres du type." },
+        "largeur_m": { "$ref": "#/$defs/nonNegativeNumberOrNull" },
+        "hauteur_m": { "$ref": "#/$defs/nonNegativeNumberOrNull" },
+        "parametres": { "$ref": "#/$defs/parameterValues" }
       }
     },
     "qualityFlag": {
       "enum": ["UNPLACED", "ZERO_AREA", "DUPLICATE_NUMBER", "MISSING_PARAMETER", "LEVEL_NOT_FOUND", "EXTRACTION_ERROR"]
     },
     "documentAnomalyCode": {
-      "enum": ["VOLUME_NOT_COMPUTED", "LINK_MISSING", "LINK_NOT_LOADED", "REVIT_WARNING_ON_OPEN", "SHARED_PARAMETER_NOT_FOUND", "UNSUPPORTED_PARAMETER_TYPE", "VOLUME_COMPUTE_FAILED"]
+      "enum": ["VOLUME_NOT_COMPUTED", "LINK_MISSING", "LINK_NOT_LOADED", "REVIT_WARNING_ON_OPEN", "SHARED_PARAMETER_NOT_FOUND", "UNSUPPORTED_PARAMETER_TYPE", "VOLUME_COMPUTE_FAILED", "ELEMENT_WITHOUT_ROOM", "ELEMENTS_COLLECTION_FAILED", "IMAGE_EXPORT_FAILED", "HEIGHT_MEASUREMENT_FAILED"]
     },
     "errorCode": {
       "enum": [
@@ -119,7 +147,19 @@
               "description": "Null = toutes les phases."
             },
             "volumeMode": { "enum": ["preserve", "compute"] },
-            "sharedParameterKeys": { "type": "array", "items": { "type": "string" } }
+            "sharedParameterKeys": { "type": "array", "items": { "type": "string" } },
+            "roomParameters": { "enum": ["all"], "description": "Présent seulement si tous les paramètres des pièces sont exportés (rooms[].parametres)." },
+            "elements": {
+              "type": "array",
+              "items": { "enum": ["doors", "equipment", "terminals"] },
+              "description": "Présent seulement si des éléments sont rattachés aux pièces (rooms[].portes, equipements, terminaux)."
+            },
+            "roomImages": { "const": true, "description": "Présent seulement si les vues 3D des pièces sont exportées (Images/ de la sortie ZIP)." },
+            "imageWidthPx": { "type": "integer", "minimum": 400, "maximum": 8000, "description": "Largeur des images ; présent avec roomImages." },
+            "roomHeights": { "const": true, "description": "Présent seulement si les hauteurs des pièces sont mesurées par lancer de rayons (rooms[].hauteurs)." },
+            "heightStepM": { "type": "number", "minimum": 0.1, "maximum": 2, "description": "Pas de la grille de rayons (m) ; présent avec roomHeights." },
+            "outputFormat": { "enum": ["trc", "both"], "description": "Présent seulement si le format de sortie n'est pas contract : trc (TRCValidationDict.json) ou both (les deux fichiers)." },
+            "linkedElements": { "const": false, "description": "Présent seulement si les modèles liés ne sont pas parcourus pour les équipements et terminaux (linkedElements: false)." }
           }
         },
         "volumeComputation": {
@@ -152,6 +192,29 @@
             "roomsWithAnomalies": { "type": "integer", "minimum": 0 }
           }
         },
+        "heights": {
+          "type": "object",
+          "description": "Bilan de la mesure des hauteurs par lancer de rayons (schéma 1.4) ; présent seulement avec roomHeights. withoutObstacle : aucun obstacle au-dessus, hauteur renseignée retenue.",
+          "additionalProperties": false,
+          "required": ["requested", "measured", "withoutObstacle", "failed"],
+          "properties": {
+            "requested": { "type": "integer", "minimum": 0 },
+            "measured": { "type": "integer", "minimum": 0 },
+            "withoutObstacle": { "type": "integer", "minimum": 0 },
+            "failed": { "type": "integer", "minimum": 0 }
+          }
+        },
+        "images": {
+          "type": "object",
+          "description": "Bilan de l'export des vues 3D des pièces (schéma 1.4) ; présent seulement avec roomImages.",
+          "additionalProperties": false,
+          "required": ["requested", "exported", "failed"],
+          "properties": {
+            "requested": { "type": "integer", "minimum": 0 },
+            "exported": { "type": "integer", "minimum": 0 },
+            "failed": { "type": "integer", "minimum": 0 }
+          }
+        },
         "status": { "$ref": "#/$defs/status" },
         "errors": {
           "type": "array",
@@ -180,61 +243,96 @@
       "type": "object",
       "additionalProperties": false,
       "required": [
-        "elementId", "uniqueId", "name", "number", "areaM2", "unboundedHeightM", "level",
-        "occupancy", "volumeM3", "volumeStatus", "finishes", "phase", "designOption",
-        "sharedParameters", "qualityFlags"
+        "id_revit", "unique_id", "nom", "numero", "surface_m2", "hauteur_non_limitee_m", "niveau",
+        "occupation", "volume_m3", "statut_volume", "finitions", "phase", "variante",
+        "parametres_partages", "indicateurs_qualite"
       ],
       "properties": {
-        "elementId": { "$ref": "#/$defs/elementId" },
-        "uniqueId": { "type": "string", "minLength": 1 },
-        "name": { "$ref": "#/$defs/nullableString" },
-        "number": { "$ref": "#/$defs/nullableString" },
-        "areaM2": { "$ref": "#/$defs/nonNegativeNumberOrNull" },
-        "unboundedHeightM": { "$ref": "#/$defs/nonNegativeNumberOrNull" },
-        "level": { "oneOf": [{ "$ref": "#/$defs/level" }, { "type": "null" }] },
-        "occupancy": { "$ref": "#/$defs/nullableString" },
-        "volumeM3": { "$ref": "#/$defs/nonNegativeNumberOrNull" },
-        "volumeStatus": {
+        "id_revit": { "$ref": "#/$defs/elementId" },
+        "unique_id": { "type": "string", "minLength": 1 },
+        "nom": { "$ref": "#/$defs/nullableString" },
+        "numero": { "$ref": "#/$defs/nullableString" },
+        "surface_m2": { "$ref": "#/$defs/nonNegativeNumberOrNull" },
+        "hauteur_non_limitee_m": { "$ref": "#/$defs/nonNegativeNumberOrNull" },
+        "niveau": { "oneOf": [{ "$ref": "#/$defs/level" }, { "type": "null" }] },
+        "occupation": { "$ref": "#/$defs/nullableString" },
+        "volume_m3": { "$ref": "#/$defs/nonNegativeNumberOrNull" },
+        "statut_volume": {
           "enum": ["computed", "notComputed", "notAvailable"],
           "description": "computed : valeur lue ; notComputed : calcul désactivé dans le document ; notAvailable : lecture impossible (erreur)."
         },
-        "finishes": {
+        "finitions": {
           "type": "object",
           "additionalProperties": false,
-          "required": ["floor", "wall", "ceiling", "base"],
+          "required": ["sol", "murs", "plafond", "plinthe"],
           "properties": {
-            "floor": { "$ref": "#/$defs/nullableString" },
-            "wall": { "$ref": "#/$defs/nullableString" },
-            "ceiling": { "$ref": "#/$defs/nullableString" },
-            "base": { "$ref": "#/$defs/nullableString" }
+            "sol": { "$ref": "#/$defs/nullableString" },
+            "murs": { "$ref": "#/$defs/nullableString" },
+            "plafond": { "$ref": "#/$defs/nullableString" },
+            "plinthe": { "$ref": "#/$defs/nullableString" }
           }
         },
         "phase": { "oneOf": [{ "$ref": "#/$defs/elementRef" }, { "type": "null" }] },
-        "designOption": { "oneOf": [{ "$ref": "#/$defs/elementRef" }, { "type": "null" }] },
-        "sharedParameters": {
+        "variante": { "oneOf": [{ "$ref": "#/$defs/elementRef" }, { "type": "null" }] },
+        "parametres_partages": {
           "type": "object",
           "description": "Clé = clé du mapping de settings.json.",
           "additionalProperties": {
             "type": "object",
             "additionalProperties": false,
-            "required": ["guid", "value"],
+            "required": ["guid", "valeur"],
             "properties": {
               "guid": { "type": "string", "format": "uuid" },
-              "value": { "type": ["string", "number", "null"] }
+              "valeur": { "type": ["string", "number", "null"] }
             }
           }
         },
-        "qualityFlags": {
+        "indicateurs_qualite": {
           "type": "array",
           "uniqueItems": true,
           "items": { "$ref": "#/$defs/qualityFlag" }
+        },
+        "parametres": {
+          "$ref": "#/$defs/parameterValues",
+          "description": "Tous les paramètres de la pièce à plat { nom : valeur } ; présent seulement avec roomParameters: all (schéma 1.4)."
+        },
+        "hauteurs": {
+          "type": "object",
+          "description": "Hauteurs de la pièce (roomHeights, schéma 1.4) : renseignee_m = hauteur renseignée (ROOM_HEIGHT), mesuree_min_m = hauteur minimale mesurée par lancer de rayons (null sans obstacle), effective_m = mesurée sinon renseignée. Mètres, sans arrondi.",
+          "additionalProperties": false,
+          "required": ["renseignee_m", "mesuree_min_m", "effective_m", "source_effective", "rayons"],
+          "properties": {
+            "renseignee_m": { "$ref": "#/$defs/nonNegativeNumberOrNull" },
+            "mesuree_min_m": { "$ref": "#/$defs/nonNegativeNumberOrNull" },
+            "effective_m": { "$ref": "#/$defs/nonNegativeNumberOrNull" },
+            "source_effective": { "enum": ["measured", "declared", null] },
+            "rayons": { "type": "integer", "minimum": 0, "description": "Nombre de rayons lancés dans la pièce." },
+            "categorie_limitante": { "type": "string", "description": "Catégorie de l'objet qui limite la hauteur minimale." },
+            "modele_limitant": { "type": "string", "description": "Modèle principal ou nom du lien de l'objet limitant." },
+            "par_categorie_m": { "type": "object", "description": "Hauteur minimale par catégorie d'obstacle (m).", "additionalProperties": { "type": "number", "minimum": 0 } }
+          }
+        },
+        "portes": {
+          "type": "array",
+          "description": "Portes de la pièce ; présent seulement avec elements contenant doors (schéma 1.4).",
+          "items": { "$ref": "#/$defs/roomElement" }
+        },
+        "equipements": {
+          "type": "array",
+          "description": "Équipements de la pièce ; présent seulement avec elements contenant equipment (schéma 1.4).",
+          "items": { "$ref": "#/$defs/roomElement" }
+        },
+        "terminaux": {
+          "type": "array",
+          "description": "Terminaux de la pièce ; présent seulement avec elements contenant terminals (schéma 1.4).",
+          "items": { "$ref": "#/$defs/roomElement" }
         }
       },
       "allOf": [
         {
-          "if": { "properties": { "volumeStatus": { "const": "computed" } } },
-          "then": { "properties": { "volumeM3": { "type": "number" } } },
-          "else": { "properties": { "volumeM3": { "type": "null" } } }
+          "if": { "properties": { "statut_volume": { "const": "computed" } } },
+          "then": { "properties": { "volume_m3": { "type": "number" } } },
+          "else": { "properties": { "volume_m3": { "type": "null" } } }
         }
       ]
     },

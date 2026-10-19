@@ -36,6 +36,8 @@ public sealed class AutomationApplication : IExternalDBApplication
         using var log = new JsonConsoleLogService(correlationId);
         try
         {
+            // Le dossier de sortie (zippé par l'Activity) doit exister même si l'extraction échoue avant d'y écrire.
+            Directory.CreateDirectory(Path.Combine(Directory.GetCurrentDirectory(), ActivityContract.ResultDirectoryName));
             var request = ActivityContract.CreateRequest(e.DesignAutomationData) with
             {
                 CorrelationId = correlationId,

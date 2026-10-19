@@ -1,5 +1,5 @@
 {
-  "schemaVersion": "1.3",
+  "schemaVersion": "1.4",
   "summary": {
     "correlationId": "recette-R05",
     "extractorVersion": "0.1.0",
@@ -35,33 +35,33 @@
   },
   "rooms": [
     {
-      "elementId": "9000201",
-      "uniqueId": "EGR18-L01",
-      "name": "Hall",
-      "number": "100",
-      "areaM2": 30.0,
-      "unboundedHeightM": 2.7,
-      "level": {
-        "elementId": "9000001",
-        "uniqueId": "EGR18-NIVEAU-R+0",
-        "name": "R+0"
+      "id_revit": "9000201",
+      "unique_id": "EGR18-L01",
+      "nom": "Hall",
+      "numero": "100",
+      "surface_m2": 30.0,
+      "hauteur_non_limitee_m": 2.7,
+      "niveau": {
+        "id_revit": "9000001",
+        "unique_id": "EGR18-NIVEAU-R+0",
+        "nom": "R+0"
       },
-      "occupancy": "Accueil",
-      "volumeM3": null,
-      "volumeStatus": "notComputed",
-      "finishes": {
-        "floor": null,
-        "wall": null,
-        "ceiling": null,
-        "base": null
+      "occupation": "Accueil",
+      "volume_m3": null,
+      "statut_volume": "notComputed",
+      "finitions": {
+        "sol": null,
+        "murs": null,
+        "plafond": null,
+        "plinthe": null
       },
       "phase": {
-        "elementId": "9000012",
-        "name": "Nouvelle construction"
+        "id_revit": "9000012",
+        "nom": "Nouvelle construction"
       },
-      "designOption": null,
-      "sharedParameters": {},
-      "qualityFlags": []
+      "variante": null,
+      "parametres_partages": {},
+      "indicateurs_qualite": []
     }
   ],
   "anomalies": [

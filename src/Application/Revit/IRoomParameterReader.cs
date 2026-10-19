@@ -17,6 +17,18 @@ public interface IRoomParameterReader
     /// une anomalie document SHARED_PARAMETER_NOT_FOUND par GUID inconnu du document (EGR-10).
     /// </summary>
     IReadOnlyList<AnomalyDto> CheckSharedParameters(IReadOnlyList<SharedParameterMapping> sharedParameters) => [];
+
+    /// <summary>
+    /// Tous les paramètres d'une pièce (natifs, partagés, de projet) à plat <c>{ nom : valeur }</c>, pour <c>roomParameters: all</c> (schéma 1.4) ;
+    /// null si la pièce est introuvable ou si la lecture complète n'est pas prise en charge.
+    /// </summary>
+    IReadOnlyDictionary<string, object?>? ReadAllParameters(long roomElementId) => null;
+
+    /// <summary>
+    /// Valeur texte de paramètres de la pièce lus par leur nom (identification TRC : <c>SGP-DI-Ouvrage</c>…) ; null si la pièce
+    /// est introuvable ou si la lecture n'est pas prise en charge ; une entrée à null pour un paramètre absent ou sans valeur.
+    /// </summary>
+    IReadOnlyDictionary<string, string?>? ReadNamedParameters(long roomElementId, IReadOnlyList<string> names) => null;
 }
 
 public sealed record RoomReadResult(RoomDto Room, IReadOnlyList<AnomalyDto> Anomalies);

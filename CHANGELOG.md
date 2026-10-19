@@ -6,10 +6,61 @@ Le format s'inspire de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/).
 
 ## [Non publié]
 
+### Modifié
+
+- **Clés du JSON en français** (contrat `result.json`, noms des champs de `rooms[]` et de leurs sous-objets) : `id_revit`, `unique_id`, `nom`,
+  `numero`, `surface_m2`, `hauteur_non_limitee_m`, `niveau`, `occupation`, `volume_m3`, `statut_volume`, `finitions` (`sol`, `murs`, `plafond`,
+  `plinthe`), `phase`, `variante`, `parametres_partages` (`guid`, `valeur`), `indicateurs_qualite`, `parametres`, `hauteurs` (`renseignee_m`,
+  `mesuree_min_m`, `effective_m`, `source_effective`, `rayons`, `categorie_limitante`, `modele_limitant`, `par_categorie_m`), `portes`,
+  `equipements`, `terminaux` (`categorie`, `famille`, `type`, `repere`, `numero`, `niveau`, `relation`, `discipline`, `nom_du_lien`,
+  `largeur_m`, `hauteur_m`, `source_dimensions`, `parametres`). Le haut du fichier (`schemaVersion`, `summary`, `rooms`, `anomalies`), les
+  `elementId` des anomalies et les codes du fichier TRC ne changent pas. Schéma, exemples, recette R01–R12 et comparateur migrés.
+  WorkItemRunner : le tableau affiche **exactement les clés du JSON** (en-tête = chemin de la clé, ex. `finitions.sol`) ; plus de libellés
+  séparés. Rupture pour les lecteurs de `result.json` existants.
+
 ### Ajouté
+
+- Contrat `result.json` **1.4** (additif, rien ne change sans nouvelle option) : `settings.json` accepte `roomParameters` (`"none"` par défaut, ou `"all"`) et `elements` (sous-ensemble de `doors`, `equipment`, `terminals`). Avec `roomParameters: "all"`, chaque pièce reçoit `parameters` (tous ses paramètres : nom, paramètre natif, GUID, stockage, valeur typée, valeur affichée). Avec `elements`, chaque pièce reçoit un tableau par famille demandée : les portes via `FromRoom`/`ToRoom` (une porte entre deux pièces figure dans les deux, relation `from` ou `to`, largeur et hauteur en mètres), les équipements (mécaniques et électriques) et les terminaux d'air via `FamilyInstance.Room` puis `GetRoomAtPoint`. Services `DoorService`, `EquipmentService` et `TerminalService` (`src/Revit`), derrière `IRoomElementService`. Nouveaux codes document `ELEMENT_WITHOUT_ROOM` (info) et `ELEMENTS_COLLECTION_FAILED` (warning, l'extraction des pièces continue), événements de log `ELEMENTS_COLLECTED`, `ELEMENTS_COLLECTION_FAILED` et `ROOM_PARAMETERS_FAILED`. Voir [`docs/ELEMENTS.md`](docs/ELEMENTS.md). Portes : largeur et hauteur de **passage libre** mesurées sur la géométrie (lignes de coupe dans les axes de la porte, médiane, `dimensionSource`), sans dépendre des paramètres de la famille ; numéro de porte (`number`, `DOOR_NUMBER`). Catégories par défaut étendues à toutes les disciplines (équipements : mécanique, électricité, plomberie, spécialisés, protection incendie ; terminaux : CVC, plomberie, électricité courants forts et faibles) et remplaçables par `elementCategories` dans `settings.json`. Non validé sur un vrai Revit : à confirmer en recette (EGR-14).
+- WorkItemRunner : le tableau des pièces génère ses colonnes d'après les clés de `rooms[]` du résultat (objets aplatis, références montrées par leur nom, tableaux d'éléments résumés) ; la dernière configuration (version Revit, alias, ZIP, `settings.json`) est rappelée au démarrage.
 
 - Préparation de la recette EGR-18 / EGR-14 (#44) : matrice des maquettes de référence R01–R12 (construites en Revit 2025, mises à niveau pour 2026 et 2027 ; R09 non applicable en 2027), `settings.json` et `result.json` attendus (`docs/recette/`), fiche de construction des maquettes, comparateur `tools/recette/compare_result.py` (tolérances D5, champs volatils ignorés, `bind` des identifiants réels) et ses tests ; tests .NET de cohérence des attendus avec le code ; `validate_examples.py` valide aussi les attendus ([`docs/RECETTE.md`](docs/RECETTE.md)).
 - Règle `DUPLICATE_NUMBER` par contexte (phase, variante) décidée en EGR-18 (seules les variantes différentes d'un même jeu d'options sont exclues ; jeux différents comparés) et reflétée dans les attendus de recette ; implémentée (#45) : modèle principal comparé à toute la phase, `elementIds` propre à chaque pièce ; jeu d'options illisible → détail `optionSetUnknown: true` et log `DUPLICATE_OPTION_SET_UNKNOWN`. Tests de rejeu de la recette réactivés (R01, R02, R06, R11).
+
+- Sortie de l'Activity au format **ZIP** : le paramètre `result` est le dossier `result/` zippé (`zip: true`) et contient `result.json`
+  et, avec le nouveau réglage `roomImages`, le dossier `Images/` : une **vue 3D par pièce** (méthode de l'application TRC :
+  caméra de coin, section box, murs et sols transparents), en JPEG de largeur `imageWidthPx` (8000 par défaut, comme TRC), recadrée sur son contenu comme dans TRC, nommée selon la
+  codification TRC `{UniqueId}_{code_file}_{ElementId}_AdjustedCornerView_1.jpg`. Bilan `summary.images`, anomalie `IMAGE_EXPORT_FAILED`
+  (warning), événements `ROOM_IMAGES_EXPORTED` et `ROOM_IMAGES_FAILED`. WorkItemRunner décompresse la sortie. Voir
+  [`docs/IMAGES.md`](docs/IMAGES.md). Non validé dans Design Automation (`ExportImage`).
+
+- **Hauteurs des pièces** (`roomHeights`) : hauteur renseignée (`ROOM_HEIGHT`) et hauteur minimale **mesurée par lancer de rayons**
+  séparées dans `rooms[].heights`, avec hauteur effective (mesurée, à défaut renseignée), objet limitant (catégorie et document, modèle
+  principal ou lien) et minimum par catégorie. Méthode de `GetRoomMinHeightByRaytracing` de TRC, avec une seule vue 3D temporaire pour
+  tout le document. Bilan `summary.heights`, anomalie `HEIGHT_MEASUREMENT_FAILED`. Voir [`docs/HEIGHTS.md`](docs/HEIGHTS.md). Non validé sur un
+  vrai Revit.
+
+- **Équipements et terminaux par discipline, avec les modèles liés** : chaque élément porte une `discipline` (`cvc`, `plomberie`,
+  `electricite`, `autres`) d'après sa catégorie Revit, et les terminaux suivent la même répartition que les équipements. Les modèles
+  liés sont parcourus (`linkedElements`, vrai par défaut) avec la **transformation totale du lien** appliquée (TRC la négligeait) ;
+  `linkName` donne le modèle d'origine. **Une seule pièce par élément** : point d'insertion, sinon plus grand volume commun. Voir
+  [`docs/ELEMENTS.md`](docs/ELEMENTS.md). Non validé sur un vrai Revit.
+
+- **Sortie au format TRC** (`outputFormat`: `contract` par défaut, `trc` ou `both`) : `TRCValidationDict.json`, fiches `trc.bimobject` et
+  `trc.bimobjectpropertyvalue` + `special.setcodefile`, **données seules** (ni spécification, ni statut, ni conformité), codes de l'application
+  TRC (`b:porte_largeur`, `b:dimensions_hauteur`, `a:identification data_…`, `bim_object_username`…), nouveaux codes par discipline
+  (`b:equipements cvc_quantite`…), **`pk` stables**, annexes au-delà de 255 caractères. WorkItemRunner affiche le fichier. Voir
+  [`docs/TRC.md`](docs/TRC.md).
+- **Activity en français** : la ligne de commande ajoute `/l FRA` (comme l'Activity de TRC) : noms de catégories et de paramètres en français.
+
+- **Paramètres de la pièce à plat** : `rooms[].parameters` (et `parameters` des éléments) est maintenant un dictionnaire `{ nom : valeur }`, comme
+  `areaM2` ou `volumeM3`, et non plus une liste d'objets (nom, GUID, type…) : chaque paramètre est une colonne du tableau de résultats. Valeurs
+  typées, SI pour longueur, surface, volume et nombre, valeur affichée pour les autres grandeurs, tri par nom, doublons suffixés. Format TRC :
+  `b:dimensions_volume` quand le volume est calculé. Format TRC avec `roomParameters: "all"` : un `trc.bimobjectpropertyvalue` par paramètre de la pièce,
+  code `c:parametres revit_<nom en minuscules>` (section `C` : après `a:` et `b:`).
+
+### Corrigé
+
+- WorkItemRunner : le ZIP de maquette restait verrouillé après la vérification des entrées (flux jamais refermé), ce qui empêchait de le recréer tant que l'outil était ouvert et faisait échouer 11 tests sous Windows.
 
 ### Modifié
 
