@@ -18,7 +18,8 @@ namespace EgRoomTracker.Revit;
 /// <item>entier : la valeur affichée quand Revit lui donne un libellé (Oui / Non, liste de choix), sinon le nombre ;</item>
 /// <item>autre grandeur (angle, pourcentage…) : la valeur affichée par Revit (<c>AsValueString</c>), faute de conversion fiable ;</item>
 /// <item>paramètre sans valeur : <c>null</c> ; paramètre illisible : omis ;</item>
-/// <item>triés par nom (sortie déterministe) ; un nom en double est suffixé « (2) », « (3) ».</item>
+/// <item>triés par nom (sortie déterministe) ; un paramètre de même nom et de même valeur qu'un autre (ex. les deux « Catégorie » de Revit)
+/// n'est écrit qu'une fois ; un nom en double avec une autre valeur est suffixé « (2) », « (3) ».</item>
 /// </list>
 /// </summary>
 internal static class ParameterDumper
@@ -31,7 +32,10 @@ internal static class ParameterDumper
             try
             {
                 var (name, value) = Read(parameter, units);
-                values[UniqueName(values, name)] = value;
+                if (!IsDuplicate(values, name, value))
+                {
+                    values[UniqueName(values, name)] = value;
+                }
             }
             catch (Exception)
             {
@@ -94,6 +98,13 @@ internal static class ParameterDumper
         {
             return null;
         }
+    }
+
+    /// <summary>Vrai si un paramètre de même nom (ou « nom (n) ») a déjà la même valeur : doublon de Revit, non répété.</summary>
+    private static bool IsDuplicate(SortedDictionary<string, object?> values, string name, object? value)
+    {
+        var key = string.IsNullOrEmpty(name) ? "(sans nom)" : name;
+        return values.Any(pair => (pair.Key == key || pair.Key.StartsWith(key + " (", StringComparison.Ordinal)) && Equals(pair.Value, value));
     }
 
     /// <summary>Nom sans doublon : « (sans nom) » si vide, puis « nom (2) », « nom (3) »…</summary>
