@@ -27,6 +27,7 @@ public sealed class SettingsReaderTests : IDisposable
         Assert.Null(settings.PhaseElementIds);
         Assert.Equal(VolumeMode.Preserve, settings.VolumeMode);
         Assert.Equal([new SharedParameterMapping("codeLocal", CodeLocal)], settings.SharedParameters);
+        Assert.Equal(OutputFormat.Trc, settings.OutputFormat); // livrable : TRCValidationDict.json seul
     }
 
     [Fact]

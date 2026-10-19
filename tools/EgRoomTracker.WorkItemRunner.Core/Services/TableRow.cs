@@ -44,7 +44,7 @@ public sealed class TableRow : ObservableObject
     }
 
     /// <summary>Flèche de dépliage ; vide pour une ligne sans enfant.</summary>
-    public string Glyph => HasChildren ? (IsExpanded ? "▾" : "▸") : string.Empty;
+    public string Glyph => HasChildren ? (IsExpanded ? "▼" : "▶") : string.Empty;
 
     public string? this[int index] => index >= 0 && index < Cells.Count ? Cells[index] : null;
 

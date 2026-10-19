@@ -1,6 +1,7 @@
 using System.Globalization;
 using System.Security.Cryptography;
 using System.Text;
+using System.Text.Json;
 using System.Text.Json.Nodes;
 using EgRoomTracker.Application.Revit;
 using EgRoomTracker.Contracts.Results;
@@ -25,8 +26,11 @@ public static class TrcCodes
     // Type d'objet et rattachement à la pièce (noms des fichiers TRC de la plateforme, comme ParentGlobalId)
     public const string Category = "Category";
 
-    /// <summary>Pièce(s) contenant une porte, un équipement ou un terminal : <c>bim_id</c> de la pièce, une valeur par pièce.</summary>
-    public const string Space = "Space";
+    /// <summary>
+    /// Pièces contenant une porte, un équipement ou un terminal : une seule valeur, liste JSON des <c>pk</c> des <c>trc.bimobject</c>
+    /// des pièces (<c>["trc.bimobject_…","trc.bimobject_…"]</c>).
+    /// </summary>
+    public const string SpaceList = "ListeSpaces";
 
     // A : identification
     public const string Building = "a:identification data_building";
@@ -90,7 +94,7 @@ public sealed record TrcDocument(JsonArray Fiches, IReadOnlyList<TrcAnnex> Annex
 /// Conversion de l'extraction en fiches de l'application TRC (<c>TRCValidationDict.json</c>), <b>données seules</b> : pas de
 /// spécification, d'exigence, de statut ni de conformité. Une fiche <c>trc.bimobject</c> par pièce, puis une par porte, équipement et
 /// terminal (<c>bim_id</c> = UniqueId, <c>code_file</c> = nom du RVT) ; chaque élément est rattaché à sa ou ses pièces par la propriété
-/// <c>Space</c> (<c>bim_id</c> de la pièce) et n'apparaît qu'une fois, même s'il dessert deux pièces (porte). Une fiche
+/// <c>ListeSpaces</c> (liste JSON des <c>pk</c> des pièces) et n'apparaît qu'une fois, même s'il dessert deux pièces (porte). Une fiche
 /// <c>trc.bimobjectpropertyvalue</c> par valeur, et <c>special.setcodefile</c> en fin.
 /// Les <c>pk</c> sont stables (GUID déterministe de <c>code_file</c>, objet, code et rang) : un même élément garde le même
 /// <c>pk</c> d'un lancement à l'autre. Une valeur de plus de 255 caractères est remplacée par « Voir détail en annexe » et son
@@ -111,16 +115,17 @@ public static class TrcMapper
         var fiches = new JsonArray();
         var annexes = new List<TrcAnnex>();
 
+        string ObjectPk(string uniqueId) => Pk("trc.bimobject", $"{codeFile}|{uniqueId}");
         var usernames = new HashSet<string>(StringComparer.Ordinal);
         var objects = result.Rooms
             .Select(room => (room.UniqueId, Values: RoomValues(room, Username(room, usernames)).ToList()))
-            .Concat(Elements(result.Rooms).Select(element => (element.Item.UniqueId, Values: ElementValues(element, ElementUsername(element.Item, usernames)).ToList())))
+            .Concat(Elements(result.Rooms).Select(element => (element.Item.UniqueId, Values: ElementValues(element, ElementUsername(element.Item, usernames), ObjectPk).ToList())))
             .ToList();
 
         var objectPk = new Dictionary<string, string>(StringComparer.Ordinal);
         foreach (var (uniqueId, _) in objects)
         {
-            var pk = objectPk[uniqueId] = Pk("trc.bimobject", $"{codeFile}|{uniqueId}");
+            var pk = objectPk[uniqueId] = ObjectPk(uniqueId);
             fiches.Add(new JsonObject
             {
                 ["model"] = "trc.bimobject",
@@ -170,7 +175,7 @@ public static class TrcMapper
         return new TrcDocument(fiches, annexes);
     }
 
-    /// <summary>Porte, équipement ou terminal exporté comme objet BIM, avec sa catégorie TRC et les pièces qui le contiennent.</summary>
+    /// <summary>Porte, équipement ou terminal exporté comme objet BIM, avec sa catégorie TRC et les pièces qui le contiennent (UniqueId).</summary>
     public sealed record TrcElement(RoomElementDto Item, string Category, IReadOnlyList<string> Spaces);
 
     /// <summary>
@@ -227,7 +232,7 @@ public static class TrcMapper
 
     /// <summary>
     /// Valeurs d'une pièce, dans l'ordre de sortie : catégorie, identification, dimensions, paramètres Revit. Les portes et les
-    /// équipements sont des objets à part (<see cref="ElementValues"/>), rattachés à la pièce par <c>Space</c>.
+    /// équipements sont des objets à part (<see cref="ElementValues"/>), rattachés à la pièce par <c>ListeSpaces</c>.
     /// </summary>
     public static IEnumerable<TrcValue> RoomValues(RoomDto room, string username)
     {
@@ -264,17 +269,15 @@ public static class TrcMapper
     }
 
     /// <summary>
-    /// Valeurs d'une porte, d'un équipement ou d'un terminal : catégorie, pièce(s) (<c>Space</c>), identification, passage libre
-    /// (portes) et paramètres Revit de l'instance (<c>roomParameters: all</c>). Une dimension inconnue n'est pas écrite (jamais 0).
+    /// Valeurs d'une porte, d'un équipement ou d'un terminal : catégorie, pièces (<c>ListeSpaces</c>, liste JSON des <c>pk</c> donnés par
+    /// <paramref name="roomPk"/>), identification, passage libre (portes) et paramètres Revit de l'instance (<c>roomParameters: all</c>).
+    /// Une dimension inconnue n'est pas écrite (jamais 0).
     /// </summary>
-    public static IEnumerable<TrcValue> ElementValues(TrcElement element, string username)
+    public static IEnumerable<TrcValue> ElementValues(TrcElement element, string username, Func<string, string> roomPk)
     {
         var item = element.Item;
         yield return new(TrcCodes.Category, element.Category);
-        foreach (var space in element.Spaces)
-        {
-            yield return new(TrcCodes.Space, space);
-        }
+        yield return new(TrcCodes.SpaceList, JsonSerializer.Serialize(element.Spaces.Select(roomPk)));
 
         // A : identification
         yield return new(TrcCodes.Storey, string.IsNullOrWhiteSpace(item.Level) ? null : item.Level);

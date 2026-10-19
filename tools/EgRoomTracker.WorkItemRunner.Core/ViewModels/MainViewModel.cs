@@ -487,13 +487,14 @@ public sealed class MainViewModel : ObservableObject
             var resultPath = File.Exists(zippedResult) ? zippedResult : Path.Combine(directory, WorkItemRunnerService.ResultLocalName);
             var reportPath = Path.Combine(directory, RunHistory.ReportFileName);
             var trcPath = Path.Combine(directory, WorkItemRunnerService.ResultParameter, WorkItemRunnerService.TrcLocalName);
-            if (File.Exists(resultPath) && Results() is { } reader)
-            {
-                Result = reader.Read(File.ReadAllText(resultPath));
-            }
-            else if (File.Exists(trcPath) && Results() is { } trcReader)
+            // Fichier TRC prioritaire (livrable : pièces, portes et équipements) ; sinon result.json (contrat, ou extraction en échec).
+            if (File.Exists(trcPath) && Results() is { } trcReader)
             {
                 Result = trcReader.ReadTrc(File.ReadAllText(trcPath));
+            }
+            else if (File.Exists(resultPath) && Results() is { } reader)
+            {
+                Result = reader.Read(File.ReadAllText(resultPath));
             }
 
             ReportText = File.Exists(reportPath) ? SecretRedactor.Redact(File.ReadAllText(reportPath)) : "(rapport non téléchargé)";

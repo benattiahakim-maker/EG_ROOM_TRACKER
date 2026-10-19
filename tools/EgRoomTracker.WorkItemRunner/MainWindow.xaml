@@ -8,8 +8,9 @@
     <DataTemplate x:Key="TreeToggleCell">
       <StackPanel Orientation="Horizontal">
         <Border Width="{Binding Indent}" />
-        <Button Content="{Binding Glyph}" Click="OnToggleRow" Width="18" Padding="0" BorderThickness="0" Background="Transparent"
-                Cursor="Hand" Visibility="{Binding HasChildren, Converter={StaticResource BoolToVisibility}}" />
+        <Button Content="{Binding Glyph}" Click="OnToggleRow" Width="26" Padding="0" BorderThickness="0" Background="Transparent"
+                FontSize="15" FontWeight="Bold" Foreground="#2563EB" Cursor="Hand" ToolTip="Afficher ou masquer les portes et équipements"
+                Visibility="{Binding HasChildren, Converter={StaticResource BoolToVisibility}}" />
       </StackPanel>
     </DataTemplate>
   </Window.Resources>
@@ -150,7 +151,19 @@
                 <!-- Arbre pièces → portes / équipements ; colonnes générées depuis les clés du résultat (MainWindow.xaml.cs).
                      Pas de tri : il casserait l'ordre de l'arbre. -->
                 <DataGrid x:Name="RoomsGrid" AutoGenerateColumns="False" IsReadOnly="True" HeadersVisibility="Column"
-                          CanUserSortColumns="False" />
+                          CanUserSortColumns="False" MouseDoubleClick="OnRoomsGridDoubleClick">
+                  <DataGrid.RowStyle>
+                    <Style TargetType="DataGridRow">
+                      <Style.Triggers>
+                        <!-- Portes et équipements (lignes enfants) en gris clair, sous leur pièce. -->
+                        <DataTrigger Binding="{Binding Depth}" Value="1">
+                          <Setter Property="Background" Value="#F1F5F9" />
+                          <Setter Property="Foreground" Value="#334155" />
+                        </DataTrigger>
+                      </Style.Triggers>
+                    </Style>
+                  </DataGrid.RowStyle>
+                </DataGrid>
                 <DataGrid Grid.Row="2" ItemsSource="{Binding Result.Anomalies}" AutoGenerateColumns="False" IsReadOnly="True" HeadersVisibility="Column">
                   <DataGrid.Columns>
                     <DataGridTextColumn Header="Code" Binding="{Binding Code}" Width="180" />

@@ -8,8 +8,8 @@ réelles de l'application TRC (`EG_Automation_TRC`) et de la plateforme (`TRCVal
 
 | `outputFormat` | Fichiers du dossier `result/` |
 | --- | --- |
-| `contract` (défaut) | `result.json` : contrat versionné, bilan, statut et anomalies |
-| `trc` | `TRCValidationDict.json` seul : **données seules**, sans statut ni conformité |
+| `contract` (défaut du code) | `result.json` : contrat versionné, bilan, statut et anomalies |
+| `trc` (**réglage du livrable**, celui de `docs/examples/settings.example.json`) | `TRCValidationDict.json` seul : **données seules**, sans statut ni conformité |
 | `both` | les deux |
 
 Avec `roomImages`, le dossier `Images/` accompagne dans tous les cas. Une extraction **en échec** écrit toujours `result.json` (sans pièces, il
@@ -41,12 +41,12 @@ Les **`pk` sont stables** : GUID déterministe de `code_file`, de l'objet, du co
 ## Objets BIM et rattachement
 
 Avec `elements`, chaque **porte**, **équipement** et **terminal** est un `trc.bimobject` à part entière, avec ses propres propriétés ; la pièce
-ne porte plus aucune propriété de porte ou d'équipement. Le lien se fait comme `ParentGlobalId` dans les fichiers TRC de la plateforme :
+ne porte plus aucune propriété de porte ou d'équipement. Le lien vers la pièce se fait par sa fiche `trc.bimobject` :
 
 - `Category` sur chaque objet : `Space` (pièce), `Door` (porte), `<discipline> equipement` ou `<discipline> terminal` pour les équipements et
   terminaux (`cvc equipement`, `plomberie terminal`, `electricite equipement`, `autres terminal`…) ;
-- `Space` sur chaque élément : le `bim_id` (UniqueId) de la pièce qui le contient. C'est une **liste** : une fiche par pièce, sous le même
-  code. Une porte entre deux pièces est **un seul objet** avec deux valeurs `Space`.
+- `ListeSpaces` sur chaque élément : **une seule valeur**, la liste JSON des **`pk` des `trc.bimobject` des pièces** qui le contiennent,
+  par exemple `["trc.bimobject_6f1c…","trc.bimobject_a03d…"]`. Une porte entre deux pièces est **un seul objet** dont la liste a deux pièces.
 
 Un élément sans pièce n'est pas exporté (anomalie `ELEMENT_WITHOUT_ROOM` dans `result.json`).
 
@@ -75,7 +75,7 @@ Un élément sans pièce n'est pas exporté (anomalie `ELEMENT_WITHOUT_ROOM` dan
 | Code | Valeur | Condition |
 | --- | --- | --- |
 | `Category` | `Door`, `<discipline> equipement` ou `<discipline> terminal` | toujours |
-| `Space` | `bim_id` de la pièce, une fiche par pièce | toujours |
+| `ListeSpaces` | liste JSON des `pk` des pièces (`["trc.bimobject_…"]`), une seule fiche | toujours |
 | `a:identification data_storey` | nom du niveau de l'instance | si présent |
 | `a:identification data_numero` | numéro de porte (`DOOR_NUMBER`) | portes, si renseigné |
 | `a:identification data_repere` | repère (`ALL_MODEL_MARK`) | si renseigné |
@@ -104,6 +104,7 @@ n'ont besoin d'aucun réglage.
 
 ## WorkItemRunner
 
-Il décompresse le ZIP et affiche `TRCValidationDict.json` en **arbre** : une ligne par pièce, dépliable (▸) pour voir les portes, équipements
-et terminaux dont le `Space` la désigne (une porte entre deux pièces apparaît sous chacune). Une colonne par code (valeurs multiples réunies
-par ` | `), sans statut ni anomalies. `result.json` s'affiche de la même façon, avec une colonne `objet` (pièce, porte, équipement cvc…).
+Il décompresse le ZIP et affiche `TRCValidationDict.json` (prioritaire sur `result.json` quand les deux existent) en **arbre** : une ligne
+par pièce, dépliable par la flèche ▶ ou un double-clic pour voir les portes, équipements et terminaux de sa `ListeSpaces` (une porte entre deux
+pièces apparaît sous chacune). Une colonne par code (valeurs multiples réunies par ` | `), sans statut ni anomalies. Sans fichier TRC,
+`result.json` s'affiche de la même façon, avec une colonne `objet` (pièce, porte, équipement cvc…).

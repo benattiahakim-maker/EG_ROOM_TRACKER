@@ -71,13 +71,31 @@ public partial class MainWindow : Window
         RoomsGrid.ItemsSource = TableRow.Visible(result.RoomTree);
     }
 
-    /// <summary>Déplie ou replie une pièce, puis réaffiche les lignes visibles.</summary>
+    /// <summary>Déplie ou replie une pièce (flèche), puis réaffiche les lignes visibles.</summary>
     private void OnToggleRow(object sender, RoutedEventArgs e)
     {
-        if (sender is FrameworkElement { DataContext: TableRow row } && DataContext is MainViewModel { Result: { } result })
+        if (sender is FrameworkElement { DataContext: TableRow row })
+        {
+            Toggle(row);
+        }
+    }
+
+    /// <summary>Double-clic sur une pièce : même effet que la flèche.</summary>
+    private void OnRoomsGridDoubleClick(object sender, System.Windows.Input.MouseButtonEventArgs e)
+    {
+        if (RoomsGrid.SelectedItem is TableRow { HasChildren: true } row)
+        {
+            Toggle(row);
+        }
+    }
+
+    private void Toggle(TableRow row)
+    {
+        if (DataContext is MainViewModel { Result: { } result })
         {
             row.IsExpanded = !row.IsExpanded;
             RoomsGrid.ItemsSource = TableRow.Visible(result.RoomTree);
+            RoomsGrid.SelectedItem = row;
         }
     }
 }

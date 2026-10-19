@@ -64,6 +64,9 @@ public sealed class TrcExportTests
 
     private static List<JsonObject> Fiches(TrcDocument document) => document.Fiches.OfType<JsonObject>().ToList();
 
+    private static string Pk(TrcDocument document, string bimId) =>
+        Fiches(document).Single(f => f["model"]!.ToString() == "trc.bimobject" && f["fields"]!["bim_id"]!.ToString() == bimId)["pk"]!.ToString();
+
     private static Dictionary<string, List<string?>> Values(TrcDocument document, string bimId)
     {
         var fiches = Fiches(document);
@@ -221,7 +224,8 @@ public sealed class TrcExportTests
 
         Assert.Equal(["uid-1", "uid-2", "u-11", "u-12"], Fiches(document).Where(f => f["model"]!.ToString() == "trc.bimobject").Select(f => f["fields"]!["bim_id"]!.ToString()));
         Assert.Equal([TrcCategories.Door], door[TrcCodes.Category]);
-        Assert.Equal(["uid-1", "uid-2"], door[TrcCodes.Space]); // une porte entre deux pièces : une seule fiche objet, deux pièces
+        // Une porte entre deux pièces : un seul objet, une seule valeur ListeSpaces avec les pk des deux pièces.
+        Assert.Equal([$"[\"{Pk(document, "uid-1")}\",\"{Pk(document, "uid-2")}\"]"], door[TrcCodes.SpaceList]);
         Assert.Equal(["1.02"], door[TrcCodes.Numero]);
         Assert.Equal(["11"], door[TrcCodes.ElementRevitId]);
         Assert.Equal(["Portes"], door[TrcCodes.ElementRevitCategory]);
@@ -229,11 +233,11 @@ public sealed class TrcExportTests
         Assert.Equal(["0915 x 2134"], door[TrcCodes.ElementType]);
         Assert.Equal(["0.90m"], door[TrcCodes.DoorWidth]);
         Assert.Equal(["2.04"], door[TrcCodes.DoorHeight]);
-        Assert.Equal(["uid-1"], other[TrcCodes.Space]);
+        Assert.Equal([$"[\"{Pk(document, "uid-1")}\"]"], other[TrcCodes.SpaceList]);
         Assert.DoesNotContain(TrcCodes.DoorWidth, other.Keys); // dimension inconnue : jamais 0
         Assert.DoesNotContain(TrcCodes.DoorHeight, other.Keys);
         Assert.Equal([TrcCategories.Space], Values(document, "uid-1")[TrcCodes.Category]);
-        Assert.DoesNotContain(Values(document, "uid-1").Keys, code => code.StartsWith("b:porte", StringComparison.Ordinal) || code == TrcCodes.Space);
+        Assert.DoesNotContain(Values(document, "uid-1").Keys, code => code.StartsWith("b:porte", StringComparison.Ordinal) || code == TrcCodes.SpaceList);
     }
 
     [Fact]
@@ -257,7 +261,7 @@ public sealed class TrcExportTests
         Assert.Equal(["electricite"], Values(document, "u-2")[TrcCodes.ElementDiscipline]);
         Assert.Equal(["cvc terminal"], Values(document, "u-4")[TrcCodes.Category]);
         Assert.Equal(["autres terminal"], Values(document, "u-5")[TrcCodes.Category]);
-        Assert.All(new[] { "u-1", "u-2", "u-4", "u-5" }, id => Assert.Equal(["uid-1"], Values(document, id)[TrcCodes.Space]));
+        Assert.All(new[] { "u-1", "u-2", "u-4", "u-5" }, id => Assert.Equal([$"[\"{Pk(document, "uid-1")}\"]"], Values(document, id)[TrcCodes.SpaceList]));
         Assert.DoesNotContain(TrcCodes.DoorWidth, Values(document, "u-1").Keys);
         Assert.DoesNotContain(Values(document, "uid-1").Keys, code => code.StartsWith("b:equipements", StringComparison.Ordinal));
     }

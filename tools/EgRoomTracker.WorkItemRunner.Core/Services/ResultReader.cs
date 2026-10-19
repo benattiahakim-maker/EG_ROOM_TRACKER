@@ -250,9 +250,12 @@ public sealed class ResultReader(string schemaPath)
 
     /// <summary>
     /// Lecture de <c>TRCValidationDict.json</c> (fiches de l'application TRC, données seules) : une ligne par objet BIM, une colonne par
-    /// code de propriété (valeurs multiples réunies par « | »), en arbre : portes et équipements sous la pièce désignée par leur
-    /// <c>Space</c>. Pas de schéma, de statut ni d'anomalies : il n'y en a pas dans ce format.
+    /// code de propriété (valeurs multiples réunies par « | »), en arbre : portes et équipements sous les pièces de leur
+    /// <c>ListeSpaces</c> (pk des pièces). Pas de schéma, de statut ni d'anomalies : il n'y en a pas dans ce format.
     /// </summary>
+    /// <summary>Ancien code de rattachement (<c>bim_id</c> de la pièce, une fiche par pièce), remplacé par <c>ListeSpaces</c>.</summary>
+    private const string LegacySpaceCode = "Space";
+
     public ResultView ReadTrc(string json)
     {
         JsonNode? root;
@@ -301,13 +304,43 @@ public sealed class ResultReader(string schemaPath)
             .Select(column => column == "bim_id" ? bimIdByPk[pk] : cells[pk].TryGetValue(column, out var list) ? string.Join(" | ", list) : null)
             .ToArray();
 
-        // Arbre : un objet rattaché à une pièce (Space = bim_id de la pièce) est rangé sous elle, sous chacune s'il en a plusieurs ;
-        // un objet sans Space, ou dont aucune pièce n'est dans le fichier, reste à la racine.
-        var bimIds = bimIdByPk.Values.ToHashSet(StringComparer.Ordinal);
-        var spaces = bimIdByPk.Keys.ToDictionary(
-            pk => pk,
-            pk => cells[pk].TryGetValue(EgRoomTracker.Application.Trc.TrcCodes.Space, out var list) ? list.Where(bimIds.Contains).Distinct().ToList() : [],
-            StringComparer.Ordinal);
+        // Arbre : un objet rattaché à une pièce est rangé sous elle, sous chacune s'il en a plusieurs ; un objet sans rattachement, ou
+        // dont aucune pièce n'est dans le fichier, reste à la racine. Parents désignés par leur pk.
+        var pkByBimId = bimIdByPk.GroupBy(pair => pair.Value, StringComparer.Ordinal).ToDictionary(g => g.Key, g => g.First().Key, StringComparer.Ordinal);
+        var spaces = bimIdByPk.Keys.ToDictionary(pk => pk, pk => ParentPks(cells[pk]).Where(bimIdByPk.ContainsKey).Distinct().ToList(), StringComparer.Ordinal);
+
+        IEnumerable<string> ParentPks(Dictionary<string, List<string>> row)
+        {
+            // ListeSpaces : une valeur, liste JSON des pk des pièces.
+            foreach (var value in row.GetValueOrDefault(EgRoomTracker.Application.Trc.TrcCodes.SpaceList) ?? [])
+            {
+                JsonArray? list = null;
+                try
+                {
+                    list = JsonNode.Parse(value) as JsonArray;
+                }
+                catch (JsonException)
+                {
+                }
+
+                foreach (var pk in list ?? [])
+                {
+                    if (pk is JsonValue text && text.TryGetValue<string>(out var parent))
+                    {
+                        yield return parent;
+                    }
+                }
+            }
+
+            // Space : ancien format (bim_id de la pièce, une fiche par pièce), pour les lancements déjà dans l'historique.
+            foreach (var bimId in row.GetValueOrDefault(LegacySpaceCode) ?? [])
+            {
+                if (pkByBimId.TryGetValue(bimId, out var parent))
+                {
+                    yield return parent;
+                }
+            }
+        }
         var children = new Dictionary<string, List<TableRow>>(StringComparer.Ordinal);
         foreach (var (pk, parents) in spaces)
         {
@@ -324,7 +357,7 @@ public sealed class ResultReader(string schemaPath)
 
         var tree = bimIdByPk.Keys
             .Where(pk => spaces[pk].Count == 0)
-            .Select(pk => new TableRow(Row(pk), children.GetValueOrDefault(bimIdByPk[pk])))
+            .Select(pk => new TableRow(Row(pk), children.GetValueOrDefault(pk)))
             .ToList();
 
         var codeFile = fiches.FirstOrDefault(f => f["model"]?.ToString() == "special.setcodefile")?["fields"]?["code_file"]?.ToString();

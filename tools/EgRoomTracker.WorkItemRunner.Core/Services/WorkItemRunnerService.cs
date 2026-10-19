@@ -277,6 +277,7 @@ public sealed class WorkItemRunnerService(
 
         var present = new Dictionary<string, bool>();
         ResultView? result = null;
+        ResultView? contract = null;
         foreach (var output in record.Objects.Where(o => !o.IsInput))
         {
             string? completion = null;
@@ -305,15 +306,9 @@ public sealed class WorkItemRunnerService(
                     progress($"Sortie {output.Parameter} récupérée : {output.LocalName}.zip ({Size(bytes.Length)}), décompressée dans {output.LocalName}/ ({images} image(s)).");
                     if (output.Parameter == ResultParameter)
                     {
-                        // Contrat (result.json) prioritaire ; sinon fichier TRC (données seules, sans statut).
-                        if (resultJson is not null)
-                        {
-                            result = results.Read(resultJson);
-                        }
-                        else if (trcJson is not null)
-                        {
-                            result = results.ReadTrc(trcJson);
-                        }
+                        // Affichage : fichier TRC prioritaire (livrable) ; le statut et le schéma viennent de result.json s'il existe.
+                        contract = resultJson is null ? null : results.Read(resultJson);
+                        result = trcJson is not null ? results.ReadTrc(trcJson) : contract;
                     }
                 }
                 else
@@ -345,19 +340,19 @@ public sealed class WorkItemRunnerService(
             CompletedAtUtc = _time.GetUtcNow(),
             Stats = status?.Stats?.ToJsonString() ?? record.Stats,
             Outputs = present,
-            ResultStatus = result?.Status,
-            SchemaErrorCount = result?.SchemaErrors.Count,
+            ResultStatus = (contract ?? result)?.Status,
+            SchemaErrorCount = (contract ?? result)?.SchemaErrors.Count,
             ReportDownloaded = report is not null || record.ReportDownloaded,
         };
         history.Save(record);
 
         // Relevé D6 (src/Packaging/README.md) : statut du WorkItem et présence de result.json.
-        var resultPresence = present.GetValueOrDefault(ResultLocalName) ? $"présent (status {result?.Status ?? "?"})" : "absent";
+        var resultPresence = present.GetValueOrDefault(ResultLocalName) ? $"présent (status {(contract ?? result)?.Status ?? "?"})" : "absent";
         progress($"Relevé : WorkItem {record.WorkItemStatus ?? "?"}, result.json {resultPresence}.");
         return (record, result, report);
     }
 
-    /// <summary>Relit un lancement de l'historique (result.json et rapport locaux).</summary>
+    /// <summary>Relit un lancement de l'historique (fichier TRC, sinon result.json, et rapport locaux).</summary>
     public (ResultView? Result, string? Report) LoadRun(RunRecord record)
     {
         var directory = history.DirectoryOf(record.RunId);
@@ -366,8 +361,8 @@ public sealed class WorkItemRunnerService(
         var trcPath = Path.Combine(directory, ResultParameter, TrcLocalName);
         var reportPath = Path.Combine(directory, RunHistory.ReportFileName);
         return (
-            File.Exists(resultPath) ? results.Read(File.ReadAllText(resultPath))
-                : File.Exists(trcPath) ? results.ReadTrc(File.ReadAllText(trcPath))
+            File.Exists(trcPath) ? results.ReadTrc(File.ReadAllText(trcPath))
+                : File.Exists(resultPath) ? results.Read(File.ReadAllText(resultPath))
                 : null,
             File.Exists(reportPath) ? File.ReadAllText(reportPath) : null);
     }
