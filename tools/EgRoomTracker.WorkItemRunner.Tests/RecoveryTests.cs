@@ -44,7 +44,7 @@ public sealed class RecoveryTests
         Assert.Equal("test", run.Alias);
         Assert.Equal("nick.ExtractRooms_R2026+test", run.ActivityId);
         Assert.Equal(
-            [$"{run.RunId}/inputZip.zip", $"{run.RunId}/settings.json", $"{run.RunId}/result.json"],
+            [$"{run.RunId}/inputZip.zip", $"{run.RunId}/settings.json", $"{run.RunId}/result.zip"],
             run.Objects.Select(o => o.ObjectKey));
         Assert.All(run.Objects.Where(o => o.IsInput), o => Assert.Null(o.UploadKey));
         Assert.NotNull(run.Objects.Single(o => !o.IsInput).UploadKey);
@@ -106,7 +106,7 @@ public sealed class RecoveryTests
     {
         using var env = new TestEnvironment();
         await env.ViewModel.RunCommand.ExecuteAsync();
-        File.Delete(Path.Combine(env.DataDirectory, "runs", env.ViewModel.History.Single().RunId, "result.json"));
+        File.Delete(Path.Combine(env.DataDirectory, "runs", env.ViewModel.History.Single().RunId, "result", "result.json"));
 
         env.Restart();
         env.ViewModel.SelectedRun = env.ViewModel.History.Single();

@@ -4,6 +4,7 @@ using System.Reflection;
 using EgRoomTracker.Application.Configuration;
 using EgRoomTracker.Application.Quality;
 using EgRoomTracker.Application.Revit;
+using EgRoomTracker.Application.Trc;
 using EgRoomTracker.Contracts.Codes;
 using EgRoomTracker.Contracts.Configuration;
 using EgRoomTracker.Contracts.Results;
@@ -27,6 +28,10 @@ public sealed class RoomExtractionService
     private readonly IExportService _export;
     private readonly ILogService _log;
     private readonly TimeProvider _time;
+    private readonly IReadOnlyList<IRoomElementService> _elementServices;
+    private readonly IRoomImageService? _imageService;
+    private readonly IRoomHeightService? _heightService;
+    private readonly ITrcExportService? _trcExport;
 
     public RoomExtractionService(
         IInputConfigurationService configuration,
@@ -37,7 +42,11 @@ public sealed class RoomExtractionService
         IQualityCheckService quality,
         IExportService export,
         ILogService log,
-        TimeProvider? time = null)
+        TimeProvider? time = null,
+        IReadOnlyList<IRoomElementService>? elementServices = null,
+        IRoomImageService? imageService = null,
+        IRoomHeightService? heightService = null,
+        ITrcExportService? trcExport = null)
     {
         _configuration = configuration;
         _document = document;
@@ -48,6 +57,10 @@ public sealed class RoomExtractionService
         _export = export;
         _log = log;
         _time = time ?? TimeProvider.System;
+        _elementServices = elementServices ?? [];
+        _imageService = imageService;
+        _heightService = heightService;
+        _trcExport = trcExport;
     }
 
     /// <summary>Version de l'extracteur, issue de l'assembly (sans métadonnées de build).</summary>
@@ -65,6 +78,8 @@ public sealed class RoomExtractionService
         ExtractionSettings? settings = null;
         DocumentDescriptor? document = null;
         var roomsCollected = 0;
+        ImagesSummary? images = null;
+        HeightsSummary? heights = null;
         VolumeComputationState? volumeState = null;
         ExtractionResult result;
 
@@ -103,10 +118,26 @@ public sealed class RoomExtractionService
                         roomErrors++;
                         read = ExtractionErrorRoom(room, settings.SharedParameters);
                     }
+                    else
+                    {
+                        if (settings.RoomParameters == RoomParametersMode.All)
+                        {
+                            read = AttachAllParameters(read, room, document.Source.RelativePath);
+                        }
+
+                        if (settings.OutputFormat != OutputFormat.Contract)
+                        {
+                            read = AttachNamedParameters(read, room);
+                        }
+                    }
 
                     rooms.Add(read.Room);
                     anomalies.AddRange(read.Anomalies);
                 }
+
+                AttachElements(settings, rooms, anomalies);
+                heights = MeasureHeights(settings, rooms, anomalies);
+                images = ExportRoomImages(settings, request, document, rooms, anomalies);
 
                 _log.Log(new LogEvent(LogLevel.Info, LogEventCodes.CollectionCompleted, stage, $"{rooms.Count} pièce(s) collectée(s).")
                 {
@@ -127,7 +158,7 @@ public sealed class RoomExtractionService
                 var status = roomErrors > 0 && report.Status == ExtractionStatus.Succeeded
                     ? ExtractionStatus.SucceededWithWarnings
                     : report.Status;
-                result = BuildResult(request, settings, document, volumeState, startedAt, status, sortedRooms, report.Anomalies, roomsCollected, []);
+                result = BuildResult(request, settings, document, volumeState, startedAt, status, sortedRooms, report.Anomalies, roomsCollected, [], images, heights);
             }
             catch (ExtractionFailedException ex)
             {
@@ -146,7 +177,7 @@ public sealed class RoomExtractionService
                 CloseDocument();
             }
 
-            result = Export(request, result);
+            result = Export(request, result, settings);
             LogSummary(result, stopwatch.Elapsed);
         }
         finally
@@ -157,12 +188,30 @@ public sealed class RoomExtractionService
         return result;
     }
 
-    private ExtractionResult Export(ExtractionRequest request, ExtractionResult result)
+    /// <summary>
+    /// Écrit la sortie selon <c>outputFormat</c> : <c>result.json</c> (défaut), <c>TRCValidationDict.json</c> (données seules, sans
+    /// statut) ou les deux. Une extraction en échec écrit toujours <c>result.json</c> : sans pièces, il n'y a pas de données TRC, et le
+    /// fichier explique l'échec.
+    /// </summary>
+    private ExtractionResult Export(ExtractionRequest request, ExtractionResult result, ExtractionSettings? settings)
     {
+        var format = settings?.OutputFormat ?? OutputFormat.Contract;
+        var runFailed = result.Summary.Status == ExtractionStatus.Failed;
         try
         {
-            _export.Write(result, request.OutputPath);
-            _log.Info(LogEventCodes.ExportCompleted, Stages.Export, "result.json écrit.");
+            if (format != OutputFormat.Trc || runFailed)
+            {
+                _export.Write(result, request.OutputPath);
+                _log.Info(LogEventCodes.ExportCompleted, Stages.Export, "result.json écrit.");
+            }
+
+            if (format != OutputFormat.Contract && !runFailed)
+            {
+                var trc = _trcExport ?? throw new InvalidOperationException("Service d'export TRC non disponible.");
+                var file = trc.Write(result, Path.GetDirectoryName(Path.GetFullPath(request.OutputPath))!);
+                _log.Info(LogEventCodes.ExportCompleted, Stages.Export, $"{file} écrit (format TRC).");
+            }
+
             return result;
         }
         catch (Exception ex)
@@ -249,6 +298,350 @@ public sealed class RoomExtractionService
         }
     }
 
+    /// <summary>Joint les paramètres d'identification TRC lus par leur nom ; un échec n'altère pas les champs du contrat.</summary>
+    private RoomReadResult AttachNamedParameters(RoomReadResult read, CollectedRoom room)
+    {
+        try
+        {
+            return _reader.ReadNamedParameters(room.ElementId, TrcIdentification.ParameterNames) is { } named
+                ? read with { Room = read.Room with { NamedParameters = named } }
+                : read;
+        }
+        catch (Exception)
+        {
+            return read;
+        }
+    }
+
+    /// <summary>Joint tous les paramètres de la pièce (<c>roomParameters: all</c>) ; un échec n'altère pas les champs du contrat.</summary>
+    private RoomReadResult AttachAllParameters(RoomReadResult read, CollectedRoom room, string documentPath)
+    {
+        try
+        {
+            return _reader.ReadAllParameters(room.ElementId) is { } parameters
+                ? read with { Room = read.Room with { Parameters = parameters } }
+                : read;
+        }
+        catch (Exception ex)
+        {
+            _log.Log(new LogEvent(LogLevel.Warning, LogEventCodes.RoomParametersFailed, Stages.Collection, "Lecture de tous les paramètres de la pièce impossible ; champs du contrat conservés.")
+            {
+                DocumentPath = documentPath,
+                RoomElementId = room.ElementId.ToString(CultureInfo.InvariantCulture),
+                Exception = ex,
+            });
+            return read;
+        }
+    }
+
+    /// <summary>
+    /// Rattache aux pièces les portes, équipements et terminaux demandés par <c>settings.json</c> (schéma 1.4). Chaque
+    /// famille demandée donne un tableau (éventuellement vide) sur toutes les pièces exportées. Une collecte en échec
+    /// produit ELEMENTS_COLLECTION_FAILED (warning) sans faire échouer l'extraction ; les éléments sans pièce exportée
+    /// ou illisibles sont comptés dans ELEMENT_WITHOUT_ROOM (info).
+    /// </summary>
+    private void AttachElements(ExtractionSettings settings, List<RoomDto> rooms, List<AnomalyDto> anomalies)
+    {
+        if (settings.Elements.Count == 0)
+        {
+            return;
+        }
+
+        var indexById = new Dictionary<long, int>();
+        for (var i = 0; i < rooms.Count; i++)
+        {
+            if (long.TryParse(rooms[i].ElementId, NumberStyles.AllowLeadingSign, CultureInfo.InvariantCulture, out var id))
+            {
+                indexById[id] = i;
+            }
+        }
+
+        var includeAll = settings.RoomParameters == RoomParametersMode.All;
+        foreach (var kind in settings.Elements)
+        {
+            var name = ElementKinds.ToName(kind);
+            var service = _elementServices.FirstOrDefault(s => s.Kind == kind);
+            if (service is null)
+            {
+                anomalies.Add(ElementsFailure(name, "service non disponible"));
+                continue;
+            }
+
+            ElementCollection collection;
+            try
+            {
+                collection = service.Collect(includeAll, settings.ElementCategories.GetValueOrDefault(kind), settings.LinkedElements);
+            }
+            catch (Exception ex)
+            {
+                _log.Log(new LogEvent(LogLevel.Warning, LogEventCodes.ElementsCollectionFailed, Stages.Collection, $"Collecte « {name} » impossible ; l'extraction des pièces continue.")
+                {
+                    Exception = ex,
+                });
+                anomalies.Add(ElementsFailure(name, ex.GetType().Name));
+                continue;
+            }
+
+            var perRoom = new Dictionary<int, List<RoomElementDto>>();
+            foreach (var index in Enumerable.Range(0, rooms.Count))
+            {
+                perRoom[index] = [];
+            }
+
+            var withoutRoom = new List<string>();
+            foreach (var placement in collection.Placements)
+            {
+                var attached = false;
+                foreach (var link in placement.Links)
+                {
+                    if (indexById.TryGetValue(link.RoomId, out var index))
+                    {
+                        perRoom[index].Add(placement.Element with { Relation = link.Relation });
+                        attached = true;
+                    }
+                }
+
+                if (!attached)
+                {
+                    withoutRoom.Add(placement.Element.ElementId);
+                }
+            }
+
+            foreach (var (index, elements) in perRoom)
+            {
+                rooms[index] = WithElements(rooms[index], kind, elements);
+            }
+
+            _log.Log(new LogEvent(LogLevel.Info, LogEventCodes.ElementsCollected, Stages.Collection, $"{collection.Placements.Count} élément(s) « {name} » collecté(s), {withoutRoom.Count} sans pièce.")
+            {
+                Data = new Dictionary<string, object?>
+                {
+                    ["kind"] = name,
+                    ["collected"] = collection.Placements.Count,
+                    ["withoutRoom"] = withoutRoom.Count,
+                    ["unreadable"] = collection.Unreadable,
+                    ["categories"] = collection.Categories?.ToArray(),
+                    ["sources"] = collection.Sources?.ToArray(),
+                },
+            });
+
+            if (collection.UnknownCategories is { Count: > 0 } unknown)
+            {
+                anomalies.Add(new AnomalyDto
+                {
+                    Code = DocumentAnomalyCodes.ElementsCollectionFailed,
+                    Severity = AnomalySeverity.Warning,
+                    Scope = AnomalyScope.Document,
+                    ElementId = null,
+                    Message = $"Catégories Revit inconnues ignorées pour « {name} » : {string.Join(", ", unknown)}.",
+                    Details = new Dictionary<string, object?> { ["kind"] = name, ["reason"] = "unknownCategories", ["unknownCategories"] = unknown.ToArray() },
+                });
+            }
+
+            if (withoutRoom.Count > 0 || collection.Unreadable > 0)
+            {
+                anomalies.Add(new AnomalyDto
+                {
+                    Code = DocumentAnomalyCodes.ElementWithoutRoom,
+                    Severity = AnomalySeverity.Info,
+                    Scope = AnomalyScope.Document,
+                    ElementId = null,
+                    Message = $"{withoutRoom.Count} élément(s) « {name} » sans pièce exportée, {collection.Unreadable} illisible(s).",
+                    Details = new Dictionary<string, object?>
+                    {
+                        ["kind"] = name,
+                        ["count"] = withoutRoom.Count,
+                        ["elementIds"] = withoutRoom.Take(MaxListedElements).ToArray(),
+                        ["unreadable"] = collection.Unreadable,
+                    },
+                });
+            }
+        }
+    }
+
+    /// <summary>
+    /// Hauteur de chaque pièce placée par lancer de rayons (<c>roomHeights</c>), document ouvert : hauteur renseignée et
+    /// mesurée séparées, hauteur effective = mesurée si un obstacle existe, sinon renseignée (règle de TRC). Une pièce en
+    /// échec garde tous les champs du contrat ; un échec produit HEIGHT_MEASUREMENT_FAILED (warning).
+    /// </summary>
+    private HeightsSummary? MeasureHeights(ExtractionSettings settings, List<RoomDto> rooms, List<AnomalyDto> anomalies)
+    {
+        if (!settings.RoomHeights)
+        {
+            return null;
+        }
+
+        var requested = 0;
+        var measured = 0;
+        var withoutObstacle = 0;
+        var failed = 0;
+        string? firstError = null;
+        var stopwatch = Stopwatch.StartNew();
+        for (var i = 0; i < rooms.Count; i++)
+        {
+            var room = rooms[i];
+            if (room.QualityFlags.Contains(QualityFlagCodes.Unplaced)
+                || !long.TryParse(room.ElementId, NumberStyles.AllowLeadingSign, CultureInfo.InvariantCulture, out var id))
+            {
+                continue;
+            }
+
+            requested++;
+            if (_heightService is null)
+            {
+                failed++;
+                firstError ??= "service non disponible";
+                continue;
+            }
+
+            try
+            {
+                var m = _heightService.Measure(id, settings.HeightStepM);
+
+                // Une hauteur absente est null, jamais 0 : une valeur nulle ou négative n'est pas une hauteur.
+                var declared = Positive(m.DeclaredM);
+                var measuredMin = Positive(m.MeasuredMinM);
+                rooms[i] = room with
+                {
+                    Heights = new RoomHeightsDto(
+                        declared,
+                        measuredMin,
+                        measuredMin ?? declared,
+                        measuredMin is not null ? HeightSources.Measured : declared is not null ? HeightSources.Declared : null,
+                        m.Samples)
+                    {
+                        LimitingCategory = measuredMin is null ? null : m.LimitingCategory,
+                        LimitingDocument = measuredMin is null ? null : m.LimitingDocument,
+                        ByCategoryM = measuredMin is null ? null : m.ByCategoryM,
+                    },
+                };
+                if (measuredMin is null)
+                {
+                    withoutObstacle++;
+                }
+                else
+                {
+                    measured++;
+                }
+            }
+            catch (Exception ex)
+            {
+                failed++;
+                firstError ??= ex.GetType().Name;
+            }
+        }
+
+        _log.Log(new LogEvent(failed > 0 ? LogLevel.Warning : LogLevel.Info, failed > 0 ? LogEventCodes.RoomHeightsFailed : LogEventCodes.RoomHeightsMeasured, Stages.Collection,
+            $"{measured} hauteur(s) mesurée(s), {withoutObstacle} sans obstacle, {failed} en échec sur {requested} pièce(s).")
+        {
+            Duration = stopwatch.Elapsed,
+            Data = new Dictionary<string, object?>
+            {
+                ["requested"] = requested,
+                ["measured"] = measured,
+                ["withoutObstacle"] = withoutObstacle,
+                ["failed"] = failed,
+                ["stepM"] = settings.HeightStepM,
+            },
+        });
+        if (failed > 0)
+        {
+            anomalies.Add(new AnomalyDto
+            {
+                Code = DocumentAnomalyCodes.HeightMeasurementFailed,
+                Severity = AnomalySeverity.Warning,
+                Scope = AnomalyScope.Document,
+                ElementId = null,
+                Message = $"Hauteur non mesurée pour {failed} pièce(s) sur {requested}.",
+                Details = new Dictionary<string, object?> { ["requested"] = requested, ["failed"] = failed, ["reason"] = firstError },
+            });
+        }
+
+        return new HeightsSummary(requested, measured, withoutObstacle, failed);
+    }
+
+    /// <summary>Valeur strictement positive et finie ; sinon null (une hauteur nulle n'existe pas).</summary>
+    private static double? Positive(double? value) => value is > 0 && double.IsFinite(value.Value) ? value : null;
+
+    /// <summary>
+    /// Vues 3D des pièces placées (<c>roomImages</c>) dans <c>Images/</c>, document ouvert. Un échec, total ou partiel,
+    /// produit IMAGE_EXPORT_FAILED (warning) sans faire échouer l'extraction des pièces.
+    /// </summary>
+    private ImagesSummary? ExportRoomImages(ExtractionSettings settings, ExtractionRequest request, DocumentDescriptor document, IReadOnlyList<RoomDto> rooms, List<AnomalyDto> anomalies)
+    {
+        if (!settings.RoomImages)
+        {
+            return null;
+        }
+
+        var targets = rooms
+            .Where(r => !r.QualityFlags.Contains(QualityFlagCodes.Unplaced))
+            .Select(r => long.TryParse(r.ElementId, NumberStyles.AllowLeadingSign, CultureInfo.InvariantCulture, out var id) ? new RoomImageRequest(id, r.UniqueId) : null)
+            .OfType<RoomImageRequest>()
+            .ToList();
+        if (_imageService is null || request.ImagesDirectory is null)
+        {
+            anomalies.Add(ImageFailure(targets.Count, 0, "service ou dossier d'images non disponible"));
+            return new ImagesSummary(targets.Count, 0, targets.Count);
+        }
+
+        try
+        {
+            var result = _imageService.Export(targets, request.ImagesDirectory, TrcNaming.CodeFile(document.Source.FileName), settings.ImageWidthPx);
+            var failed = targets.Count - result.Exported;
+            _log.Log(new LogEvent(failed > 0 ? LogLevel.Warning : LogLevel.Info, failed > 0 ? LogEventCodes.RoomImagesFailed : LogEventCodes.RoomImagesExported, Stages.Collection,
+                $"{result.Exported} image(s) de pièce exportée(s) sur {targets.Count}.")
+            {
+                Data = new Dictionary<string, object?> { ["requested"] = targets.Count, ["exported"] = result.Exported, ["failed"] = failed, ["widthPx"] = settings.ImageWidthPx },
+            });
+            if (failed > 0)
+            {
+                anomalies.Add(ImageFailure(targets.Count, result.Exported, result.Error ?? "export impossible pour certaines pièces"));
+            }
+
+            return new ImagesSummary(targets.Count, result.Exported, failed);
+        }
+        catch (Exception ex)
+        {
+            _log.Log(new LogEvent(LogLevel.Warning, LogEventCodes.RoomImagesFailed, Stages.Collection, "Export des vues 3D impossible ; l'extraction des pièces continue.")
+            {
+                Exception = ex,
+            });
+            anomalies.Add(ImageFailure(targets.Count, 0, ex.GetType().Name));
+            return new ImagesSummary(targets.Count, 0, targets.Count);
+        }
+    }
+
+    private static AnomalyDto ImageFailure(int requested, int exported, string reason) => new()
+    {
+        Code = DocumentAnomalyCodes.ImageExportFailed,
+        Severity = AnomalySeverity.Warning,
+        Scope = AnomalyScope.Document,
+        ElementId = null,
+        Message = $"{requested - exported} image(s) de pièce non exportée(s) sur {requested}.",
+        Details = new Dictionary<string, object?> { ["requested"] = requested, ["exported"] = exported, ["failed"] = requested - exported, ["reason"] = reason },
+    };
+
+    /// <summary>Nombre maximal d'identifiants cités dans le détail de ELEMENT_WITHOUT_ROOM.</summary>
+    private const int MaxListedElements = 50;
+
+    private static AnomalyDto ElementsFailure(string kind, string reason) => new()
+    {
+        Code = DocumentAnomalyCodes.ElementsCollectionFailed,
+        Severity = AnomalySeverity.Warning,
+        Scope = AnomalyScope.Document,
+        ElementId = null,
+        Message = $"Collecte « {kind} » impossible ; tableau absent des pièces.",
+        Details = new Dictionary<string, object?> { ["kind"] = kind, ["reason"] = reason },
+    };
+
+    private static RoomDto WithElements(RoomDto room, ElementKind kind, IReadOnlyList<RoomElementDto> elements) => kind switch
+    {
+        ElementKind.Doors => room with { Doors = elements },
+        ElementKind.Equipment => room with { Equipment = elements },
+        _ => room with { Terminals = elements },
+    };
+
     /// <summary>Pièce réduite à son identité, champs illisibles à null (section 6).</summary>
     /// <summary>Pièce en erreur : identité seule ; une entrée null par clé de mapping partagé (forme stable, EGR-10).</summary>
     private static RoomReadResult ExtractionErrorRoom(CollectedRoom room, IReadOnlyList<SharedParameterMapping> sharedParameters)
@@ -290,12 +683,22 @@ public sealed class RoomExtractionService
         IReadOnlyList<RoomDto> rooms,
         IReadOnlyList<AnomalyDto> anomalies,
         int roomsCollected,
-        IReadOnlyList<GlobalError> errors)
+        IReadOnlyList<GlobalError> errors,
+        ImagesSummary? images = null,
+        HeightsSummary? heights = null)
     {
         var options = new AppliedOptions(
             settings?.PhaseIds,
             settings?.VolumeMode ?? VolumeMode.Preserve,
-            settings?.SharedParameters.Select(p => p.Key).ToList() ?? []);
+            settings?.SharedParameters.Select(p => p.Key).ToList() ?? [],
+            settings?.RoomParameters == RoomParametersMode.All ? "all" : null,
+            settings is { Elements.Count: > 0 } ? settings.Elements.Select(ElementKinds.ToName).ToList() : null,
+            settings is { RoomImages: true } ? true : null,
+            settings is { RoomImages: true } ? settings.ImageWidthPx : null,
+            settings is { RoomHeights: true } ? true : null,
+            settings is { RoomHeights: true } ? settings.HeightStepM : null,
+            settings is { LinkedElements: false } ? false : null,
+            settings is { OutputFormat: not OutputFormat.Contract } ? (settings.OutputFormat == OutputFormat.Trc ? "trc" : "both") : null);
 
         return new ExtractionResult
         {
@@ -313,6 +716,8 @@ public sealed class RoomExtractionService
                     ? null
                     : new VolumeComputationSummary(volumeState.DocumentComputeVolumes, volumeState.ComputeApplied, volumeState.TransactionRolledBack),
                 Counts = new RoomCounts(roomsCollected, rooms.Count, rooms.Count(r => r.QualityFlags.Count > 0)),
+                Images = images,
+                Heights = heights,
                 Status = status,
                 Errors = errors,
             },

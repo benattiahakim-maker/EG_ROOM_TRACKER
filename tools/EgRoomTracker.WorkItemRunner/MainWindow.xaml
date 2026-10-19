@@ -139,17 +139,9 @@
                   <RowDefinition Height="8" />
                   <RowDefinition Height="*" />
                 </Grid.RowDefinitions>
-                <DataGrid ItemsSource="{Binding Result.Rooms}" AutoGenerateColumns="False" IsReadOnly="True" HeadersVisibility="Column">
-                  <DataGrid.Columns>
-                    <DataGridTextColumn Header="N°" Binding="{Binding Number}" Width="70" />
-                    <DataGridTextColumn Header="Nom" Binding="{Binding Name}" Width="*" />
-                    <DataGridTextColumn Header="Niveau" Binding="{Binding Level}" Width="90" />
-                    <DataGridTextColumn Header="Surface m²" Binding="{Binding AreaM2}" Width="90" />
-                    <DataGridTextColumn Header="Volume m³" Binding="{Binding VolumeM3}" Width="90" />
-                    <DataGridTextColumn Header="Phase" Binding="{Binding Phase}" Width="120" />
-                    <DataGridTextColumn Header="Indicateurs" Binding="{Binding QualityFlags}" Width="160" />
-                  </DataGrid.Columns>
-                </DataGrid>
+                <!-- Colonnes générées depuis les clés de rooms[] du result.json (MainWindow.xaml.cs) -->
+                <DataGrid x:Name="RoomsGrid" AutoGenerateColumns="False" IsReadOnly="True" HeadersVisibility="Column"
+                          CanUserSortColumns="True" />
                 <DataGrid Grid.Row="2" ItemsSource="{Binding Result.Anomalies}" AutoGenerateColumns="False" IsReadOnly="True" HeadersVisibility="Column">
                   <DataGrid.Columns>
                     <DataGridTextColumn Header="Code" Binding="{Binding Code}" Width="180" />

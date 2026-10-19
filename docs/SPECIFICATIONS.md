@@ -46,28 +46,30 @@ Sortie : **un seul fichier `result.json`**, paramètre de sortie de l'Activity, 
 
 ## 3. Données des pièces
 
+Les clés du JSON sont en français (snake_case, unité en suffixe : `_m`, `_m2`, `_m3`) ; le haut du fichier (`schemaVersion`, `summary`, `rooms`, `anomalies`) et l'`elementId` des anomalies gardent leurs noms. Voir le CHANGELOG pour la liste complète des noms de `rooms[]`.
+
 Collecter les instances `Autodesk.Revit.DB.Architecture.Room`, catégorie `OST_Rooms`, sans filtre dépendant de la vue active. Ne pas confondre pièces, espaces MEP, surfaces ou étiquettes.
 
 | Champ | Type JSON | Source et règle |
 | --- | --- | --- |
-| `elementId` | chaîne | `ElementId.Value`, exporté comme chaîne pour préserver l'identifiant entier |
-| `uniqueId` | chaîne | `Element.UniqueId`, rattaché au document décrit par `summary.source` ; ne pas utiliser le numéro de pièce comme clé |
-| `name` | chaîne ou null | Paramètre natif `ROOM_NAME` ; éviter un nom qui concatène nom et numéro |
-| `number` | chaîne ou null | `Room.Number`, chaîne conservant les zéros initiaux |
-| `areaM2` | nombre ou null | `Room.Area`, conversion par `UnitUtils` vers m² |
-| `unboundedHeightM` | nombre ou null | `Room.UnboundedHeight`, conversion vers mètres ; hauteur non bornée, pas hauteur libre sous plafond |
-| `level` | objet ou null | `Room.LevelId` puis niveau du document : `elementId`, `uniqueId`, `name` ; null si introuvable (`LEVEL_NOT_FOUND`) |
-| `occupancy` | chaîne ou null | `ROOM_OCCUPANCY` : usage/occupation textuel, pas nombre d'occupants |
-| `volumeM3` | nombre ou null | `Room.Volume`, conversion vers m³ ; null sauf si `volumeStatus` = `computed` |
-| `volumeStatus` | énumération | `computed`, `notComputed` (calcul désactivé dans le document, mode `preserve`) ou `notAvailable` (pièce non placée, lecture impossible, erreur de pièce ou échec du calcul temporaire en mode `compute`) |
-| `finishes.floor` | chaîne ou null | `ROOM_FINISH_FLOOR` |
-| `finishes.wall` | chaîne ou null | `ROOM_FINISH_WALL` |
-| `finishes.ceiling` | chaîne ou null | `ROOM_FINISH_CEILING` |
-| `finishes.base` | chaîne ou null | `ROOM_FINISH_BASE`, finition des plinthes |
-| `phase` | objet ou null | `elementId` et `name` de la phase de la pièce |
-| `designOption` | objet ou null | `elementId` et `name` de la variante lorsque applicable |
-| `sharedParameters` | objet | Une entrée par clé de mapping : `guid` (provenance) et `value` |
-| `qualityFlags` | tableau | Codes d'anomalie de la pièce (section 9.1) ; détails dans `anomalies` |
+| `id_revit` | chaîne | `ElementId.Value`, exporté comme chaîne pour préserver l'identifiant entier |
+| `unique_id` | chaîne | `Element.UniqueId`, rattaché au document décrit par `summary.source` ; ne pas utiliser le numéro de pièce comme clé |
+| `nom` | chaîne ou null | Paramètre natif `ROOM_NAME` ; éviter un nom qui concatène nom et numéro |
+| `numero` | chaîne ou null | `Room.Number`, chaîne conservant les zéros initiaux |
+| `surface_m2` | nombre ou null | `Room.Area`, conversion par `UnitUtils` vers m² |
+| `hauteur_non_limitee_m` | nombre ou null | `Room.UnboundedHeight`, conversion vers mètres ; hauteur non bornée, pas hauteur libre sous plafond |
+| `niveau` | objet ou null | `Room.LevelId` puis niveau du document : `id_revit`, `unique_id`, `nom` ; null si introuvable (`LEVEL_NOT_FOUND`) |
+| `occupation` | chaîne ou null | `ROOM_OCCUPANCY` : usage/occupation textuel, pas nombre d'occupants |
+| `volume_m3` | nombre ou null | `Room.Volume`, conversion vers m³ ; null sauf si `statut_volume` = `computed` |
+| `statut_volume` | énumération | `computed`, `notComputed` (calcul désactivé dans le document, mode `preserve`) ou `notAvailable` (pièce non placée, lecture impossible, erreur de pièce ou échec du calcul temporaire en mode `compute`) |
+| `finitions.sol` | chaîne ou null | `ROOM_FINISH_FLOOR` |
+| `finitions.murs` | chaîne ou null | `ROOM_FINISH_WALL` |
+| `finitions.plafond` | chaîne ou null | `ROOM_FINISH_CEILING` |
+| `finitions.plinthe` | chaîne ou null | `ROOM_FINISH_BASE`, finition des plinthes |
+| `phase` | objet ou null | `id_revit` et `nom` de la phase de la pièce |
+| `variante` | objet ou null | `id_revit` et `nom` de la variante lorsque applicable |
+| `parametres_partages` | objet | Une entrée par clé de mapping : `guid` (provenance) et `valeur` |
+| `indicateurs_qualite` | tableau | Codes d'anomalie de la pièce (section 9.1) ; détails dans `anomalies` |
 
 Les finitions sont les textes renseignés sur la pièce, sans inférence depuis les murs, sols ou plafonds. Utiliser des identifiants de paramètres natifs et les GUID pour les paramètres partagés ; aucun mapping principal basé sur les libellés français/anglais. Ne pas employer `AsValueString()` pour sérialiser les quantités numériques.
 
@@ -147,12 +149,12 @@ Livrables : solution C#, tests unitaires du cœur, documentation de build et ex�
 
 ### 9.1 Indicateurs qualité et anomalies
 
-Les codes de portée pièce figurent dans `rooms[].qualityFlags` et sont détaillés, avec l'`elementId`, dans `anomalies`. Les codes de portée document figurent uniquement dans `anomalies`, avec `elementId: null`. Aucun de ces codes ne provoque d'échec global.
+Les codes de portée pièce figurent dans `rooms[].indicateurs_qualite` et sont détaillés, avec l'`elementId`, dans `anomalies`. Les codes de portée document figurent uniquement dans `anomalies`, avec `elementId: null`. Aucun de ces codes ne provoque d'échec global.
 
 | Code | Portée | Sévérité | Déclenchement | `details` | Produit par |
 | --- | --- | --- | --- | --- | --- |
 | `UNPLACED` | pièce | warning | Absence de placement vérifiée (`Location` nulle) ; surface lue conservée | `locationIsNull` | lecture (EGR-08/09) |
-| `ZERO_AREA` | pièce | warning | `areaM2 == 0` (pas `null`) sur une pièce sans `UNPLACED` (non fermée ou redondante) | `areaM2` | qualité (EGR-11) |
+| `ZERO_AREA` | pièce | warning | `areaM2 == 0` (pas `null`) sur une pièce sans `UNPLACED` (non fermée ou redondante) | `surface_m2` | qualité (EGR-11) |
 | `DUPLICATE_NUMBER` | pièce | warning | Même `number` (comparaison exacte, `"001"` ≠ `"1"`) et même phase (`phase.elementId`), sauf deux pièces de variantes différentes d'un même jeu (mutuellement exclusives) ; modèle principal comparé à toutes les pièces de la phase ; variantes de jeux différents comparées ; les pièces sans phase forment un même groupe ; numéros `""` ou `null` ignorés ; posé sur chaque pièce en conflit ; jeu d'options illisible pour une paire de variantes différentes : doublon signalé avec `optionSetUnknown: true` et ligne de log `DUPLICATE_OPTION_SET_UNKNOWN` (cas de recette dans [`docs/RECETTE.md`](RECETTE.md)) | `number`, `elementIds` (la pièce et celles en conflit avec elle, tri numérique), `optionSetUnknown` (`true`, seulement si le conflit repose sur un jeu inconnu) | qualité (EGR-11) |
 | `MISSING_PARAMETER` | pièce | warning | Paramètre natif ou partagé attendu absent de la pièce | `parameter` (nom du `BuiltInParameter` ou clé du mapping), `guid` pour un paramètre partagé | lecture (EGR-08/10) |
 | `LEVEL_NOT_FOUND` | pièce | warning | `LevelId` invalide ou niveau introuvable ; `level: null` | `levelId` (chaîne ou null) | lecture (EGR-08) |
@@ -167,7 +169,7 @@ Les codes de portée pièce figurent dans `rooms[].qualityFlags` et sont détail
 
 Codes de référence : `QualityFlagCodes` et `DocumentAnomalyCodes` (`src/Contracts/Codes/QualityFlagCodes.cs`), identiques aux énumérations `qualityFlag` et `documentAnomalyCode` du schéma (vérifié par les tests de contrat).
 
-Ordre : `qualityFlags` sans doublon, indicateurs de lecture puis `ZERO_AREA` et `DUPLICATE_NUMBER` ; `anomalies` = anomalies document (ouverture, paramètres partagés, puis `VOLUME_NOT_COMPUTED` ou `VOLUME_COMPUTE_FAILED`), puis anomalies de pièce dans l'ordre des pièces (lecture puis qualité). Détail : [`docs/QUALITE.md`](QUALITE.md).
+Ordre : `indicateurs_qualite` sans doublon, indicateurs de lecture puis `ZERO_AREA` et `DUPLICATE_NUMBER` ; `anomalies` = anomalies document (ouverture, paramètres partagés, puis `VOLUME_NOT_COMPUTED` ou `VOLUME_COMPUTE_FAILED`), puis anomalies de pièce dans l'ordre des pièces (lecture puis qualité). Détail : [`docs/QUALITE.md`](QUALITE.md).
 
 ### 9.2 Erreurs globales
 

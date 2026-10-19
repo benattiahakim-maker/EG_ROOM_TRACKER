@@ -32,9 +32,9 @@ public class UnitConversionTests
 
         var r = Serialize(room)["rooms"]![0]!;
 
-        Assert.Equal(area, r["areaM2"]!.GetValue<double>());
-        Assert.Equal(height, r["unboundedHeightM"]!.GetValue<double>());
-        Assert.Equal(volume, r["volumeM3"]!.GetValue<double>());
+        Assert.Equal(area, r["surface_m2"]!.GetValue<double>());
+        Assert.Equal(height, r["hauteur_non_limitee_m"]!.GetValue<double>());
+        Assert.Equal(volume, r["volume_m3"]!.GetValue<double>());
     }
 
     [Fact]
@@ -51,11 +51,11 @@ public class UnitConversionTests
         var json = Serialize(room);
 
         var r = json["rooms"]![0]!;
-        Assert.Equal(JsonValueKind.Number, r["areaM2"]!.GetValueKind());
-        Assert.Equal(0d, r["areaM2"]!.GetValue<double>());
-        Assert.Equal(0d, r["volumeM3"]!.GetValue<double>());
-        Assert.True(r.AsObject().ContainsKey("unboundedHeightM"));
-        Assert.Null(r["unboundedHeightM"]);
+        Assert.Equal(JsonValueKind.Number, r["surface_m2"]!.GetValueKind());
+        Assert.Equal(0d, r["surface_m2"]!.GetValue<double>());
+        Assert.Equal(0d, r["volume_m3"]!.GetValue<double>());
+        Assert.True(r.AsObject().ContainsKey("hauteur_non_limitee_m"));
+        Assert.Null(r["hauteur_non_limitee_m"]);
         ResultSchema.AssertValid(json);
     }
 

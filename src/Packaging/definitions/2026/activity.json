@@ -2,7 +2,7 @@
   "id": "ExtractRooms_R2026",
   "engine": "Autodesk.Revit+2026",
   "commandLine": [
-    "$(engine.path)\\\\revitcoreconsole.exe /al \"$(appbundles[EgRoomTracker_R2026].path)\""
+    "$(engine.path)\\\\revitcoreconsole.exe /al \"$(appbundles[EgRoomTracker_R2026].path)\" /l FRA"
   ],
   "appbundles": [
     "{{NICKNAME}}.EgRoomTracker_R2026+{{APPBUNDLE_ALIAS}}"
@@ -25,12 +25,12 @@
       "localName": "settings.json"
     },
     "result": {
-      "zip": false,
+      "zip": true,
       "ondemand": false,
       "verb": "put",
-      "description": "Résultat unique result.json (docs/schema/result.schema.json)",
+      "description": "Dossier result/ zippé : result.json (docs/schema/result.schema.json) et, avec roomImages, le dossier Images/ (vues 3D des pièces)",
       "required": true,
-      "localName": "result.json"
+      "localName": "result"
     }
   },
   "description": "EG_ROOM_TRACKER : extraction des pièces (Revit 2026), sans /i (décision D1)"

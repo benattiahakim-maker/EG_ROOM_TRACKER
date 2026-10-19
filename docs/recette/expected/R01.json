@@ -1,5 +1,5 @@
 {
-  "schemaVersion": "1.3",
+  "schemaVersion": "1.4",
   "summary": {
     "correlationId": "recette-R01",
     "extractorVersion": "0.1.0",
@@ -44,1086 +44,1086 @@
   },
   "rooms": [
     {
-      "elementId": "9000101",
-      "uniqueId": "EGR18-P01",
-      "name": "Bureau d'étude",
-      "number": "001",
-      "areaM2": 20.0,
-      "unboundedHeightM": 2.7,
-      "level": {
-        "elementId": "9000001",
-        "uniqueId": "EGR18-NIVEAU-R+0",
-        "name": "R+0"
+      "id_revit": "9000101",
+      "unique_id": "EGR18-P01",
+      "nom": "Bureau d'étude",
+      "numero": "001",
+      "surface_m2": 20.0,
+      "hauteur_non_limitee_m": 2.7,
+      "niveau": {
+        "id_revit": "9000001",
+        "unique_id": "EGR18-NIVEAU-R+0",
+        "nom": "R+0"
       },
-      "occupancy": "Bureau",
-      "volumeM3": null,
-      "volumeStatus": "notComputed",
-      "finishes": {
-        "floor": "Parquet chêne",
-        "wall": "Peinture blanche",
-        "ceiling": "Faux plafond 60×60",
-        "base": "Plinthe bois"
+      "occupation": "Bureau",
+      "volume_m3": null,
+      "statut_volume": "notComputed",
+      "finitions": {
+        "sol": "Parquet chêne",
+        "murs": "Peinture blanche",
+        "plafond": "Faux plafond 60×60",
+        "plinthe": "Plinthe bois"
       },
       "phase": {
-        "elementId": "9000012",
-        "name": "Nouvelle construction"
+        "id_revit": "9000012",
+        "nom": "Nouvelle construction"
       },
-      "designOption": null,
-      "sharedParameters": {
+      "variante": null,
+      "parametres_partages": {
         "texte": {
           "guid": "cb4b0672-757b-4a76-87ae-7e37cc266035",
-          "value": "A-001"
+          "valeur": "A-001"
         },
         "entier": {
           "guid": "ae35a261-77c1-455b-8e4d-f65999306f6f",
-          "value": 42
+          "valeur": 42
         },
         "nombre": {
           "guid": "b747d301-23b1-47f7-bbb9-a09fa4147731",
-          "value": 3.5
+          "valeur": 3.5
         },
         "longueur": {
           "guid": "a1be583b-a4ea-4794-8151-1a9b115c5a8a",
-          "value": 1.25
+          "valeur": 1.25
         },
         "surface": {
           "guid": "bf1f9fc0-84f2-45a3-b7d1-bd70b04d445f",
-          "value": 12.5
+          "valeur": 12.5
         },
         "volume": {
           "guid": "90dd40a1-a42c-4daa-aac7-25200f273c50",
-          "value": 2.4
+          "valeur": 2.4
         },
         "ouiNon": {
           "guid": "49261c8b-d425-45e6-a969-bce44e9ae681",
-          "value": 1
+          "valeur": 1
         },
         "angle": {
           "guid": "bc7bf97e-4d2c-43e5-beb6-2cefd5617aa9",
-          "value": null
+          "valeur": null
         }
       },
-      "qualityFlags": [
+      "indicateurs_qualite": [
         "DUPLICATE_NUMBER"
       ]
     },
     {
-      "elementId": "9000102",
-      "uniqueId": "EGR18-P02",
-      "name": "Salle de réunion « Été »",
-      "number": "0010",
-      "areaM2": 12.0,
-      "unboundedHeightM": 2.7,
-      "level": {
-        "elementId": "9000001",
-        "uniqueId": "EGR18-NIVEAU-R+0",
-        "name": "R+0"
+      "id_revit": "9000102",
+      "unique_id": "EGR18-P02",
+      "nom": "Salle de réunion « Été »",
+      "numero": "0010",
+      "surface_m2": 12.0,
+      "hauteur_non_limitee_m": 2.7,
+      "niveau": {
+        "id_revit": "9000001",
+        "unique_id": "EGR18-NIVEAU-R+0",
+        "nom": "R+0"
       },
-      "occupancy": "Réunion",
-      "volumeM3": null,
-      "volumeStatus": "notComputed",
-      "finishes": {
-        "floor": "Moquette",
-        "wall": "Enduit à la chaux",
-        "ceiling": "Dalles acoustiques",
-        "base": "Plinthe carrelage"
+      "occupation": "Réunion",
+      "volume_m3": null,
+      "statut_volume": "notComputed",
+      "finitions": {
+        "sol": "Moquette",
+        "murs": "Enduit à la chaux",
+        "plafond": "Dalles acoustiques",
+        "plinthe": "Plinthe carrelage"
       },
       "phase": {
-        "elementId": "9000012",
-        "name": "Nouvelle construction"
+        "id_revit": "9000012",
+        "nom": "Nouvelle construction"
       },
-      "designOption": null,
-      "sharedParameters": {
+      "variante": null,
+      "parametres_partages": {
         "texte": {
           "guid": "cb4b0672-757b-4a76-87ae-7e37cc266035",
-          "value": "Œuvre-ÀÉÎÕÜ-ç-ß"
+          "valeur": "Œuvre-ÀÉÎÕÜ-ç-ß"
         },
         "entier": {
           "guid": "ae35a261-77c1-455b-8e4d-f65999306f6f",
-          "value": 0
+          "valeur": 0
         },
         "nombre": {
           "guid": "b747d301-23b1-47f7-bbb9-a09fa4147731",
-          "value": 0
+          "valeur": 0
         },
         "longueur": {
           "guid": "a1be583b-a4ea-4794-8151-1a9b115c5a8a",
-          "value": 0
+          "valeur": 0
         },
         "surface": {
           "guid": "bf1f9fc0-84f2-45a3-b7d1-bd70b04d445f",
-          "value": 0
+          "valeur": 0
         },
         "volume": {
           "guid": "90dd40a1-a42c-4daa-aac7-25200f273c50",
-          "value": 0
+          "valeur": 0
         },
         "ouiNon": {
           "guid": "49261c8b-d425-45e6-a969-bce44e9ae681",
-          "value": 0
+          "valeur": 0
         },
         "angle": {
           "guid": "bc7bf97e-4d2c-43e5-beb6-2cefd5617aa9",
-          "value": null
+          "valeur": null
         }
       },
-      "qualityFlags": []
+      "indicateurs_qualite": []
     },
     {
-      "elementId": "9000103",
-      "uniqueId": "EGR18-P03",
-      "name": "Local technique",
-      "number": "002",
-      "areaM2": 6.0,
-      "unboundedHeightM": 2.7,
-      "level": {
-        "elementId": "9000001",
-        "uniqueId": "EGR18-NIVEAU-R+0",
-        "name": "R+0"
+      "id_revit": "9000103",
+      "unique_id": "EGR18-P03",
+      "nom": "Local technique",
+      "numero": "002",
+      "surface_m2": 6.0,
+      "hauteur_non_limitee_m": 2.7,
+      "niveau": {
+        "id_revit": "9000001",
+        "unique_id": "EGR18-NIVEAU-R+0",
+        "nom": "R+0"
       },
-      "occupancy": null,
-      "volumeM3": null,
-      "volumeStatus": "notComputed",
-      "finishes": {
-        "floor": "Résine",
-        "wall": "",
-        "ceiling": "Brut",
-        "base": null
+      "occupation": null,
+      "volume_m3": null,
+      "statut_volume": "notComputed",
+      "finitions": {
+        "sol": "Résine",
+        "murs": "",
+        "plafond": "Brut",
+        "plinthe": null
       },
       "phase": {
-        "elementId": "9000012",
-        "name": "Nouvelle construction"
+        "id_revit": "9000012",
+        "nom": "Nouvelle construction"
       },
-      "designOption": null,
-      "sharedParameters": {
+      "variante": null,
+      "parametres_partages": {
         "texte": {
           "guid": "cb4b0672-757b-4a76-87ae-7e37cc266035",
-          "value": ""
+          "valeur": ""
         },
         "entier": {
           "guid": "ae35a261-77c1-455b-8e4d-f65999306f6f",
-          "value": null
+          "valeur": null
         },
         "nombre": {
           "guid": "b747d301-23b1-47f7-bbb9-a09fa4147731",
-          "value": null
+          "valeur": null
         },
         "longueur": {
           "guid": "a1be583b-a4ea-4794-8151-1a9b115c5a8a",
-          "value": null
+          "valeur": null
         },
         "surface": {
           "guid": "bf1f9fc0-84f2-45a3-b7d1-bd70b04d445f",
-          "value": null
+          "valeur": null
         },
         "volume": {
           "guid": "90dd40a1-a42c-4daa-aac7-25200f273c50",
-          "value": null
+          "valeur": null
         },
         "ouiNon": {
           "guid": "49261c8b-d425-45e6-a969-bce44e9ae681",
-          "value": null
+          "valeur": null
         },
         "angle": {
           "guid": "bc7bf97e-4d2c-43e5-beb6-2cefd5617aa9",
-          "value": null
+          "valeur": null
         }
       },
-      "qualityFlags": []
+      "indicateurs_qualite": []
     },
     {
-      "elementId": "9000104",
-      "uniqueId": "EGR18-P04",
-      "name": "Réserve",
-      "number": "001",
-      "areaM2": 0,
-      "unboundedHeightM": 2.7,
-      "level": {
-        "elementId": "9000001",
-        "uniqueId": "EGR18-NIVEAU-R+0",
-        "name": "R+0"
+      "id_revit": "9000104",
+      "unique_id": "EGR18-P04",
+      "nom": "Réserve",
+      "numero": "001",
+      "surface_m2": 0,
+      "hauteur_non_limitee_m": 2.7,
+      "niveau": {
+        "id_revit": "9000001",
+        "unique_id": "EGR18-NIVEAU-R+0",
+        "nom": "R+0"
       },
-      "occupancy": "Stockage",
-      "volumeM3": null,
-      "volumeStatus": "notComputed",
-      "finishes": {
-        "floor": null,
-        "wall": null,
-        "ceiling": null,
-        "base": null
+      "occupation": "Stockage",
+      "volume_m3": null,
+      "statut_volume": "notComputed",
+      "finitions": {
+        "sol": null,
+        "murs": null,
+        "plafond": null,
+        "plinthe": null
       },
       "phase": {
-        "elementId": "9000012",
-        "name": "Nouvelle construction"
+        "id_revit": "9000012",
+        "nom": "Nouvelle construction"
       },
-      "designOption": null,
-      "sharedParameters": {
+      "variante": null,
+      "parametres_partages": {
         "texte": {
           "guid": "cb4b0672-757b-4a76-87ae-7e37cc266035",
-          "value": "R-001"
+          "valeur": "R-001"
         },
         "entier": {
           "guid": "ae35a261-77c1-455b-8e4d-f65999306f6f",
-          "value": null
+          "valeur": null
         },
         "nombre": {
           "guid": "b747d301-23b1-47f7-bbb9-a09fa4147731",
-          "value": null
+          "valeur": null
         },
         "longueur": {
           "guid": "a1be583b-a4ea-4794-8151-1a9b115c5a8a",
-          "value": null
+          "valeur": null
         },
         "surface": {
           "guid": "bf1f9fc0-84f2-45a3-b7d1-bd70b04d445f",
-          "value": null
+          "valeur": null
         },
         "volume": {
           "guid": "90dd40a1-a42c-4daa-aac7-25200f273c50",
-          "value": null
+          "valeur": null
         },
         "ouiNon": {
           "guid": "49261c8b-d425-45e6-a969-bce44e9ae681",
-          "value": null
+          "valeur": null
         },
         "angle": {
           "guid": "bc7bf97e-4d2c-43e5-beb6-2cefd5617aa9",
-          "value": null
+          "valeur": null
         }
       },
-      "qualityFlags": [
+      "indicateurs_qualite": [
         "UNPLACED",
         "DUPLICATE_NUMBER"
       ]
     },
     {
-      "elementId": "9000105",
-      "uniqueId": "EGR18-P05",
-      "name": "Couloir",
-      "number": "003",
-      "areaM2": 0,
-      "unboundedHeightM": 2.7,
-      "level": {
-        "elementId": "9000001",
-        "uniqueId": "EGR18-NIVEAU-R+0",
-        "name": "R+0"
+      "id_revit": "9000105",
+      "unique_id": "EGR18-P05",
+      "nom": "Couloir",
+      "numero": "003",
+      "surface_m2": 0,
+      "hauteur_non_limitee_m": 2.7,
+      "niveau": {
+        "id_revit": "9000001",
+        "unique_id": "EGR18-NIVEAU-R+0",
+        "nom": "R+0"
       },
-      "occupancy": "Circulation",
-      "volumeM3": null,
-      "volumeStatus": "notComputed",
-      "finishes": {
-        "floor": null,
-        "wall": null,
-        "ceiling": null,
-        "base": null
+      "occupation": "Circulation",
+      "volume_m3": null,
+      "statut_volume": "notComputed",
+      "finitions": {
+        "sol": null,
+        "murs": null,
+        "plafond": null,
+        "plinthe": null
       },
       "phase": {
-        "elementId": "9000012",
-        "name": "Nouvelle construction"
+        "id_revit": "9000012",
+        "nom": "Nouvelle construction"
       },
-      "designOption": null,
-      "sharedParameters": {
+      "variante": null,
+      "parametres_partages": {
         "texte": {
           "guid": "cb4b0672-757b-4a76-87ae-7e37cc266035",
-          "value": null
+          "valeur": null
         },
         "entier": {
           "guid": "ae35a261-77c1-455b-8e4d-f65999306f6f",
-          "value": null
+          "valeur": null
         },
         "nombre": {
           "guid": "b747d301-23b1-47f7-bbb9-a09fa4147731",
-          "value": null
+          "valeur": null
         },
         "longueur": {
           "guid": "a1be583b-a4ea-4794-8151-1a9b115c5a8a",
-          "value": null
+          "valeur": null
         },
         "surface": {
           "guid": "bf1f9fc0-84f2-45a3-b7d1-bd70b04d445f",
-          "value": null
+          "valeur": null
         },
         "volume": {
           "guid": "90dd40a1-a42c-4daa-aac7-25200f273c50",
-          "value": null
+          "valeur": null
         },
         "ouiNon": {
           "guid": "49261c8b-d425-45e6-a969-bce44e9ae681",
-          "value": null
+          "valeur": null
         },
         "angle": {
           "guid": "bc7bf97e-4d2c-43e5-beb6-2cefd5617aa9",
-          "value": null
+          "valeur": null
         }
       },
-      "qualityFlags": [
+      "indicateurs_qualite": [
         "ZERO_AREA"
       ]
     },
     {
-      "elementId": "9000106",
-      "uniqueId": "EGR18-P06",
-      "name": "Archives",
-      "number": "1",
-      "areaM2": 4.0,
-      "unboundedHeightM": 2.7,
-      "level": {
-        "elementId": "9000001",
-        "uniqueId": "EGR18-NIVEAU-R+0",
-        "name": "R+0"
+      "id_revit": "9000106",
+      "unique_id": "EGR18-P06",
+      "nom": "Archives",
+      "numero": "1",
+      "surface_m2": 4.0,
+      "hauteur_non_limitee_m": 2.7,
+      "niveau": {
+        "id_revit": "9000001",
+        "unique_id": "EGR18-NIVEAU-R+0",
+        "nom": "R+0"
       },
-      "occupancy": "Archives",
-      "volumeM3": null,
-      "volumeStatus": "notComputed",
-      "finishes": {
-        "floor": null,
-        "wall": null,
-        "ceiling": null,
-        "base": null
+      "occupation": "Archives",
+      "volume_m3": null,
+      "statut_volume": "notComputed",
+      "finitions": {
+        "sol": null,
+        "murs": null,
+        "plafond": null,
+        "plinthe": null
       },
       "phase": {
-        "elementId": "9000012",
-        "name": "Nouvelle construction"
+        "id_revit": "9000012",
+        "nom": "Nouvelle construction"
       },
-      "designOption": null,
-      "sharedParameters": {
+      "variante": null,
+      "parametres_partages": {
         "texte": {
           "guid": "cb4b0672-757b-4a76-87ae-7e37cc266035",
-          "value": null
+          "valeur": null
         },
         "entier": {
           "guid": "ae35a261-77c1-455b-8e4d-f65999306f6f",
-          "value": null
+          "valeur": null
         },
         "nombre": {
           "guid": "b747d301-23b1-47f7-bbb9-a09fa4147731",
-          "value": null
+          "valeur": null
         },
         "longueur": {
           "guid": "a1be583b-a4ea-4794-8151-1a9b115c5a8a",
-          "value": null
+          "valeur": null
         },
         "surface": {
           "guid": "bf1f9fc0-84f2-45a3-b7d1-bd70b04d445f",
-          "value": null
+          "valeur": null
         },
         "volume": {
           "guid": "90dd40a1-a42c-4daa-aac7-25200f273c50",
-          "value": null
+          "valeur": null
         },
         "ouiNon": {
           "guid": "49261c8b-d425-45e6-a969-bce44e9ae681",
-          "value": null
+          "valeur": null
         },
         "angle": {
           "guid": "bc7bf97e-4d2c-43e5-beb6-2cefd5617aa9",
-          "value": null
+          "valeur": null
         }
       },
-      "qualityFlags": []
+      "indicateurs_qualite": []
     },
     {
-      "elementId": "9000107",
-      "uniqueId": "EGR18-P07",
-      "name": "Dégagement",
-      "number": "",
-      "areaM2": 3.0,
-      "unboundedHeightM": 2.7,
-      "level": {
-        "elementId": "9000001",
-        "uniqueId": "EGR18-NIVEAU-R+0",
-        "name": "R+0"
+      "id_revit": "9000107",
+      "unique_id": "EGR18-P07",
+      "nom": "Dégagement",
+      "numero": "",
+      "surface_m2": 3.0,
+      "hauteur_non_limitee_m": 2.7,
+      "niveau": {
+        "id_revit": "9000001",
+        "unique_id": "EGR18-NIVEAU-R+0",
+        "nom": "R+0"
       },
-      "occupancy": null,
-      "volumeM3": null,
-      "volumeStatus": "notComputed",
-      "finishes": {
-        "floor": null,
-        "wall": null,
-        "ceiling": null,
-        "base": null
+      "occupation": null,
+      "volume_m3": null,
+      "statut_volume": "notComputed",
+      "finitions": {
+        "sol": null,
+        "murs": null,
+        "plafond": null,
+        "plinthe": null
       },
       "phase": {
-        "elementId": "9000012",
-        "name": "Nouvelle construction"
+        "id_revit": "9000012",
+        "nom": "Nouvelle construction"
       },
-      "designOption": null,
-      "sharedParameters": {
+      "variante": null,
+      "parametres_partages": {
         "texte": {
           "guid": "cb4b0672-757b-4a76-87ae-7e37cc266035",
-          "value": null
+          "valeur": null
         },
         "entier": {
           "guid": "ae35a261-77c1-455b-8e4d-f65999306f6f",
-          "value": null
+          "valeur": null
         },
         "nombre": {
           "guid": "b747d301-23b1-47f7-bbb9-a09fa4147731",
-          "value": null
+          "valeur": null
         },
         "longueur": {
           "guid": "a1be583b-a4ea-4794-8151-1a9b115c5a8a",
-          "value": null
+          "valeur": null
         },
         "surface": {
           "guid": "bf1f9fc0-84f2-45a3-b7d1-bd70b04d445f",
-          "value": null
+          "valeur": null
         },
         "volume": {
           "guid": "90dd40a1-a42c-4daa-aac7-25200f273c50",
-          "value": null
+          "valeur": null
         },
         "ouiNon": {
           "guid": "49261c8b-d425-45e6-a969-bce44e9ae681",
-          "value": null
+          "valeur": null
         },
         "angle": {
           "guid": "bc7bf97e-4d2c-43e5-beb6-2cefd5617aa9",
-          "value": null
+          "valeur": null
         }
       },
-      "qualityFlags": []
+      "indicateurs_qualite": []
     },
     {
-      "elementId": "9000108",
-      "uniqueId": "EGR18-P08",
-      "name": "Placard",
-      "number": "",
-      "areaM2": 1.0,
-      "unboundedHeightM": 2.7,
-      "level": {
-        "elementId": "9000001",
-        "uniqueId": "EGR18-NIVEAU-R+0",
-        "name": "R+0"
+      "id_revit": "9000108",
+      "unique_id": "EGR18-P08",
+      "nom": "Placard",
+      "numero": "",
+      "surface_m2": 1.0,
+      "hauteur_non_limitee_m": 2.7,
+      "niveau": {
+        "id_revit": "9000001",
+        "unique_id": "EGR18-NIVEAU-R+0",
+        "nom": "R+0"
       },
-      "occupancy": null,
-      "volumeM3": null,
-      "volumeStatus": "notComputed",
-      "finishes": {
-        "floor": null,
-        "wall": null,
-        "ceiling": null,
-        "base": null
+      "occupation": null,
+      "volume_m3": null,
+      "statut_volume": "notComputed",
+      "finitions": {
+        "sol": null,
+        "murs": null,
+        "plafond": null,
+        "plinthe": null
       },
       "phase": {
-        "elementId": "9000012",
-        "name": "Nouvelle construction"
+        "id_revit": "9000012",
+        "nom": "Nouvelle construction"
       },
-      "designOption": null,
-      "sharedParameters": {
+      "variante": null,
+      "parametres_partages": {
         "texte": {
           "guid": "cb4b0672-757b-4a76-87ae-7e37cc266035",
-          "value": null
+          "valeur": null
         },
         "entier": {
           "guid": "ae35a261-77c1-455b-8e4d-f65999306f6f",
-          "value": null
+          "valeur": null
         },
         "nombre": {
           "guid": "b747d301-23b1-47f7-bbb9-a09fa4147731",
-          "value": null
+          "valeur": null
         },
         "longueur": {
           "guid": "a1be583b-a4ea-4794-8151-1a9b115c5a8a",
-          "value": null
+          "valeur": null
         },
         "surface": {
           "guid": "bf1f9fc0-84f2-45a3-b7d1-bd70b04d445f",
-          "value": null
+          "valeur": null
         },
         "volume": {
           "guid": "90dd40a1-a42c-4daa-aac7-25200f273c50",
-          "value": null
+          "valeur": null
         },
         "ouiNon": {
           "guid": "49261c8b-d425-45e6-a969-bce44e9ae681",
-          "value": null
+          "valeur": null
         },
         "angle": {
           "guid": "bc7bf97e-4d2c-43e5-beb6-2cefd5617aa9",
-          "value": null
+          "valeur": null
         }
       },
-      "qualityFlags": []
+      "indicateurs_qualite": []
     },
     {
-      "elementId": "9000109",
-      "uniqueId": "EGR18-P09",
-      "name": "Sans attributs",
-      "number": "004",
-      "areaM2": 5.0,
-      "unboundedHeightM": 2.7,
-      "level": {
-        "elementId": "9000001",
-        "uniqueId": "EGR18-NIVEAU-R+0",
-        "name": "R+0"
+      "id_revit": "9000109",
+      "unique_id": "EGR18-P09",
+      "nom": "Sans attributs",
+      "numero": "004",
+      "surface_m2": 5.0,
+      "hauteur_non_limitee_m": 2.7,
+      "niveau": {
+        "id_revit": "9000001",
+        "unique_id": "EGR18-NIVEAU-R+0",
+        "nom": "R+0"
       },
-      "occupancy": null,
-      "volumeM3": null,
-      "volumeStatus": "notComputed",
-      "finishes": {
-        "floor": null,
-        "wall": null,
-        "ceiling": null,
-        "base": null
+      "occupation": null,
+      "volume_m3": null,
+      "statut_volume": "notComputed",
+      "finitions": {
+        "sol": null,
+        "murs": null,
+        "plafond": null,
+        "plinthe": null
       },
       "phase": {
-        "elementId": "9000012",
-        "name": "Nouvelle construction"
+        "id_revit": "9000012",
+        "nom": "Nouvelle construction"
       },
-      "designOption": null,
-      "sharedParameters": {
+      "variante": null,
+      "parametres_partages": {
         "texte": {
           "guid": "cb4b0672-757b-4a76-87ae-7e37cc266035",
-          "value": null
+          "valeur": null
         },
         "entier": {
           "guid": "ae35a261-77c1-455b-8e4d-f65999306f6f",
-          "value": null
+          "valeur": null
         },
         "nombre": {
           "guid": "b747d301-23b1-47f7-bbb9-a09fa4147731",
-          "value": null
+          "valeur": null
         },
         "longueur": {
           "guid": "a1be583b-a4ea-4794-8151-1a9b115c5a8a",
-          "value": null
+          "valeur": null
         },
         "surface": {
           "guid": "bf1f9fc0-84f2-45a3-b7d1-bd70b04d445f",
-          "value": null
+          "valeur": null
         },
         "volume": {
           "guid": "90dd40a1-a42c-4daa-aac7-25200f273c50",
-          "value": null
+          "valeur": null
         },
         "ouiNon": {
           "guid": "49261c8b-d425-45e6-a969-bce44e9ae681",
-          "value": null
+          "valeur": null
         },
         "angle": {
           "guid": "bc7bf97e-4d2c-43e5-beb6-2cefd5617aa9",
-          "value": null
+          "valeur": null
         }
       },
-      "qualityFlags": []
+      "indicateurs_qualite": []
     },
     {
-      "elementId": "9000110",
-      "uniqueId": "EGR18-P10",
-      "name": "Archives existantes",
-      "number": "001",
-      "areaM2": 9.0,
-      "unboundedHeightM": 2.7,
-      "level": {
-        "elementId": "9000001",
-        "uniqueId": "EGR18-NIVEAU-R+0",
-        "name": "R+0"
+      "id_revit": "9000110",
+      "unique_id": "EGR18-P10",
+      "nom": "Archives existantes",
+      "numero": "001",
+      "surface_m2": 9.0,
+      "hauteur_non_limitee_m": 2.7,
+      "niveau": {
+        "id_revit": "9000001",
+        "unique_id": "EGR18-NIVEAU-R+0",
+        "nom": "R+0"
       },
-      "occupancy": null,
-      "volumeM3": null,
-      "volumeStatus": "notComputed",
-      "finishes": {
-        "floor": null,
-        "wall": null,
-        "ceiling": null,
-        "base": null
+      "occupation": null,
+      "volume_m3": null,
+      "statut_volume": "notComputed",
+      "finitions": {
+        "sol": null,
+        "murs": null,
+        "plafond": null,
+        "plinthe": null
       },
       "phase": {
-        "elementId": "9000011",
-        "name": "Existant"
+        "id_revit": "9000011",
+        "nom": "Existant"
       },
-      "designOption": null,
-      "sharedParameters": {
+      "variante": null,
+      "parametres_partages": {
         "texte": {
           "guid": "cb4b0672-757b-4a76-87ae-7e37cc266035",
-          "value": null
+          "valeur": null
         },
         "entier": {
           "guid": "ae35a261-77c1-455b-8e4d-f65999306f6f",
-          "value": null
+          "valeur": null
         },
         "nombre": {
           "guid": "b747d301-23b1-47f7-bbb9-a09fa4147731",
-          "value": null
+          "valeur": null
         },
         "longueur": {
           "guid": "a1be583b-a4ea-4794-8151-1a9b115c5a8a",
-          "value": null
+          "valeur": null
         },
         "surface": {
           "guid": "bf1f9fc0-84f2-45a3-b7d1-bd70b04d445f",
-          "value": null
+          "valeur": null
         },
         "volume": {
           "guid": "90dd40a1-a42c-4daa-aac7-25200f273c50",
-          "value": null
+          "valeur": null
         },
         "ouiNon": {
           "guid": "49261c8b-d425-45e6-a969-bce44e9ae681",
-          "value": null
+          "valeur": null
         },
         "angle": {
           "guid": "bc7bf97e-4d2c-43e5-beb6-2cefd5617aa9",
-          "value": null
+          "valeur": null
         }
       },
-      "qualityFlags": []
+      "indicateurs_qualite": []
     },
     {
-      "elementId": "9000111",
-      "uniqueId": "EGR18-P11",
-      "name": "Bureau variante A",
-      "number": "010",
-      "areaM2": 7.5,
-      "unboundedHeightM": 2.7,
-      "level": {
-        "elementId": "9000001",
-        "uniqueId": "EGR18-NIVEAU-R+0",
-        "name": "R+0"
+      "id_revit": "9000111",
+      "unique_id": "EGR18-P11",
+      "nom": "Bureau variante A",
+      "numero": "010",
+      "surface_m2": 7.5,
+      "hauteur_non_limitee_m": 2.7,
+      "niveau": {
+        "id_revit": "9000001",
+        "unique_id": "EGR18-NIVEAU-R+0",
+        "nom": "R+0"
       },
-      "occupancy": null,
-      "volumeM3": null,
-      "volumeStatus": "notComputed",
-      "finishes": {
-        "floor": null,
-        "wall": null,
-        "ceiling": null,
-        "base": null
+      "occupation": null,
+      "volume_m3": null,
+      "statut_volume": "notComputed",
+      "finitions": {
+        "sol": null,
+        "murs": null,
+        "plafond": null,
+        "plinthe": null
       },
       "phase": {
-        "elementId": "9000012",
-        "name": "Nouvelle construction"
+        "id_revit": "9000012",
+        "nom": "Nouvelle construction"
       },
-      "designOption": {
-        "elementId": "9000021",
-        "name": "Option A"
+      "variante": {
+        "id_revit": "9000021",
+        "nom": "Option A"
       },
-      "sharedParameters": {
+      "parametres_partages": {
         "texte": {
           "guid": "cb4b0672-757b-4a76-87ae-7e37cc266035",
-          "value": null
+          "valeur": null
         },
         "entier": {
           "guid": "ae35a261-77c1-455b-8e4d-f65999306f6f",
-          "value": null
+          "valeur": null
         },
         "nombre": {
           "guid": "b747d301-23b1-47f7-bbb9-a09fa4147731",
-          "value": null
+          "valeur": null
         },
         "longueur": {
           "guid": "a1be583b-a4ea-4794-8151-1a9b115c5a8a",
-          "value": null
+          "valeur": null
         },
         "surface": {
           "guid": "bf1f9fc0-84f2-45a3-b7d1-bd70b04d445f",
-          "value": null
+          "valeur": null
         },
         "volume": {
           "guid": "90dd40a1-a42c-4daa-aac7-25200f273c50",
-          "value": null
+          "valeur": null
         },
         "ouiNon": {
           "guid": "49261c8b-d425-45e6-a969-bce44e9ae681",
-          "value": null
+          "valeur": null
         },
         "angle": {
           "guid": "bc7bf97e-4d2c-43e5-beb6-2cefd5617aa9",
-          "value": null
+          "valeur": null
         }
       },
-      "qualityFlags": []
+      "indicateurs_qualite": []
     },
     {
-      "elementId": "9000112",
-      "uniqueId": "EGR18-P12",
-      "name": "Bureau variante B",
-      "number": "010",
-      "areaM2": 7.5,
-      "unboundedHeightM": 2.7,
-      "level": {
-        "elementId": "9000001",
-        "uniqueId": "EGR18-NIVEAU-R+0",
-        "name": "R+0"
+      "id_revit": "9000112",
+      "unique_id": "EGR18-P12",
+      "nom": "Bureau variante B",
+      "numero": "010",
+      "surface_m2": 7.5,
+      "hauteur_non_limitee_m": 2.7,
+      "niveau": {
+        "id_revit": "9000001",
+        "unique_id": "EGR18-NIVEAU-R+0",
+        "nom": "R+0"
       },
-      "occupancy": null,
-      "volumeM3": null,
-      "volumeStatus": "notComputed",
-      "finishes": {
-        "floor": null,
-        "wall": null,
-        "ceiling": null,
-        "base": null
+      "occupation": null,
+      "volume_m3": null,
+      "statut_volume": "notComputed",
+      "finitions": {
+        "sol": null,
+        "murs": null,
+        "plafond": null,
+        "plinthe": null
       },
       "phase": {
-        "elementId": "9000012",
-        "name": "Nouvelle construction"
+        "id_revit": "9000012",
+        "nom": "Nouvelle construction"
       },
-      "designOption": {
-        "elementId": "9000022",
-        "name": "Option B"
+      "variante": {
+        "id_revit": "9000022",
+        "nom": "Option B"
       },
-      "sharedParameters": {
+      "parametres_partages": {
         "texte": {
           "guid": "cb4b0672-757b-4a76-87ae-7e37cc266035",
-          "value": null
+          "valeur": null
         },
         "entier": {
           "guid": "ae35a261-77c1-455b-8e4d-f65999306f6f",
-          "value": null
+          "valeur": null
         },
         "nombre": {
           "guid": "b747d301-23b1-47f7-bbb9-a09fa4147731",
-          "value": null
+          "valeur": null
         },
         "longueur": {
           "guid": "a1be583b-a4ea-4794-8151-1a9b115c5a8a",
-          "value": null
+          "valeur": null
         },
         "surface": {
           "guid": "bf1f9fc0-84f2-45a3-b7d1-bd70b04d445f",
-          "value": null
+          "valeur": null
         },
         "volume": {
           "guid": "90dd40a1-a42c-4daa-aac7-25200f273c50",
-          "value": null
+          "valeur": null
         },
         "ouiNon": {
           "guid": "49261c8b-d425-45e6-a969-bce44e9ae681",
-          "value": null
+          "valeur": null
         },
         "angle": {
           "guid": "bc7bf97e-4d2c-43e5-beb6-2cefd5617aa9",
-          "value": null
+          "valeur": null
         }
       },
-      "qualityFlags": []
+      "indicateurs_qualite": []
     },
     {
-      "elementId": "9000113",
-      "uniqueId": "EGR18-P13",
-      "name": "Combles aménagés",
-      "number": "101",
-      "areaM2": 20.0,
-      "unboundedHeightM": 2.7,
-      "level": {
-        "elementId": "9000002",
-        "uniqueId": "EGR18-NIVEAU-R+1",
-        "name": "R+1"
+      "id_revit": "9000113",
+      "unique_id": "EGR18-P13",
+      "nom": "Combles aménagés",
+      "numero": "101",
+      "surface_m2": 20.0,
+      "hauteur_non_limitee_m": 2.7,
+      "niveau": {
+        "id_revit": "9000002",
+        "unique_id": "EGR18-NIVEAU-R+1",
+        "nom": "R+1"
       },
-      "occupancy": null,
-      "volumeM3": null,
-      "volumeStatus": "notComputed",
-      "finishes": {
-        "floor": null,
-        "wall": null,
-        "ceiling": null,
-        "base": null
+      "occupation": null,
+      "volume_m3": null,
+      "statut_volume": "notComputed",
+      "finitions": {
+        "sol": null,
+        "murs": null,
+        "plafond": null,
+        "plinthe": null
       },
       "phase": {
-        "elementId": "9000012",
-        "name": "Nouvelle construction"
+        "id_revit": "9000012",
+        "nom": "Nouvelle construction"
       },
-      "designOption": null,
-      "sharedParameters": {
+      "variante": null,
+      "parametres_partages": {
         "texte": {
           "guid": "cb4b0672-757b-4a76-87ae-7e37cc266035",
-          "value": null
+          "valeur": null
         },
         "entier": {
           "guid": "ae35a261-77c1-455b-8e4d-f65999306f6f",
-          "value": null
+          "valeur": null
         },
         "nombre": {
           "guid": "b747d301-23b1-47f7-bbb9-a09fa4147731",
-          "value": null
+          "valeur": null
         },
         "longueur": {
           "guid": "a1be583b-a4ea-4794-8151-1a9b115c5a8a",
-          "value": null
+          "valeur": null
         },
         "surface": {
           "guid": "bf1f9fc0-84f2-45a3-b7d1-bd70b04d445f",
-          "value": null
+          "valeur": null
         },
         "volume": {
           "guid": "90dd40a1-a42c-4daa-aac7-25200f273c50",
-          "value": null
+          "valeur": null
         },
         "ouiNon": {
           "guid": "49261c8b-d425-45e6-a969-bce44e9ae681",
-          "value": null
+          "valeur": null
         },
         "angle": {
           "guid": "bc7bf97e-4d2c-43e5-beb6-2cefd5617aa9",
-          "value": null
+          "valeur": null
         }
       },
-      "qualityFlags": []
+      "indicateurs_qualite": []
     },
     {
-      "elementId": "9000114",
-      "uniqueId": "EGR18-P14",
-      "name": "Accueil commun",
-      "number": "011",
-      "areaM2": 6.0,
-      "unboundedHeightM": 2.7,
-      "level": {
-        "elementId": "9000001",
-        "uniqueId": "EGR18-NIVEAU-R+0",
-        "name": "R+0"
+      "id_revit": "9000114",
+      "unique_id": "EGR18-P14",
+      "nom": "Accueil commun",
+      "numero": "011",
+      "surface_m2": 6.0,
+      "hauteur_non_limitee_m": 2.7,
+      "niveau": {
+        "id_revit": "9000001",
+        "unique_id": "EGR18-NIVEAU-R+0",
+        "nom": "R+0"
       },
-      "occupancy": null,
-      "volumeM3": null,
-      "volumeStatus": "notComputed",
-      "finishes": {
-        "floor": null,
-        "wall": null,
-        "ceiling": null,
-        "base": null
+      "occupation": null,
+      "volume_m3": null,
+      "statut_volume": "notComputed",
+      "finitions": {
+        "sol": null,
+        "murs": null,
+        "plafond": null,
+        "plinthe": null
       },
       "phase": {
-        "elementId": "9000012",
-        "name": "Nouvelle construction"
+        "id_revit": "9000012",
+        "nom": "Nouvelle construction"
       },
-      "designOption": null,
-      "sharedParameters": {
+      "variante": null,
+      "parametres_partages": {
         "texte": {
           "guid": "cb4b0672-757b-4a76-87ae-7e37cc266035",
-          "value": null
+          "valeur": null
         },
         "entier": {
           "guid": "ae35a261-77c1-455b-8e4d-f65999306f6f",
-          "value": null
+          "valeur": null
         },
         "nombre": {
           "guid": "b747d301-23b1-47f7-bbb9-a09fa4147731",
-          "value": null
+          "valeur": null
         },
         "longueur": {
           "guid": "a1be583b-a4ea-4794-8151-1a9b115c5a8a",
-          "value": null
+          "valeur": null
         },
         "surface": {
           "guid": "bf1f9fc0-84f2-45a3-b7d1-bd70b04d445f",
-          "value": null
+          "valeur": null
         },
         "volume": {
           "guid": "90dd40a1-a42c-4daa-aac7-25200f273c50",
-          "value": null
+          "valeur": null
         },
         "ouiNon": {
           "guid": "49261c8b-d425-45e6-a969-bce44e9ae681",
-          "value": null
+          "valeur": null
         },
         "angle": {
           "guid": "bc7bf97e-4d2c-43e5-beb6-2cefd5617aa9",
-          "value": null
+          "valeur": null
         }
       },
-      "qualityFlags": [
+      "indicateurs_qualite": [
         "DUPLICATE_NUMBER"
       ]
     },
     {
-      "elementId": "9000115",
-      "uniqueId": "EGR18-P15",
-      "name": "Bureau variante B2",
-      "number": "011",
-      "areaM2": 4.5,
-      "unboundedHeightM": 2.7,
-      "level": {
-        "elementId": "9000001",
-        "uniqueId": "EGR18-NIVEAU-R+0",
-        "name": "R+0"
+      "id_revit": "9000115",
+      "unique_id": "EGR18-P15",
+      "nom": "Bureau variante B2",
+      "numero": "011",
+      "surface_m2": 4.5,
+      "hauteur_non_limitee_m": 2.7,
+      "niveau": {
+        "id_revit": "9000001",
+        "unique_id": "EGR18-NIVEAU-R+0",
+        "nom": "R+0"
       },
-      "occupancy": null,
-      "volumeM3": null,
-      "volumeStatus": "notComputed",
-      "finishes": {
-        "floor": null,
-        "wall": null,
-        "ceiling": null,
-        "base": null
+      "occupation": null,
+      "volume_m3": null,
+      "statut_volume": "notComputed",
+      "finitions": {
+        "sol": null,
+        "murs": null,
+        "plafond": null,
+        "plinthe": null
       },
       "phase": {
-        "elementId": "9000012",
-        "name": "Nouvelle construction"
+        "id_revit": "9000012",
+        "nom": "Nouvelle construction"
       },
-      "designOption": {
-        "elementId": "9000022",
-        "name": "Option B"
+      "variante": {
+        "id_revit": "9000022",
+        "nom": "Option B"
       },
-      "sharedParameters": {
+      "parametres_partages": {
         "texte": {
           "guid": "cb4b0672-757b-4a76-87ae-7e37cc266035",
-          "value": null
+          "valeur": null
         },
         "entier": {
           "guid": "ae35a261-77c1-455b-8e4d-f65999306f6f",
-          "value": null
+          "valeur": null
         },
         "nombre": {
           "guid": "b747d301-23b1-47f7-bbb9-a09fa4147731",
-          "value": null
+          "valeur": null
         },
         "longueur": {
           "guid": "a1be583b-a4ea-4794-8151-1a9b115c5a8a",
-          "value": null
+          "valeur": null
         },
         "surface": {
           "guid": "bf1f9fc0-84f2-45a3-b7d1-bd70b04d445f",
-          "value": null
+          "valeur": null
         },
         "volume": {
           "guid": "90dd40a1-a42c-4daa-aac7-25200f273c50",
-          "value": null
+          "valeur": null
         },
         "ouiNon": {
           "guid": "49261c8b-d425-45e6-a969-bce44e9ae681",
-          "value": null
+          "valeur": null
         },
         "angle": {
           "guid": "bc7bf97e-4d2c-43e5-beb6-2cefd5617aa9",
-          "value": null
+          "valeur": null
         }
       },
-      "qualityFlags": [
+      "indicateurs_qualite": [
         "DUPLICATE_NUMBER"
       ]
     },
     {
-      "elementId": "9000116",
-      "uniqueId": "EGR18-P16",
-      "name": "Bureau variante A2",
-      "number": "012",
-      "areaM2": 3.0,
-      "unboundedHeightM": 2.7,
-      "level": {
-        "elementId": "9000001",
-        "uniqueId": "EGR18-NIVEAU-R+0",
-        "name": "R+0"
+      "id_revit": "9000116",
+      "unique_id": "EGR18-P16",
+      "nom": "Bureau variante A2",
+      "numero": "012",
+      "surface_m2": 3.0,
+      "hauteur_non_limitee_m": 2.7,
+      "niveau": {
+        "id_revit": "9000001",
+        "unique_id": "EGR18-NIVEAU-R+0",
+        "nom": "R+0"
       },
-      "occupancy": null,
-      "volumeM3": null,
-      "volumeStatus": "notComputed",
-      "finishes": {
-        "floor": null,
-        "wall": null,
-        "ceiling": null,
-        "base": null
+      "occupation": null,
+      "volume_m3": null,
+      "statut_volume": "notComputed",
+      "finitions": {
+        "sol": null,
+        "murs": null,
+        "plafond": null,
+        "plinthe": null
       },
       "phase": {
-        "elementId": "9000012",
-        "name": "Nouvelle construction"
+        "id_revit": "9000012",
+        "nom": "Nouvelle construction"
       },
-      "designOption": {
-        "elementId": "9000021",
-        "name": "Option A"
+      "variante": {
+        "id_revit": "9000021",
+        "nom": "Option A"
       },
-      "sharedParameters": {
+      "parametres_partages": {
         "texte": {
           "guid": "cb4b0672-757b-4a76-87ae-7e37cc266035",
-          "value": null
+          "valeur": null
         },
         "entier": {
           "guid": "ae35a261-77c1-455b-8e4d-f65999306f6f",
-          "value": null
+          "valeur": null
         },
         "nombre": {
           "guid": "b747d301-23b1-47f7-bbb9-a09fa4147731",
-          "value": null
+          "valeur": null
         },
         "longueur": {
           "guid": "a1be583b-a4ea-4794-8151-1a9b115c5a8a",
-          "value": null
+          "valeur": null
         },
         "surface": {
           "guid": "bf1f9fc0-84f2-45a3-b7d1-bd70b04d445f",
-          "value": null
+          "valeur": null
         },
         "volume": {
           "guid": "90dd40a1-a42c-4daa-aac7-25200f273c50",
-          "value": null
+          "valeur": null
         },
         "ouiNon": {
           "guid": "49261c8b-d425-45e6-a969-bce44e9ae681",
-          "value": null
+          "valeur": null
         },
         "angle": {
           "guid": "bc7bf97e-4d2c-43e5-beb6-2cefd5617aa9",
-          "value": null
+          "valeur": null
         }
       },
-      "qualityFlags": [
+      "indicateurs_qualite": [
         "DUPLICATE_NUMBER"
       ]
     },
     {
-      "elementId": "9000117",
-      "uniqueId": "EGR18-P17",
-      "name": "Salle aménagement C",
-      "number": "012",
-      "areaM2": 4.0,
-      "unboundedHeightM": 2.7,
-      "level": {
-        "elementId": "9000001",
-        "uniqueId": "EGR18-NIVEAU-R+0",
-        "name": "R+0"
+      "id_revit": "9000117",
+      "unique_id": "EGR18-P17",
+      "nom": "Salle aménagement C",
+      "numero": "012",
+      "surface_m2": 4.0,
+      "hauteur_non_limitee_m": 2.7,
+      "niveau": {
+        "id_revit": "9000001",
+        "unique_id": "EGR18-NIVEAU-R+0",
+        "nom": "R+0"
       },
-      "occupancy": null,
-      "volumeM3": null,
-      "volumeStatus": "notComputed",
-      "finishes": {
-        "floor": null,
-        "wall": null,
-        "ceiling": null,
-        "base": null
+      "occupation": null,
+      "volume_m3": null,
+      "statut_volume": "notComputed",
+      "finitions": {
+        "sol": null,
+        "murs": null,
+        "plafond": null,
+        "plinthe": null
       },
       "phase": {
-        "elementId": "9000012",
-        "name": "Nouvelle construction"
+        "id_revit": "9000012",
+        "nom": "Nouvelle construction"
       },
-      "designOption": {
-        "elementId": "9000023",
-        "name": "Option C"
+      "variante": {
+        "id_revit": "9000023",
+        "nom": "Option C"
       },
-      "sharedParameters": {
+      "parametres_partages": {
         "texte": {
           "guid": "cb4b0672-757b-4a76-87ae-7e37cc266035",
-          "value": null
+          "valeur": null
         },
         "entier": {
           "guid": "ae35a261-77c1-455b-8e4d-f65999306f6f",
-          "value": null
+          "valeur": null
         },
         "nombre": {
           "guid": "b747d301-23b1-47f7-bbb9-a09fa4147731",
-          "value": null
+          "valeur": null
         },
         "longueur": {
           "guid": "a1be583b-a4ea-4794-8151-1a9b115c5a8a",
-          "value": null
+          "valeur": null
         },
         "surface": {
           "guid": "bf1f9fc0-84f2-45a3-b7d1-bd70b04d445f",
-          "value": null
+          "valeur": null
         },
         "volume": {
           "guid": "90dd40a1-a42c-4daa-aac7-25200f273c50",
-          "value": null
+          "valeur": null
         },
         "ouiNon": {
           "guid": "49261c8b-d425-45e6-a969-bce44e9ae681",
-          "value": null
+          "valeur": null
         },
         "angle": {
           "guid": "bc7bf97e-4d2c-43e5-beb6-2cefd5617aa9",
-          "value": null
+          "valeur": null
         }
       },
-      "qualityFlags": [
+      "indicateurs_qualite": [
         "DUPLICATE_NUMBER"
       ]
     }

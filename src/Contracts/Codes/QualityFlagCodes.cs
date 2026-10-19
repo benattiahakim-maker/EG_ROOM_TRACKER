@@ -29,10 +29,22 @@ public static class DocumentAnomalyCodes
     /// <summary>volumeMode <c>compute</c> : activation temporaire du calcul des volumes impossible ; volumes non disponibles (schéma 1.3).</summary>
     public const string VolumeComputeFailed = "VOLUME_COMPUTE_FAILED";
 
+    /// <summary>Portes, équipements ou terminaux sans pièce associée (ou illisibles) : info (schéma 1.4).</summary>
+    public const string ElementWithoutRoom = "ELEMENT_WITHOUT_ROOM";
+
+    /// <summary>Collecte des portes, équipements ou terminaux impossible : warning, l'extraction des pièces continue (schéma 1.4).</summary>
+    public const string ElementsCollectionFailed = "ELEMENTS_COLLECTION_FAILED";
+
+    /// <summary>Vues 3D des pièces : export impossible pour tout ou partie des pièces ; warning, les pièces sont exportées (schéma 1.4).</summary>
+    public const string ImageExportFailed = "IMAGE_EXPORT_FAILED";
+
+    /// <summary>Mesure des hauteurs par lancer de rayons impossible pour tout ou partie des pièces ; warning (schéma 1.4).</summary>
+    public const string HeightMeasurementFailed = "HEIGHT_MEASUREMENT_FAILED";
+
     public static IReadOnlyList<string> All { get; } =
     [
         VolumeNotComputed, LinkMissing, LinkNotLoaded, RevitWarningOnOpen, SharedParameterNotFound, UnsupportedParameterType,
-        VolumeComputeFailed,
+        VolumeComputeFailed, ElementWithoutRoom, ElementsCollectionFailed, ImageExportFailed, HeightMeasurementFailed,
     ];
 }
 
@@ -74,8 +86,10 @@ public static class Stages
 public static class SchemaVersions
 {
     /// <summary>Version du contrat <c>result.json</c> (1.1 : ajout de LINK_NOT_LOADED ; 1.2 : ajout de UNSUPPORTED_PARAMETER_TYPE ;
-    /// 1.3 : ajout de <c>summary.volumeComputation</c> et de VOLUME_COMPUTE_FAILED).</summary>
-    public const string Result = "1.3";
+    /// 1.3 : ajout de <c>summary.volumeComputation</c> et de VOLUME_COMPUTE_FAILED ;
+    /// 1.4 : ajout facultatif de <c>rooms[].parameters</c>, <c>doors</c>, <c>equipment</c>, <c>terminals</c>, de
+    /// <c>summary.options.roomParameters</c> et <c>elements</c>, et des codes ELEMENT_WITHOUT_ROOM et ELEMENTS_COLLECTION_FAILED).</summary>
+    public const string Result = "1.4";
 
     /// <summary>Version majeure de <c>settings.json</c> prise en charge.</summary>
     public const int SettingsMajor = 1;

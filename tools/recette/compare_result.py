@@ -11,15 +11,15 @@ Commandes :
                           Les valeurs attendues (textes, quantités, indicateurs, anomalies) restent celles du gabarit.
 
 Règles de comparaison (docs/RECETTE.md) :
-  - pièces appariées par elementId (défaut) ou uniqueId ; pièces manquantes ou en trop signalées ;
+  - pièces appariées par id_revit (défaut) ou unique_id ; pièces manquantes ou en trop signalées ;
   - quantités comparées avec les tolérances D5 (0,001 m, m², m³ par défaut, configurables), autres nombres exacts ;
   - champs volatils ignorés par défaut (correlationId, extractorVersion, revit.build, apsEngine, dates) ;
   - anomalies comparées comme un multiensemble (code, portée, elementId, discriminant de détail) ; messages
-    ignorés sauf --compare-messages ; ordre des anomalies non vérifié, ordre des pièces vérifié (tri par elementId) ;
+    ignorés sauf --compare-messages ; ordre des anomalies non vérifié, ordre des pièces vérifié (tri par id_revit) ;
   - chemins « à confirmer » (--pending) : un écart y est signalé « À CONFIRMER » sans faire échouer.
 
 Chemins (--ignore, --pending) : segments séparés par des points ; pour une liste, `rooms[*]` (toutes) ou
-`rooms[champ=valeur]` (champ éventuellement pointé : `anomalies[details.number=010]`, valeur `null` acceptée,
+`rooms[champ=valeur]` (ex. `rooms[nom=Réserve].niveau`, champ éventuellement pointé : `anomalies[details.number=010]`, valeur `null` acceptée,
 plusieurs conditions séparées par des virgules). Un chemin couvre aussi ses sous-chemins.
 
 Bibliothèque standard uniquement (Python 3.10+).
@@ -42,7 +42,7 @@ DEFAULT_IGNORES = (
     "summary.startedAtUtc",
     "summary.completedAtUtc",
 )
-QUANTITY_FIELDS = {"areaM2": "area", "unboundedHeightM": "length", "volumeM3": "volume"}
+QUANTITY_FIELDS = {"surface_m2": "area", "hauteur_non_limitee_m": "length", "volume_m3": "volume"}
 ANOMALY_DISCRIMINANTS = ("linkName", "key", "parameter", "number")
 PLACEHOLDER_PREFIX = "EGR18-"
 
@@ -59,7 +59,7 @@ class Item:
 
 
 def parse_pattern(text: str) -> list[tuple[str, object]]:
-    """`rooms[name=Réserve].level` → [("rooms", None), ("[]", {"name": "Réserve"}), ("level", None)]."""
+    """`rooms[nom=Réserve].niveau` → [("rooms", None), ("[]", {"nom": "Réserve"}), ("niveau", None)]."""
     segments: list[tuple[str, object]] = []
     for raw in split_top(text):
         name, selector = raw, None
@@ -154,7 +154,7 @@ class Options:
     tolerances: dict = field(default_factory=lambda: dict(DEFAULT_TOLERANCES))
     ignores: list = field(default_factory=lambda: list(DEFAULT_IGNORES))
     pending: list = field(default_factory=list)
-    match_by: str = "elementId"
+    match_by: str = "id_revit"
     compare_messages: bool = False
     allow_extra_anomalies: set = field(default_factory=set)
 
@@ -229,16 +229,16 @@ class Comparator:
                       f"erreur globale inattendue ({extra.get('code')}, étape {extra.get('stage')}) : {extra.get('message')}")
 
     def room_label(self, room: dict) -> str:
-        return f"{room.get('elementId')} « {room.get('name')} » n°{fmt(room.get('number'))}"
+        return f"{room.get('id_revit')} « {room.get('nom')} » n°{fmt(room.get('numero'))}"
 
     def rooms(self, expected: list, actual: list) -> None:
         key = self.o.match_by
         index = {}
         for room in actual:
             index.setdefault(room.get(key), []).append(room)
-        ids = [r.get("elementId") for r in actual]
+        ids = [r.get("id_revit") for r in actual]
         if ids != sorted(ids, key=numeric_key):
-            self.diff(["rooms"], "pièces non triées par elementId numérique croissant")
+            self.diff(["rooms"], "pièces non triées par id_revit numérique croissant")
         seen = set()
         for room in expected:
             item = Item("rooms", room, self.room_label(room))
@@ -260,19 +260,19 @@ class Comparator:
             e, a = expected.get(name, _MISSING), actual.get(name, _MISSING)
             if name in QUANTITY_FIELDS:
                 self.number(path, e, a, self.o.tolerances[QUANTITY_FIELDS[name]])
-            elif name == "qualityFlags":
+            elif name == "indicateurs_qualite":
                 if isinstance(e, list) and isinstance(a, list) and sorted(e) != sorted(a):
                     self.diff(path, f"attendu {fmt(sorted(e))}, obtenu {fmt(sorted(a))}")
                 elif not (isinstance(e, list) and isinstance(a, list)):
                     self.values(path, e, a)
-            elif name == "sharedParameters" and isinstance(e, dict) and isinstance(a, dict):
+            elif name == "parametres_partages" and isinstance(e, dict) and isinstance(a, dict):
                 for key in sorted(set(e) | set(a)):
                     ev, av = e.get(key, _MISSING), a.get(key, _MISSING)
                     if ev is _MISSING or av is _MISSING or not isinstance(ev, dict) or not isinstance(av, dict):
                         self.values(path + [key], ev, av)
                         continue
                     self.values(path + [key, "guid"], ev.get("guid"), av.get("guid"))
-                    self.number(path + [key, "value"], ev.get("value", _MISSING), av.get("value", _MISSING), self.o.tolerances["shared"])
+                    self.number(path + [key, "valeur"], ev.get("valeur", _MISSING), av.get("valeur", _MISSING), self.o.tolerances["shared"])
             else:
                 self.values(path, e, a)
 
@@ -398,10 +398,10 @@ class BindError(Exception):
 
 def natural_key(room: dict) -> tuple:
     return (
-        room.get("name"),
-        room.get("number"),
-        (room.get("phase") or {}).get("name"),
-        (room.get("designOption") or {}).get("name"),
+        room.get("nom"),
+        room.get("numero"),
+        (room.get("phase") or {}).get("nom"),
+        (room.get("variante") or {}).get("nom"),
     )
 
 
@@ -414,11 +414,11 @@ def bind(template: dict, actual: dict, year: str) -> tuple[dict, list[str]]:
         by_key.setdefault(natural_key(room), []).append(room)
 
     problems, room_ids = [], {}
-    refs: dict[str, dict[str, dict]] = {"level": {}, "phase": {}, "designOption": {}}
+    refs: dict[str, dict[str, dict]] = {"niveau": {}, "phase": {}, "variante": {}}
     for room in actual_rooms:
         for kind in refs:
             if isinstance(room.get(kind), dict):
-                refs[kind][room[kind]["name"]] = room[kind]
+                refs[kind][room[kind]["nom"]] = room[kind]
 
     template_ref_ids: dict[str, str] = {}
     for room in bound.get("rooms") or []:
@@ -427,16 +427,16 @@ def bind(template: dict, actual: dict, year: str) -> tuple[dict, list[str]]:
             problems.append(f"pièce {natural_key(room)} : {len(matches)} correspondance(s) dans le résultat réel")
             continue
         real = matches[0]
-        room_ids[room["elementId"]] = real["elementId"]
-        room["elementId"], room["uniqueId"] = real["elementId"], real["uniqueId"]
+        room_ids[room["id_revit"]] = real["id_revit"]
+        room["id_revit"], room["unique_id"] = real["id_revit"], real["unique_id"]
         for kind in refs:
             ref = room.get(kind)
             if isinstance(ref, dict):
-                real_ref = refs[kind].get(ref["name"])
+                real_ref = refs[kind].get(ref["nom"])
                 if real_ref is None:
-                    problems.append(f"{kind} « {ref['name']} » absent du résultat réel")
+                    problems.append(f"{kind} « {ref['nom']} » absent du résultat réel")
                     continue
-                template_ref_ids[ref["elementId"]] = real_ref["elementId"]
+                template_ref_ids[ref["id_revit"]] = real_ref["id_revit"]
                 room[kind] = dict(ref, **{k: real_ref[k] for k in ref if k in real_ref})
     if problems:
         raise BindError("; ".join(problems))
@@ -454,13 +454,13 @@ def bind(template: dict, actual: dict, year: str) -> tuple[dict, list[str]]:
         options["phaseIds"] = [template_ref_ids.get(i, i) for i in options["phaseIds"]]
     if isinstance(summary.get("revit"), dict):
         summary["revit"]["version"] = str(year)
-    bound["rooms"] = sorted(bound.get("rooms") or [], key=lambda r: numeric_key(r.get("elementId")))
+    bound["rooms"] = sorted(bound.get("rooms") or [], key=lambda r: numeric_key(r.get("id_revit")))
 
-    log = [f"pièce {r['name']!r} : {r['elementId']} ({r['uniqueId']})" for r in bound.get("rooms") or []]
+    log = [f"pièce {r['nom']!r} : {r['id_revit']} ({r['unique_id']})" for r in bound.get("rooms") or []]
     for kind, names in refs.items():
         for name, ref in sorted(names.items()):
-            log.append(f"{kind} {name!r} : {ref['elementId']}")
-    leftovers = [r["uniqueId"] for r in bound.get("rooms") or [] if str(r.get("uniqueId", "")).startswith(PLACEHOLDER_PREFIX)]
+            log.append(f"{kind} {name!r} : {ref['id_revit']}")
+    leftovers = [r["unique_id"] for r in bound.get("rooms") or [] if str(r.get("unique_id", "")).startswith(PLACEHOLDER_PREFIX)]
     if leftovers:
         raise BindError(f"identifiants provisoires restants : {', '.join(leftovers)}")
     return bound, log
@@ -526,7 +526,7 @@ def main(argv: list[str] | None = None) -> int:
     c.add_argument("actual", type=Path)
     c.add_argument("--case", help="identifiant du cas (R01…) : applique ignore/pending/anomalies admises du manifeste")
     c.add_argument("--manifest", default=str(default_manifest))
-    c.add_argument("--match-by", choices=("elementId", "uniqueId"), default="elementId")
+    c.add_argument("--match-by", choices=("id_revit", "unique_id"), default="id_revit")
     c.add_argument("--tol-length", type=float, help="tolérance en m (défaut 0.001)")
     c.add_argument("--tol-area", type=float, help="tolérance en m² (défaut 0.001)")
     c.add_argument("--tol-volume", type=float, help="tolérance en m³ (défaut 0.001)")

@@ -42,7 +42,7 @@ public class ContractCodesTests
         using var example = JsonDocument.Parse(File.ReadAllText(path));
 
         Assert.Equal(SchemaVersions.Result, example.RootElement.GetProperty("schemaVersion").GetString());
-        Assert.Equal("1.3", SchemaVersions.Result);
+        Assert.Equal("1.4", SchemaVersions.Result);
     }
 
     private static IEnumerable<string> SchemaEnum(string name) =>

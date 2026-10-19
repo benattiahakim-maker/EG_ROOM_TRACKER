@@ -1,3 +1,4 @@
+using System.Text.Json.Serialization;
 using EgRoomTracker.Contracts.Configuration;
 
 namespace EgRoomTracker.Contracts.Results;
@@ -30,6 +31,14 @@ public sealed record ExtractionSummary
 
     public required RoomCounts Counts { get; init; }
 
+    /// <summary>Bilan de l'export des vues 3D des pièces (schéma 1.4) ; absent sans <c>roomImages</c>.</summary>
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public ImagesSummary? Images { get; init; }
+
+    /// <summary>Bilan de la mesure des hauteurs (schéma 1.4) ; absent sans <c>roomHeights</c>.</summary>
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public HeightsSummary? Heights { get; init; }
+
     public required ExtractionStatus Status { get; init; }
 
     /// <summary>Erreurs globales ; non vide si et seulement si <see cref="Status"/> = <see cref="ExtractionStatus.Failed"/>.</summary>
@@ -44,7 +53,18 @@ public sealed record SourceInfo(string FileName, string RelativePath, bool? IsWo
 public sealed record AppliedOptions(
     IReadOnlyList<string>? PhaseIds,
     VolumeMode VolumeMode,
-    IReadOnlyList<string> SharedParameterKeys);
+    IReadOnlyList<string> SharedParameterKeys,
+    [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] string? RoomParameters = null,
+    [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] IReadOnlyList<string>? Elements = null,
+    [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] bool? RoomImages = null,
+    [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] int? ImageWidthPx = null,
+    [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] bool? RoomHeights = null,
+    [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] double? HeightStepM = null,
+    [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] bool? LinkedElements = null,
+    [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] string? OutputFormat = null);
+
+/// <summary>Export des vues 3D des pièces : pièces visées, images écrites, pièces sans image.</summary>
+public sealed record ImagesSummary(int Requested, int Exported, int Failed);
 
 /// <summary>
 /// Calcul des volumes (schéma 1.3) : réglage <c>ComputeVolumes</c> du document à l'ouverture (null si non lu),

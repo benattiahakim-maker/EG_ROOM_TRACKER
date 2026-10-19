@@ -20,7 +20,7 @@ public sealed class ArgumentsAndChecksTests
         Assert.Equal(["inputZip", "settings", "result"], parameters.Select(p => p.Name));
         Assert.True(parameters[0] is { Verb: "get", Zip: true, IsInput: true, Required: true });
         Assert.True(parameters[1] is { LocalName: "settings.json", IsInput: true });
-        Assert.True(parameters[2] is { Verb: "put", LocalName: "result.json", IsInput: false });
+        Assert.True(parameters[2] is { Verb: "put", Zip: true, LocalName: "result", IsInput: false });
     }
 
     [Fact]

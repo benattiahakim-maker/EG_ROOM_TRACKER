@@ -49,6 +49,32 @@ public sealed class RoomParameterReader(RevitExecutionContext context, IUnitConv
         return anomalies;
     }
 
+    public IReadOnlyDictionary<string, object?>? ReadAllParameters(long roomElementId)
+    {
+        var document = context.RequireDocument();
+        return document.GetElement(new ElementId(roomElementId)) is Room element ? ParameterDumper.Dump(element, units) : null;
+    }
+
+    public IReadOnlyDictionary<string, string?>? ReadNamedParameters(long roomElementId, IReadOnlyList<string> names)
+    {
+        var document = context.RequireDocument();
+        if (document.GetElement(new ElementId(roomElementId)) is not Room element)
+        {
+            return null;
+        }
+
+        var values = new Dictionary<string, string?>(StringComparer.Ordinal);
+        foreach (var name in names)
+        {
+            var parameter = element.LookupParameter(name);
+            values[name] = parameter is null || !parameter.HasValue
+                ? null
+                : parameter.StorageType == StorageType.String ? parameter.AsString() : parameter.AsValueString();
+        }
+
+        return values;
+    }
+
     public RoomReadResult Read(CollectedRoom room, IReadOnlyList<SharedParameterMapping> sharedParameters, VolumeComputationState volumeState)
     {
         var document = context.RequireDocument();
@@ -144,7 +170,7 @@ public sealed class RoomParameterReader(RevitExecutionContext context, IUnitConv
     }
 
     /// <summary>Grandeur d'un double selon sa spec ; spec absente ou autre que longueur/surface/volume/nombre : non supportée.</summary>
-    private static SharedParameterMeasure MeasureOf(Definition? definition) => MeasureOf(definition?.GetDataType());
+    internal static SharedParameterMeasure MeasureOf(Definition? definition) => MeasureOf(definition?.GetDataType());
 
     private static SharedParameterMeasure MeasureOf(ForgeTypeId? dataType)
     {

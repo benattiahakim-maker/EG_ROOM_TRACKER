@@ -14,7 +14,7 @@ Implémentation : `EgRoomTracker.Revit.RoomParameterReader` ; règles indépenda
 | `level` | `Room.LevelId` → `Level` | `elementId`, `uniqueId`, `name` ; null + `LEVEL_NOT_FOUND` si invalide ou introuvable |
 | `occupancy` | `ROOM_OCCUPANCY` | texte d'usage, pas un nombre d'occupants |
 | `phase` | `ROOM_PHASE_ID` → `Phase` | `elementId`, `name` ; null si absente |
-| `designOption` | `Element.DesignOption` | `elementId`, `name` ; null hors variante. Jeu de variantes lu en interne (`OPTION_SET_ID` de la variante, ElementId ou entier ; null si illisible), non sérialisé, pour `DUPLICATE_NUMBER` |
+| `variante` | `Element.DesignOption` | `id_revit`, `nom` ; null hors variante. Jeu de variantes lu en interne (`OPTION_SET_ID` de la variante, ElementId ou entier ; null si illisible), non sérialisé, pour `DUPLICATE_NUMBER` |
 
 Paramètres natifs lus par `BuiltInParameter`, jamais par libellé français/anglais.
 
@@ -23,7 +23,7 @@ Paramètres natifs lus par `BuiltInParameter`, jamais par libellé français/ang
 - Paramètre présent avec valeur : valeur telle quelle (chaîne vide `""` conservée).
 - Paramètre présent sans valeur : `null`.
 - Paramètre absent : `null` et indicateur `MISSING_PARAMETER`, une anomalie par paramètre (`details.parameter`) ;
-  l'indicateur n'apparaît qu'une fois dans `qualityFlags`.
+  l'indicateur n'apparaît qu'une fois dans `indicateurs_qualite`.
 
 ## Indicateurs posés à la lecture
 
@@ -72,14 +72,14 @@ paramètre partagé convertit la pièce en `EXTRACTION_ERROR` (filet de sécurit
 
 | Champ | Source Revit | Conversion |
 | --- | --- | --- |
-| `areaM2` | `SpatialElement.Area` | `UnitUtils.ConvertFromInternalUnits(v, UnitTypeId.SquareMeters)` |
-| `unboundedHeightM` | `Room.UnboundedHeight` | `UnitUtils.ConvertFromInternalUnits(v, UnitTypeId.Meters)` |
-| `volumeM3` | `Room.Volume` | `UnitUtils.ConvertFromInternalUnits(v, UnitTypeId.CubicMeters)` |
+| `surface_m2` | `SpatialElement.Area` | `UnitUtils.ConvertFromInternalUnits(v, UnitTypeId.SquareMeters)` |
+| `hauteur_non_limitee_m` | `Room.UnboundedHeight` | `UnitUtils.ConvertFromInternalUnits(v, UnitTypeId.Meters)` |
+| `volume_m3` | `Room.Volume` | `UnitUtils.ConvertFromInternalUnits(v, UnitTypeId.CubicMeters)` |
 
 Aucun `AsValueString`, aucun arrondi (D7) ; les nombres JSON sont des `double` sérialisés indépendamment de la culture.
 Règles pures dans `RoomQuantities` (testées sous Linux) :
 
-| Situation | `volumeM3` | `volumeStatus` |
+| Situation | `volume_m3` | `statut_volume` |
 | --- | --- | --- |
 | `AreaVolumeSettings.ComputeVolumes` faux (lu une fois par `VolumeCalculationService.Prepare`) | `null` | `notComputed` (volume non lu) |
 | Calcul actif, pièce placée, lecture finie | m³ | `computed` |
@@ -88,7 +88,7 @@ Règles pures dans `RoomQuantities` (testées sous Linux) :
 
 Surface et hauteur NaN/infinies : `null` (UnitUtils lève `ArgumentException` sur une valeur non finie ; filtrées
 avant l'appel). Une pièce non placée garde la surface lue (0 attendu). L'anomalie document `VOLUME_NOT_COMPUTED` est
-posée par le contrôle qualité (EGR-11) à partir des `volumeStatus`. Les tolérances d'écart (D5) se vérifient sur le
+posée par le contrôle qualité (EGR-11) à partir des `statut_volume`. Les tolérances d'écart (D5) se vérifient sur le
 jeu de référence (EGR-18).
 
 ### Mode `compute` (EGR-16)
@@ -103,7 +103,7 @@ jeu de référence (EGR-18).
 Les volumes lus pendant la transaction sont mis en cache par ElementId (`VolumeComputationState.ComputedVolumes`) :
 après l'annulation, `Room.Volume` reflète de nouveau le réglage d'origine et n'est plus lu. Règles :
 
-| Situation (mode `compute`) | `volumeM3` | `volumeStatus` |
+| Situation (mode `compute`) | `volume_m3` | `statut_volume` |
 | --- | --- | --- |
 | Volume lu (direct ou pendant la transaction), pièce placée, valeur finie | m³ | `computed` |
 | Pièce non placée, lecture en échec, valeur NaN/infinie ou absente du cache | `null` | `notAvailable` |

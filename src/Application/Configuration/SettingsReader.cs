@@ -21,7 +21,8 @@ public static partial class SettingsReader
     /// <summary>Taille maximale de <c>settings.json</c>.</summary>
     public const int MaxSizeBytes = 1024 * 1024;
 
-    private static readonly string[] KnownProperties = ["schemaVersion", "mainModelPath", "phaseIds", "volumeMode", "sharedParameters"];
+    private static readonly string[] KnownProperties =
+        ["schemaVersion", "mainModelPath", "phaseIds", "volumeMode", "sharedParameters", "roomParameters", "elements", "elementCategories", "roomImages", "imageWidthPx", "roomHeights", "heightStepM", "linkedElements", "outputFormat"];
     private static readonly string[] KnownMappingProperties = ["key", "guid"];
 
     public static ExtractionSettings Read(string settingsPath)
@@ -69,6 +70,15 @@ public static partial class SettingsReader
                 PhaseElementIds = phases?.Ids,
                 VolumeMode = ReadVolumeMode(properties),
                 SharedParameters = ReadSharedParameters(properties, strict: minor == 0),
+                RoomParameters = ReadRoomParameters(properties),
+                Elements = ReadElements(properties),
+                ElementCategories = ReadElementCategories(properties),
+                RoomImages = ReadRoomImages(properties),
+                ImageWidthPx = ReadImageWidth(properties),
+                RoomHeights = ReadRoomHeights(properties),
+                HeightStepM = ReadHeightStep(properties),
+                LinkedElements = ReadLinkedElements(properties),
+                OutputFormat = ReadOutputFormat(properties),
             };
         }
     }
@@ -221,6 +231,191 @@ public static partial class SettingsReader
             : throw Invalid("volumeMode doit être \"preserve\" ou \"compute\".");
     }
 
+    private static RoomParametersMode ReadRoomParameters(IReadOnlyDictionary<string, JsonElement> properties)
+    {
+        if (!properties.TryGetValue("roomParameters", out var element) || element.ValueKind == JsonValueKind.Null)
+        {
+            return RoomParametersMode.None;
+        }
+
+        return element.ValueKind == JsonValueKind.String
+            ? element.GetString() switch
+            {
+                "none" => RoomParametersMode.None,
+                "all" => RoomParametersMode.All,
+                var other => throw Invalid($"roomParameters « {Truncate(other!)} » inconnu (none ou all)."),
+            }
+            : throw Invalid("roomParameters doit être \"none\" ou \"all\".");
+    }
+
+    private static IReadOnlyList<ElementKind> ReadElements(IReadOnlyDictionary<string, JsonElement> properties)
+    {
+        if (!properties.TryGetValue("elements", out var element) || element.ValueKind == JsonValueKind.Null)
+        {
+            return [];
+        }
+
+        if (element.ValueKind != JsonValueKind.Array)
+        {
+            throw Invalid($"elements doit être un tableau de noms ({string.Join(", ", ElementKinds.Names)}) ou null.");
+        }
+
+        var kinds = new List<ElementKind>();
+        var index = 0;
+        foreach (var item in element.EnumerateArray())
+        {
+            if (item.ValueKind != JsonValueKind.String || !ElementKinds.TryParse(item.GetString(), out var kind))
+            {
+                throw Invalid($"elements[{index}] : nom inconnu (attendus : {string.Join(", ", ElementKinds.Names)}).");
+            }
+
+            if (kinds.Contains(kind))
+            {
+                throw Invalid($"elements[{index}] : « {ElementKinds.ToName(kind)} » en double.");
+            }
+
+            kinds.Add(kind);
+            index++;
+        }
+
+        return kinds;
+    }
+
+    private static bool ReadRoomImages(IReadOnlyDictionary<string, JsonElement> properties)
+    {
+        if (!properties.TryGetValue("roomImages", out var element) || element.ValueKind == JsonValueKind.Null)
+        {
+            return false;
+        }
+
+        return element.ValueKind is JsonValueKind.True or JsonValueKind.False
+            ? element.GetBoolean()
+            : throw Invalid("roomImages doit être true ou false.");
+    }
+
+    private static OutputFormat ReadOutputFormat(IReadOnlyDictionary<string, JsonElement> properties)
+    {
+        if (!properties.TryGetValue("outputFormat", out var element) || element.ValueKind == JsonValueKind.Null)
+        {
+            return OutputFormat.Contract;
+        }
+
+        return element.ValueKind == JsonValueKind.String
+            ? element.GetString() switch
+            {
+                "contract" => OutputFormat.Contract,
+                "trc" => OutputFormat.Trc,
+                "both" => OutputFormat.Both,
+                var other => throw Invalid($"outputFormat « {Truncate(other!)} » inconnu (contract, trc ou both)."),
+            }
+            : throw Invalid("outputFormat doit être \"contract\", \"trc\" ou \"both\".");
+    }
+
+    private static bool ReadLinkedElements(IReadOnlyDictionary<string, JsonElement> properties)
+    {
+        if (!properties.TryGetValue("linkedElements", out var element) || element.ValueKind == JsonValueKind.Null)
+        {
+            return true;
+        }
+
+        return element.ValueKind is JsonValueKind.True or JsonValueKind.False
+            ? element.GetBoolean()
+            : throw Invalid("linkedElements doit être true ou false.");
+    }
+
+    private static bool ReadRoomHeights(IReadOnlyDictionary<string, JsonElement> properties)
+    {
+        if (!properties.TryGetValue("roomHeights", out var element) || element.ValueKind == JsonValueKind.Null)
+        {
+            return false;
+        }
+
+        return element.ValueKind is JsonValueKind.True or JsonValueKind.False
+            ? element.GetBoolean()
+            : throw Invalid("roomHeights doit être true ou false.");
+    }
+
+    private static double ReadHeightStep(IReadOnlyDictionary<string, JsonElement> properties)
+    {
+        if (!properties.TryGetValue("heightStepM", out var element) || element.ValueKind == JsonValueKind.Null)
+        {
+            return ExtractionSettings.DefaultHeightStepM;
+        }
+
+        if (element.ValueKind != JsonValueKind.Number || !element.TryGetDouble(out var step) || !double.IsFinite(step)
+            || step < ExtractionSettings.MinHeightStepM || step > ExtractionSettings.MaxHeightStepM)
+        {
+            throw Invalid($"heightStepM doit être un nombre de {ExtractionSettings.MinHeightStepM.ToString(CultureInfo.InvariantCulture)} à {ExtractionSettings.MaxHeightStepM.ToString(CultureInfo.InvariantCulture)} (mètres).");
+        }
+
+        return step;
+    }
+
+    private static int ReadImageWidth(IReadOnlyDictionary<string, JsonElement> properties)
+    {
+        if (!properties.TryGetValue("imageWidthPx", out var element) || element.ValueKind == JsonValueKind.Null)
+        {
+            return ExtractionSettings.DefaultImageWidthPx;
+        }
+
+        if (element.ValueKind != JsonValueKind.Number || !element.TryGetInt32(out var width)
+            || width < ExtractionSettings.MinImageWidthPx || width > ExtractionSettings.MaxImageWidthPx)
+        {
+            throw Invalid($"imageWidthPx doit être un entier de {ExtractionSettings.MinImageWidthPx} à {ExtractionSettings.MaxImageWidthPx} (pixels).");
+        }
+
+        return width;
+    }
+
+    private static IReadOnlyDictionary<ElementKind, IReadOnlyList<string>> ReadElementCategories(IReadOnlyDictionary<string, JsonElement> properties)
+    {
+        var result = new Dictionary<ElementKind, IReadOnlyList<string>>();
+        if (!properties.TryGetValue("elementCategories", out var element) || element.ValueKind == JsonValueKind.Null)
+        {
+            return result;
+        }
+
+        if (element.ValueKind != JsonValueKind.Object)
+        {
+            throw Invalid("elementCategories doit être un objet { famille : [catégories] } ou null.");
+        }
+
+        foreach (var (name, list) in ReadObject(element, "elementCategories"))
+        {
+            if (!ElementKinds.TryParse(name, out var kind))
+            {
+                throw Invalid($"elementCategories : famille « {Truncate(name)} » inconnue (attendues : {string.Join(", ", ElementKinds.Names)}).");
+            }
+
+            if (list.ValueKind != JsonValueKind.Array || list.GetArrayLength() == 0)
+            {
+                throw Invalid($"elementCategories.{name} doit être un tableau non vide de noms de catégories (ex. \"OST_PlumbingFixtures\").");
+            }
+
+            var categories = new List<string>();
+            var index = 0;
+            foreach (var item in list.EnumerateArray())
+            {
+                if (item.ValueKind != JsonValueKind.String || !CategoryNamePattern().IsMatch(item.GetString()!))
+                {
+                    throw Invalid($"elementCategories.{name}[{index}] : nom de catégorie attendu, de la forme OST_… (ex. \"OST_PlumbingFixtures\").");
+                }
+
+                if (categories.Contains(item.GetString()!, StringComparer.Ordinal))
+                {
+                    throw Invalid($"elementCategories.{name}[{index}] : « {item.GetString()} » en double.");
+                }
+
+                categories.Add(item.GetString()!);
+                index++;
+            }
+
+            result[kind] = categories;
+        }
+
+        return result;
+    }
+
     private static IReadOnlyList<SharedParameterMapping> ReadSharedParameters(IReadOnlyDictionary<string, JsonElement> properties, bool strict)
     {
         if (!properties.TryGetValue("sharedParameters", out var element) || element.ValueKind == JsonValueKind.Null)
@@ -318,4 +513,7 @@ public static partial class SettingsReader
 
     [GeneratedRegex(@"^[0-9]{1,19}$", RegexOptions.CultureInvariant)]
     private static partial Regex ElementIdPattern();
+
+    [GeneratedRegex(@"^OST_[A-Za-z0-9_]{1,80}$", RegexOptions.CultureInvariant)]
+    private static partial Regex CategoryNamePattern();
 }

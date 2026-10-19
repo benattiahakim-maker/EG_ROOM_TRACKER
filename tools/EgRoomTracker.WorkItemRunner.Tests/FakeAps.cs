@@ -1,3 +1,4 @@
+using System.IO.Compression;
 using System.Net;
 using System.Text;
 using System.Text.Json.Nodes;
@@ -31,6 +32,30 @@ public sealed partial class FakeAps : HttpMessageHandler
 
     /// <summary>Contenu écrit par le moteur sur la sortie result ; null : aucune sortie (cas D6).</summary>
     public string? ResultJson { get; set; }
+
+    /// <summary>Fichiers supplémentaires de la sortie ZIP, sous <c>Images/</c> (nom, octets).</summary>
+    public List<(string Name, byte[] Bytes)> ResultImages { get; } = [];
+
+    /// <summary>Sortie ZIP du moteur : <c>result.json</c> à la racine et <c>Images/</c>, comme le dossier <c>result/</c> zippé par APS.</summary>
+    private byte[] ResultZip(string json)
+    {
+        using var stream = new MemoryStream();
+        using (var archive = new ZipArchive(stream, ZipArchiveMode.Create, leaveOpen: true))
+        {
+            using (var writer = new StreamWriter(archive.CreateEntry("result.json").Open(), new UTF8Encoding(false)))
+            {
+                writer.Write(json);
+            }
+
+            foreach (var (name, bytes) in ResultImages)
+            {
+                using var entry = archive.CreateEntry("Images/" + name).Open();
+                entry.Write(bytes);
+            }
+        }
+
+        return stream.ToArray();
+    }
 
     public JsonObject? SubmittedWorkItem { get; private set; }
 
@@ -101,7 +126,8 @@ public sealed partial class FakeAps : HttpMessageHandler
             {
                 // Le moteur écrit result.json sur l'URL signée de sortie (PUT S3), comme APS.
                 var output = SubmittedWorkItem!["arguments"]!["result"]!["url"]!.GetValue<string>();
-                Store(Uri.UnescapeDataString(new Uri(output).AbsolutePath[1..]), Encoding.UTF8.GetBytes(ResultJson));
+                var outputKey = Uri.UnescapeDataString(new Uri(output).AbsolutePath[1..]);
+                Store(outputKey, outputKey.EndsWith(".zip", StringComparison.OrdinalIgnoreCase) ? ResultZip(ResultJson) : Encoding.UTF8.GetBytes(ResultJson));
             }
 
             var body = new JsonObject { ["id"] = "wi-1", ["status"] = status };

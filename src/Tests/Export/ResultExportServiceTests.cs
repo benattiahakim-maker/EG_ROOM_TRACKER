@@ -70,7 +70,7 @@ public sealed class ResultExportServiceTests : IDisposable
 
         _service.Write(reversed, OutputPath);
 
-        var ids = JsonNode.Parse(ReadUtf8WithoutBom(OutputPath))!["rooms"]!.AsArray().Select(r => r!["elementId"]!.GetValue<string>());
+        var ids = JsonNode.Parse(ReadUtf8WithoutBom(OutputPath))!["rooms"]!.AsArray().Select(r => r!["id_revit"]!.GetValue<string>());
         Assert.Equal(reversed.Rooms.Select(r => r.ElementId), ids);
     }
 
@@ -97,8 +97,8 @@ public sealed class ResultExportServiceTests : IDisposable
             _service.Write(Single(room), OutputPath);
 
             var r = JsonNode.Parse(ReadUtf8WithoutBom(OutputPath))!["rooms"]![0]!;
-            Assert.Equal(18.425, r["areaM2"]!.GetValue<double>());
-            Assert.Equal(2.7, r["unboundedHeightM"]!.GetValue<double>());
+            Assert.Equal(18.425, r["surface_m2"]!.GetValue<double>());
+            Assert.Equal(2.7, r["hauteur_non_limitee_m"]!.GetValue<double>());
         }
         finally
         {
@@ -119,13 +119,13 @@ public sealed class ResultExportServiceTests : IDisposable
         _service.Write(Single(room), OutputPath);
 
         var r = JsonNode.Parse(ReadUtf8WithoutBom(OutputPath))!["rooms"]![0]!;
-        Assert.True(r.AsObject().ContainsKey("occupancy"));
-        Assert.Null(r["occupancy"]);
-        Assert.Equal(0d, r["areaM2"]!.GetValue<double>());
-        Assert.Equal("", r["finishes"]!["ceiling"]!.GetValue<string>());
-        Assert.True(r["finishes"]!.AsObject().ContainsKey("base"));
-        Assert.Null(r["finishes"]!["base"]);
-        Assert.Null(r["volumeM3"]);
+        Assert.True(r.AsObject().ContainsKey("occupation"));
+        Assert.Null(r["occupation"]);
+        Assert.Equal(0d, r["surface_m2"]!.GetValue<double>());
+        Assert.Equal("", r["finitions"]!["plafond"]!.GetValue<string>());
+        Assert.True(r["finitions"]!.AsObject().ContainsKey("plinthe"));
+        Assert.Null(r["finitions"]!["plinthe"]);
+        Assert.Null(r["volume_m3"]);
     }
 
     [Fact]
@@ -188,7 +188,7 @@ public sealed class ResultExportServiceTests : IDisposable
 
         var json = ReadUtf8WithoutBom(OutputPath);
         Assert.Contains("\"Ligne 1\\r\\nLigne 2\"", json);
-        Assert.Equal("Ligne 1\r\nLigne 2", JsonNode.Parse(json)!["rooms"]![0]!["name"]!.GetValue<string>());
+        Assert.Equal("Ligne 1\r\nLigne 2", JsonNode.Parse(json)!["rooms"]![0]!["nom"]!.GetValue<string>());
     }
 
     [Fact]
@@ -223,8 +223,8 @@ public sealed class ResultExportServiceTests : IDisposable
         _service.Write(Single(room), OutputPath);
 
         var r = JsonNode.Parse(ReadUtf8WithoutBom(OutputPath))!["rooms"]![0]!;
-        Assert.Equal(0.09290304, r["areaM2"]!.GetValue<double>());
-        Assert.Equal(0.1 + 0.2, r["unboundedHeightM"]!.GetValue<double>());
+        Assert.Equal(0.09290304, r["surface_m2"]!.GetValue<double>());
+        Assert.Equal(0.1 + 0.2, r["hauteur_non_limitee_m"]!.GetValue<double>());
     }
 
     [Fact]
@@ -244,10 +244,10 @@ public sealed class ResultExportServiceTests : IDisposable
 
         var json = ReadUtf8WithoutBom(OutputPath);
         ResultSchema.AssertValid(json);
-        var shared = JsonNode.Parse(json)!["rooms"]![0]!["sharedParameters"]!;
-        Assert.Equal("A-001", shared["codeLocal"]!["value"]!.GetValue<string>());
-        Assert.Equal(17.5, shared["surfaceUtile"]!["value"]!.GetValue<double>());
-        Assert.Null(shared["Lot"]!["value"]);
+        var shared = JsonNode.Parse(json)!["rooms"]![0]!["parametres_partages"]!;
+        Assert.Equal("A-001", shared["codeLocal"]!["valeur"]!.GetValue<string>());
+        Assert.Equal(17.5, shared["surfaceUtile"]!["valeur"]!.GetValue<double>());
+        Assert.Null(shared["Lot"]!["valeur"]);
         Assert.Equal("3f2b8c1e-6d4a-4b7e-9a51-2c0d8e7f4a10", shared["codeLocal"]!["guid"]!.GetValue<string>());
         Assert.Equal(["codeLocal", "surfaceUtile", "Lot"], shared.AsObject().Select(p => p.Key));
     }

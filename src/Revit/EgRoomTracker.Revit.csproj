@@ -7,4 +7,8 @@
   <ItemGroup>
     <ProjectReference Include="..\Application\EgRoomTracker.Application.csproj" />
   </ItemGroup>
+  <ItemGroup>
+    <!-- Recadrage des images (ImageCropper). Jamais embarquée dans le bundle : System.Drawing.Common est fournie par Revit. -->
+    <PackageReference Include="System.Drawing.Common" ExcludeAssets="runtime" PrivateAssets="all" />
+  </ItemGroup>
 </Project>
