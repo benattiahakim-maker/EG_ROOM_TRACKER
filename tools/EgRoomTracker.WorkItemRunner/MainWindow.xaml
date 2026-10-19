@@ -13,6 +13,143 @@
                 Visibility="{Binding HasChildren, Converter={StaticResource BoolToVisibility}}" />
       </StackPanel>
     </DataTemplate>
+    <!-- ==== Arbre TRC (maquette Figma « WorkItemRunner – arbre de résultats TRC ») ==== -->
+    <!-- Flèche ▶ / ▼ : bouton à bascule réduit à son glyphe. -->
+    <Style x:Key="ArrowToggle" TargetType="ToggleButton">
+      <Setter Property="Cursor" Value="Hand" />
+      <Setter Property="Foreground" Value="#2563EB" />
+      <Setter Property="FontWeight" Value="Bold" />
+      <Setter Property="FontSize" Value="13" />
+      <Setter Property="Template">
+        <Setter.Value>
+          <ControlTemplate TargetType="ToggleButton">
+            <Border Background="Transparent" Padding="6,2">
+              <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center" />
+            </Border>
+          </ControlTemplate>
+        </Setter.Value>
+      </Setter>
+    </Style>
+    <DataTemplate x:Key="TrcHeaderCell">
+      <TextBlock Text="{Binding Text}" Width="{Binding Width}" Padding="8,5" FontSize="11" FontWeight="SemiBold" Foreground="#64748B" />
+    </DataTemplate>
+    <DataTemplate x:Key="TrcCell">
+      <TextBlock Text="{Binding Text}" Width="{Binding Width}" Padding="8,5" TextTrimming="CharacterEllipsis" ToolTip="{Binding Text}" />
+    </DataTemplate>
+    <ItemsPanelTemplate x:Key="HorizontalPanel">
+      <StackPanel Orientation="Horizontal" />
+    </ItemsPanelTemplate>
+    <!-- Tableau Paramètre / Valeur d'un objet. -->
+    <DataTemplate x:Key="TrcParameterTable">
+      <Border BorderBrush="#E2E8F0" BorderThickness="1" CornerRadius="4" Background="White" HorizontalAlignment="Left" Margin="0,2,0,6">
+        <StackPanel>
+          <StackPanel Orientation="Horizontal" Background="#F1F5F9">
+            <TextBlock Text="Paramètre" Width="240" Padding="8,5" FontSize="11" FontWeight="SemiBold" Foreground="#64748B" />
+            <TextBlock Text="Valeur" Width="320" Padding="8,5" FontSize="11" FontWeight="SemiBold" Foreground="#64748B" />
+          </StackPanel>
+          <ItemsControl ItemsSource="{Binding Parameters}">
+            <ItemsControl.ItemTemplate>
+              <DataTemplate>
+                <Border BorderBrush="#E2E8F0" BorderThickness="0,1,0,0">
+                  <StackPanel Orientation="Horizontal">
+                    <TextBlock Text="{Binding Name}" Width="240" Padding="8,4" Foreground="#475569" TextTrimming="CharacterEllipsis" ToolTip="{Binding Name}" />
+                    <TextBlock Text="{Binding Value}" Width="320" Padding="8,4" TextTrimming="CharacterEllipsis" ToolTip="{Binding Value}" />
+                  </StackPanel>
+                </Border>
+              </DataTemplate>
+            </ItemsControl.ItemTemplate>
+          </ItemsControl>
+        </StackPanel>
+      </Border>
+    </DataTemplate>
+    <!-- Paramètres d'une pièce : bandeau repliable puis tableau. -->
+    <DataTemplate x:Key="TrcParameterBlock">
+      <StackPanel Visibility="{Binding IsVisible, Converter={StaticResource BoolToVisibility}}" Margin="0,0,0,4">
+        <StackPanel Orientation="Horizontal">
+          <ToggleButton Style="{StaticResource ArrowToggle}" FontSize="11" IsChecked="{Binding IsExpanded}" Content="{Binding Glyph}" />
+          <TextBlock Text="{Binding Title}" FontSize="11" FontWeight="SemiBold" Foreground="#475569" VerticalAlignment="Center" />
+        </StackPanel>
+        <ContentControl Content="{Binding}" ContentTemplate="{StaticResource TrcParameterTable}" Margin="24,0,0,0"
+                        Visibility="{Binding IsExpanded, Converter={StaticResource BoolToVisibility}}" />
+      </StackPanel>
+    </DataTemplate>
+    <!-- Ligne d'un sous-tableau (porte, équipement…), dépliable sur ses paramètres. -->
+    <DataTemplate x:Key="TrcElementRow">
+      <StackPanel>
+        <Border BorderBrush="#E2E8F0" BorderThickness="0,1,0,0" Background="White">
+          <StackPanel Orientation="Horizontal">
+            <Border Width="28">
+              <ToggleButton Style="{StaticResource ArrowToggle}" FontSize="11" IsChecked="{Binding IsExpanded}" Content="{Binding Glyph}"
+                            ToolTip="Paramètres de l'objet" Visibility="{Binding Parameters.IsVisible, Converter={StaticResource BoolToVisibility}}" />
+            </Border>
+            <ItemsControl ItemsSource="{Binding Cells}" ItemTemplate="{StaticResource TrcCell}" ItemsPanel="{StaticResource HorizontalPanel}" />
+          </StackPanel>
+        </Border>
+        <Border Background="#F8FAFC" Padding="28,2,8,2" Visibility="{Binding Parameters.IsVisible, Converter={StaticResource BoolToVisibility}}">
+          <ContentControl Content="{Binding Parameters}" ContentTemplate="{StaticResource TrcParameterTable}"
+                          Visibility="{Binding IsExpanded, Converter={StaticResource BoolToVisibility}}" />
+        </Border>
+      </StackPanel>
+    </DataTemplate>
+    <!-- Sous-tableau d'une catégorie : bandeau (flèche, pastille, nombre) puis en-têtes et lignes propres à la catégorie. -->
+    <DataTemplate x:Key="TrcGroup">
+      <StackPanel Margin="0,4,0,4" Visibility="{Binding IsVisible, Converter={StaticResource BoolToVisibility}}">
+        <StackPanel Orientation="Horizontal" Margin="0,0,0,4">
+          <ToggleButton Style="{StaticResource ArrowToggle}" FontSize="11" IsChecked="{Binding IsExpanded}" Content="{Binding Glyph}" />
+          <Border Background="{Binding ChipBackground}" CornerRadius="10" Padding="8,1" VerticalAlignment="Center">
+            <TextBlock Text="{Binding Title}" Foreground="{Binding Color}" FontSize="11" FontWeight="SemiBold" />
+          </Border>
+          <TextBlock Text="{Binding CountText}" Foreground="#64748B" FontSize="11" Margin="8,0,0,0" VerticalAlignment="Center" />
+        </StackPanel>
+        <Border BorderBrush="#E2E8F0" BorderThickness="1" CornerRadius="4" HorizontalAlignment="Left"
+                Visibility="{Binding IsExpanded, Converter={StaticResource BoolToVisibility}}">
+          <StackPanel>
+            <StackPanel Orientation="Horizontal" Background="#F1F5F9">
+              <Border Width="28" />
+              <ItemsControl ItemsSource="{Binding Headers}" ItemTemplate="{StaticResource TrcHeaderCell}" ItemsPanel="{StaticResource HorizontalPanel}" />
+            </StackPanel>
+            <ItemsControl ItemsSource="{Binding Rows}" ItemTemplate="{StaticResource TrcElementRow}" />
+          </StackPanel>
+        </Border>
+      </StackPanel>
+    </DataTemplate>
+    <!-- Pièce : ligne du tableau des pièces, puis, dépliée, ses paramètres et ses sous-tableaux. -->
+    <DataTemplate x:Key="TrcRoom">
+      <StackPanel>
+        <Border BorderBrush="#E2E8F0" BorderThickness="0,0,0,1">
+          <Border.Style>
+            <Style TargetType="Border">
+              <Setter Property="Background" Value="White" />
+              <Style.Triggers>
+                <DataTrigger Binding="{Binding IsExpanded}" Value="True">
+                  <Setter Property="Background" Value="#EFF6FF" />
+                </DataTrigger>
+              </Style.Triggers>
+            </Style>
+          </Border.Style>
+          <Grid>
+            <Grid.ColumnDefinitions>
+              <ColumnDefinition Width="36" /><ColumnDefinition Width="220" /><ColumnDefinition Width="110" /><ColumnDefinition Width="110" />
+              <ColumnDefinition Width="110" /><ColumnDefinition Width="110" /><ColumnDefinition Width="*" />
+            </Grid.ColumnDefinitions>
+            <ToggleButton Style="{StaticResource ArrowToggle}" IsChecked="{Binding IsExpanded}" Content="{Binding Glyph}" ToolTip="Afficher les objets de la pièce" />
+            <TextBlock Grid.Column="1" Text="{Binding Name}" FontWeight="SemiBold" Padding="8,6" TextTrimming="CharacterEllipsis" ToolTip="{Binding BimId}" />
+            <TextBlock Grid.Column="2" Text="{Binding Level}" Padding="8,6" />
+            <TextBlock Grid.Column="3" Text="{Binding Surface}" Padding="8,6" />
+            <TextBlock Grid.Column="4" Text="{Binding Volume}" Padding="8,6" />
+            <TextBlock Grid.Column="5" Text="{Binding Height}" Padding="8,6" />
+            <TextBlock Grid.Column="6" Text="{Binding Content}" Padding="8,6" FontSize="11" Foreground="#64748B" VerticalAlignment="Center" />
+          </Grid>
+        </Border>
+        <Border Background="#FAFBFC" Padding="40,8,12,10" BorderBrush="#E2E8F0" BorderThickness="0,0,0,1"
+                Visibility="{Binding IsExpanded, Converter={StaticResource BoolToVisibility}}">
+          <StackPanel>
+            <ContentControl Content="{Binding Parameters}" ContentTemplate="{StaticResource TrcParameterBlock}" />
+            <ItemsControl ItemsSource="{Binding Groups}" ItemTemplate="{StaticResource TrcGroup}" />
+          </StackPanel>
+        </Border>
+      </StackPanel>
+    </DataTemplate>
   </Window.Resources>
   <DockPanel>
     <Border DockPanel.Dock="Top" Background="#0F172A" Padding="20,14">
@@ -164,6 +301,44 @@
                     </Style>
                   </DataGrid.RowStyle>
                 </DataGrid>
+                <!-- Fichier TRC : arbre pièces → sous-tableaux par catégorie → paramètres (TrcTree, MainWindow.xaml.cs). -->
+                <DockPanel x:Name="TrcPanel" Visibility="Collapsed">
+                  <StackPanel DockPanel.Dock="Top" Orientation="Horizontal" Margin="0,0,0,8">
+                    <Button Content="Tout déplier" Click="OnExpandAll" Padding="10,3" Margin="0,0,6,0" />
+                    <Button Content="Tout replier" Click="OnCollapseAll" Padding="10,3" Margin="0,0,14,0" />
+                    <TextBlock Text="Afficher :" Foreground="#64748B" VerticalAlignment="Center" Margin="0,0,6,0" />
+                    <ItemsControl ItemsSource="{Binding Filters}" ItemsPanel="{StaticResource HorizontalPanel}">
+                      <ItemsControl.ItemTemplate>
+                        <DataTemplate>
+                          <Border Background="{Binding ChipBackground}" CornerRadius="10" Padding="8,2" Margin="0,0,6,0">
+                            <CheckBox IsChecked="{Binding IsChecked}" VerticalContentAlignment="Center">
+                              <TextBlock Text="{Binding Label}" Foreground="{Binding Color}" FontWeight="SemiBold" FontSize="11" />
+                            </CheckBox>
+                          </Border>
+                        </DataTemplate>
+                      </ItemsControl.ItemTemplate>
+                    </ItemsControl>
+                  </StackPanel>
+                  <Border BorderBrush="#CBD5E1" BorderThickness="1" CornerRadius="6">
+                    <DockPanel>
+                      <Grid DockPanel.Dock="Top" Background="#F1F5F9">
+                        <Grid.ColumnDefinitions>
+                          <ColumnDefinition Width="36" /><ColumnDefinition Width="220" /><ColumnDefinition Width="110" /><ColumnDefinition Width="110" />
+                          <ColumnDefinition Width="110" /><ColumnDefinition Width="110" /><ColumnDefinition Width="*" />
+                        </Grid.ColumnDefinitions>
+                        <TextBlock Grid.Column="1" Text="Pièce" Padding="8,6" FontSize="11" FontWeight="SemiBold" Foreground="#64748B" />
+                        <TextBlock Grid.Column="2" Text="Niveau" Padding="8,6" FontSize="11" FontWeight="SemiBold" Foreground="#64748B" />
+                        <TextBlock Grid.Column="3" Text="Surface (m²)" Padding="8,6" FontSize="11" FontWeight="SemiBold" Foreground="#64748B" />
+                        <TextBlock Grid.Column="4" Text="Volume (m³)" Padding="8,6" FontSize="11" FontWeight="SemiBold" Foreground="#64748B" />
+                        <TextBlock Grid.Column="5" Text="Hauteur (m)" Padding="8,6" FontSize="11" FontWeight="SemiBold" Foreground="#64748B" />
+                        <TextBlock Grid.Column="6" Text="Contenu" Padding="8,6" FontSize="11" FontWeight="SemiBold" Foreground="#64748B" />
+                      </Grid>
+                      <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Auto">
+                        <ItemsControl ItemsSource="{Binding Rooms}" ItemTemplate="{StaticResource TrcRoom}" />
+                      </ScrollViewer>
+                    </DockPanel>
+                  </Border>
+                </DockPanel>
                 <DataGrid Grid.Row="2" ItemsSource="{Binding Result.Anomalies}" AutoGenerateColumns="False" IsReadOnly="True" HeadersVisibility="Column">
                   <DataGrid.Columns>
                     <DataGridTextColumn Header="Code" Binding="{Binding Code}" Width="180" />

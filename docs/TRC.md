@@ -104,7 +104,15 @@ n'ont besoin d'aucun réglage.
 
 ## WorkItemRunner
 
-Il décompresse le ZIP et affiche `TRCValidationDict.json` (prioritaire sur `result.json` quand les deux existent) en **arbre** : une ligne
-par pièce, dépliable par la flèche ▶ ou un double-clic pour voir les portes, équipements et terminaux de sa `ListeSpaces` (une porte entre deux
-pièces apparaît sous chacune). Une colonne par code (valeurs multiples réunies par ` | `), sans statut ni anomalies. Sans fichier TRC,
-`result.json` s'affiche de la même façon, avec une colonne `objet` (pièce, porte, équipement cvc…).
+Il décompresse le ZIP et affiche `TRCValidationDict.json` (prioritaire sur `result.json` quand les deux existent) en **arbre de tableaux**
+(maquette Figma « WorkItemRunner – arbre de résultats TRC ») :
+
+- un tableau des pièces (nom, niveau, surface, volume, hauteur, contenu) ; la flèche ▶ déplie une pièce ;
+- dans une pièce dépliée : ses paramètres (tableau Paramètre / Valeur), puis **un sous-tableau par catégorie** (Portes, Équipements CVC,
+  Terminaux électricité…), chacun avec **ses propres colonnes** (une porte : numéro, famille, type, largeur, hauteur… ; un équipement :
+  famille, type, catégorie Revit, modèle lié…) et une colonne « Pièces » tirée de `ListeSpaces` ; une porte entre deux pièces figure sous
+  chacune ;
+- chaque ligne se déplie à son tour sur **ses** paramètres Revit ;
+- « Tout déplier » / « Tout replier », et des filtres d'affichage par catégorie (Portes, CVC, Électricité…) et pour les paramètres Revit.
+
+Sans fichier TRC, `result.json` s'affiche en tableau (une ligne par pièce, ses éléments en lignes enfants, colonne `objet`).

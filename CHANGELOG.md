@@ -17,6 +17,9 @@ Le format s'inspire de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/).
 - WorkItemRunner : le tableau des résultats devient un **arbre** (pièce ▸ portes, équipements, terminaux), pour `TRCValidationDict.json`
   (rattachement par `ListeSpaces`, ancien `Space` encore lu) comme pour `result.json` (colonne `objet`) ; le fichier TRC est affiché en priorité ;
   flèche ▶ visible, double-clic sur une pièce, éléments sur fond gris ; tri des colonnes désactivé pour garder l'ordre de l'arbre.
+- WorkItemRunner : le fichier TRC s'affiche en **arbre de tableaux** (maquette Figma) : tableau des pièces ; une pièce dépliée montre ses
+  paramètres puis un sous-tableau par catégorie avec ses propres colonnes (Portes, Équipements CVC, Terminaux électricité…) ; chaque ligne se
+  déplie sur ses paramètres Revit ; « Tout déplier / replier » et filtres par catégorie et pour les paramètres.
 - Livrable : `TRCValidationDict.json` seul. L'exemple `docs/examples/settings.example.json` (bouton « Exemple » de WorkItemRunner) règle
   `"outputFormat": "trc"` et `elements` (portes, équipements, terminaux).
 - **Clés du JSON en français** (contrat `result.json`, noms des champs de `rooms[]` et de leurs sous-objets) : `id_revit`, `unique_id`, `nom`,

@@ -53,6 +53,12 @@ public sealed record ResultView(
     /// équipement ou terminal qu'elle contient. Une porte entre deux pièces figure sous chacune.
     /// </summary>
     public IReadOnlyList<TableRow> RoomTree { get; init; } = [];
+
+    /// <summary>
+    /// Arbre du fichier TRC (pièces, sous-tableaux par catégorie, paramètres) ; null pour <c>result.json</c>, affiché alors en
+    /// tableau (<see cref="RoomTree"/>).
+    /// </summary>
+    public TrcTree? Trc { get; init; }
 }
 
 /// <summary>
@@ -372,6 +378,7 @@ public sealed class ResultReader(string schemaPath)
             RoomColumns = columns,
             RoomValues = tree.Select(row => row.Cells).ToList(),
             RoomTree = tree,
+            Trc = TrcTree.Build(bimIdByPk.Keys.Select(pk => new TrcObject(pk, bimIdByPk[pk], cells[pk], spaces[pk])).ToList()),
         };
     }
 

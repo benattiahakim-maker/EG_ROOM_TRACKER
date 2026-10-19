@@ -46,8 +46,20 @@ public partial class MainWindow : Window
     {
         RoomsGrid.ItemsSource = null;
         RoomsGrid.Columns.Clear();
+        TrcPanel.DataContext = null;
+        TrcPanel.Visibility = Visibility.Collapsed;
+        RoomsGrid.Visibility = Visibility.Visible;
         if (DataContext is not MainViewModel { Result: { } result })
         {
+            return;
+        }
+
+        // Fichier TRC : arbre pièces → sous-tableaux par catégorie → paramètres ; result.json : tableau.
+        if (result.Trc is { } trc)
+        {
+            TrcPanel.DataContext = trc;
+            TrcPanel.Visibility = Visibility.Visible;
+            RoomsGrid.Visibility = Visibility.Collapsed;
             return;
         }
 
@@ -70,6 +82,10 @@ public partial class MainWindow : Window
 
         RoomsGrid.ItemsSource = TableRow.Visible(result.RoomTree);
     }
+
+    private void OnExpandAll(object sender, RoutedEventArgs e) => (TrcPanel.DataContext as TrcTree)?.ExpandAll();
+
+    private void OnCollapseAll(object sender, RoutedEventArgs e) => (TrcPanel.DataContext as TrcTree)?.CollapseAll();
 
     /// <summary>Déplie ou replie une pièce (flèche), puis réaffiche les lignes visibles.</summary>
     private void OnToggleRow(object sender, RoutedEventArgs e)
