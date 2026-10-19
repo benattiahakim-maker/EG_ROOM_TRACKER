@@ -86,8 +86,13 @@ public sealed record RoomElementDto
     [JsonPropertyName("source_dimensions")]
     public string? DimensionSource { get; init; }
 
-    /// <summary>Tous les paramètres de l'instance à plat <c>{ nom : valeur }</c>, seulement avec <c>roomParameters: all</c> (voir <see cref="RoomDto.Parameters"/>).</summary>
+    /// <summary>Tous les paramètres d'occurrence de l'instance à plat <c>{ nom : valeur }</c>, seulement avec <c>roomParameters: all</c> (voir <see cref="RoomDto.Parameters"/>).</summary>
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     [JsonPropertyName("parametres")]
     public IReadOnlyDictionary<string, object?>? Parameters { get; init; }
+
+    /// <summary>Tous les paramètres du type (famille et type) à plat <c>{ nom : valeur }</c>, seulement avec <c>roomParameters: all</c>.</summary>
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    [JsonPropertyName("parametres_type")]
+    public IReadOnlyDictionary<string, object?>? TypeParameters { get; init; }
 }

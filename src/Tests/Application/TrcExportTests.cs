@@ -154,9 +154,10 @@ public sealed class TrcExportTests
         Assert.Equal(["2.4384"], values["c:parametres revit_hauteur limite"]);
         Assert.Equal(["12"], values["c:parametres revit_numéro d'étage"]);
         Assert.Equal(["1"], values["c:parametres revit_zone technique"]);
-        Assert.DoesNotContain("c:parametres revit_occupation", values.Keys);
-        Assert.DoesNotContain("c:parametres revit_remarques", values.Keys);
-        Assert.Equal(4, values.Keys.Count(code => code.StartsWith("c:parametres revit_", StringComparison.Ordinal)));
+        // Tous les paramètres sont listés : sans valeur ou texte vide, la valeur est vide (jamais omise).
+        Assert.Equal([string.Empty], values["c:parametres revit_occupation"]);
+        Assert.Equal([string.Empty], values["c:parametres revit_remarques"]);
+        Assert.Equal(6, values.Keys.Count(code => code.StartsWith("c:parametres revit_", StringComparison.Ordinal)));
     }
 
     [Fact]
@@ -267,19 +268,22 @@ public sealed class TrcExportTests
     }
 
     [Fact]
-    public void Element_parameters_and_usernames_are_exported_on_the_element()
+    public void Element_occurrence_and_type_parameters_and_usernames_are_exported_on_the_element()
     {
         var item = Equipment("7", "Équipements mécaniques", "CTA double flux", ElementDisciplines.Cvc) with
         {
             Level = "Niveau 1",
             Parameters = new Dictionary<string, object?> { ["Débit"] = 0.25, ["Commentaires"] = null },
+            TypeParameters = new Dictionary<string, object?> { ["Fabricant"] = "Atlantic", ["Coût"] = null },
         };
         var room = Room("1", "A", "1") with { Equipment = [item] };
 
         var values = Values(TrcMapper.Map(Result(room)), "u-7");
 
         Assert.Equal(["0.25"], values["c:parametres revit_débit"]);
-        Assert.DoesNotContain("c:parametres revit_commentaires", values.Keys);
+        Assert.Equal([string.Empty], values["c:parametres revit_commentaires"]);
+        Assert.Equal(["Atlantic"], values["d:parametres type_fabricant"]);
+        Assert.Equal([string.Empty], values["d:parametres type_coût"]);
         Assert.Equal(["Niveau 1"], values[TrcCodes.Storey]);
         Assert.Equal(["Niveau1_CTAdoubleflux_7"], values[TrcCodes.Username]);
     }

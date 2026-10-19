@@ -76,7 +76,8 @@
         "source_dimensions": { "enum": ["geometry", "parameter", "mixed"], "description": "Origine de largeur_m et hauteur_m (portes) : mesure sur la géométrie ou repli sur les paramètres du type." },
         "largeur_m": { "$ref": "#/$defs/nonNegativeNumberOrNull" },
         "hauteur_m": { "$ref": "#/$defs/nonNegativeNumberOrNull" },
-        "parametres": { "$ref": "#/$defs/parameterValues" }
+        "parametres": { "$ref": "#/$defs/parameterValues", "description": "Paramètres d'occurrence de l'instance (roomParameters: all)." },
+        "parametres_type": { "$ref": "#/$defs/parameterValues", "description": "Paramètres du type de l'instance (roomParameters: all)." }
       }
     },
     "qualityFlag": {

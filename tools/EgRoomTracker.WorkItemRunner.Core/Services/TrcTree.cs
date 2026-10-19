@@ -4,13 +4,73 @@ using EgRoomTracker.WorkItemRunner.Mvvm;
 
 namespace EgRoomTracker.WorkItemRunner.Services;
 
-/// <summary>Cellule d'un tableau de l'arbre : texte et largeur de sa colonne (pixels).</summary>
-public sealed record TrcCell(string? Text, double Width);
+/// <summary>Groupe de colonnes d'un tableau de l'arbre, affiché en bande au-dessus des en-têtes.</summary>
+public enum TrcSection
+{
+    Identification,
+    Occurrence,
+    Type,
+}
 
-/// <summary>Paramètre d'un objet (fiche Paramètre / Valeur).</summary>
-public sealed record TrcParameter(string Name, string? Value);
+/// <summary>Élément masquable par les filtres « Occurrence » / « Type » (cellule, en-tête, bande).</summary>
+public abstract class TrcSectionItem(TrcSection section) : ObservableObject
+{
+    private bool _isVisible = true;
 
-/// <summary>Objet dépliable (pièce, groupe, élément) avec une flèche ▶ / ▼.</summary>
+    public TrcSection Section { get; } = section;
+
+    public bool IsVisible
+    {
+        get => _isVisible;
+        set => SetProperty(ref _isVisible, value);
+    }
+
+    /// <summary>Fond de la cellule selon la section (bleuté pour l'occurrence, ambré pour le type).</summary>
+    public string Background => Section switch
+    {
+        TrcSection.Occurrence => "#FBFDFF",
+        TrcSection.Type => "#FFFDF7",
+        _ => "#FFFFFF",
+    };
+}
+
+/// <summary>Cellule (ou en-tête) d'un tableau : texte, largeur de sa colonne (pixels) et section.</summary>
+public sealed class TrcCell(string? text, double width, TrcSection section) : TrcSectionItem(section)
+{
+    public string? Text { get; } = text;
+
+    public double Width { get; } = width;
+}
+
+/// <summary>Bande d'en-tête couvrant les colonnes d'une section : « Identification », « Paramètres d'occurrence (n) »…</summary>
+public sealed class TrcBand(string title, double width, TrcSection section) : TrcSectionItem(section)
+{
+    public string Title { get; } = title;
+
+    public double Width { get; } = width;
+
+    public string BandBackground => Section switch
+    {
+        TrcSection.Occurrence => "#E0F2FE",
+        TrcSection.Type => "#FEF3C7",
+        _ => "#F1F5F9",
+    };
+
+    public string Foreground => Section switch
+    {
+        TrcSection.Occurrence => "#0369A1",
+        TrcSection.Type => "#92400E",
+        _ => "#64748B",
+    };
+}
+
+/// <summary>En-tête d'un tableau : bandes de sections et en-têtes de colonnes.</summary>
+public sealed record TrcHeader(IReadOnlyList<TrcBand> Bands, IReadOnlyList<TrcCell> Columns)
+{
+    public IEnumerable<TrcSectionItem> Items => Bands.Cast<TrcSectionItem>().Concat(Columns);
+}
+
+/// <summary>Objet dépliable (pièce, groupe) avec une flèche ▶ / ▼.</summary>
 public abstract class TrcExpandable : ObservableObject
 {
     private bool _isExpanded;
@@ -30,32 +90,12 @@ public abstract class TrcExpandable : ObservableObject
     public string Glyph => IsExpanded ? "▼" : "▶";
 }
 
-/// <summary>Fiche des paramètres d'un objet, repliable, masquée par le filtre « Paramètres Revit ».</summary>
-public sealed class TrcParameterBlock : TrcExpandable
-{
-    private bool _isVisible = true;
-
-    public TrcParameterBlock(IReadOnlyList<TrcParameter> parameters) => Parameters = parameters;
-
-    public IReadOnlyList<TrcParameter> Parameters { get; }
-
-    public string Title => $"Paramètres ({Parameters.Count.ToString(CultureInfo.InvariantCulture)})";
-
-    public bool IsVisible
-    {
-        get => _isVisible && Parameters.Count > 0;
-        set => SetProperty(ref _isVisible, value);
-    }
-}
-
-/// <summary>Ligne d'un sous-tableau : une porte, un équipement ou un terminal, dépliable sur ses paramètres.</summary>
-public sealed class TrcElementNode(string bimId, IReadOnlyList<TrcCell> cells, TrcParameterBlock parameters) : TrcExpandable
+/// <summary>Ligne d'un sous-tableau : une porte, un équipement ou un terminal ; ses paramètres sont des colonnes.</summary>
+public sealed class TrcElementNode(string bimId, IReadOnlyList<TrcCell> cells)
 {
     public string BimId { get; } = bimId;
 
     public IReadOnlyList<TrcCell> Cells { get; } = cells;
-
-    public TrcParameterBlock Parameters { get; } = parameters;
 }
 
 /// <summary>Sous-tableau d'une catégorie dans une pièce (Portes, Équipements CVC…), avec ses propres colonnes.</summary>
@@ -63,12 +103,12 @@ public sealed class TrcGroup : TrcExpandable
 {
     private bool _isVisible = true;
 
-    public TrcGroup(string title, string filterKey, string color, IReadOnlyList<TrcCell> headers, IReadOnlyList<TrcElementNode> rows)
+    public TrcGroup(string title, string filterKey, string color, TrcHeader header, IReadOnlyList<TrcElementNode> rows)
     {
         Title = title;
         FilterKey = filterKey;
         Color = color;
-        Headers = headers;
+        Header = header;
         Rows = rows;
         IsExpanded = true;
     }
@@ -83,7 +123,7 @@ public sealed class TrcGroup : TrcExpandable
 
     public string ChipBackground => "#1F" + Color[1..];
 
-    public IReadOnlyList<TrcCell> Headers { get; }
+    public TrcHeader Header { get; }
 
     public IReadOnlyList<TrcElementNode> Rows { get; }
 
@@ -96,50 +136,22 @@ public sealed class TrcGroup : TrcExpandable
     }
 }
 
-/// <summary>Pièce : ligne du tableau des pièces, dépliable sur ses paramètres et un sous-tableau par catégorie d'objets.</summary>
-public sealed class TrcRoomNode(string bimId, string name, string? level, string? surface, string? volume, string? height, TrcParameterBlock parameters, IReadOnlyList<TrcGroup> groups)
-    : TrcExpandable
+/// <summary>Pièce : ligne du tableau des pièces (colonnes de <see cref="TrcTree.RoomHeader"/>), dépliable sur un sous-tableau par catégorie.</summary>
+public sealed class TrcRoomNode(string bimId, string name, IReadOnlyList<TrcCell> cells, IReadOnlyList<TrcGroup> groups) : TrcExpandable
 {
     public string BimId { get; } = bimId;
 
     public string Name { get; } = name;
 
-    public string? Level { get; } = level;
-
-    public string? Surface { get; } = surface;
-
-    public string? Volume { get; } = volume;
-
-    public string? Height { get; } = height;
-
-    public TrcParameterBlock Parameters { get; } = parameters;
+    public IReadOnlyList<TrcCell> Cells { get; } = cells;
 
     public IReadOnlyList<TrcGroup> Groups { get; } = groups;
 
     /// <summary>Résumé du contenu : « 1 porte · 2 équipements · 1 terminal ».</summary>
-    public string Content
-    {
-        get
-        {
-            int Count(Func<TrcGroup, bool> predicate) => Groups.Where(predicate).Sum(g => g.Rows.Count);
-            var parts = new List<string>();
-            void Add(int n, string one, string many)
-            {
-                if (n > 0)
-                {
-                    parts.Add($"{n.ToString(CultureInfo.InvariantCulture)} {(n == 1 ? one : many)}");
-                }
-            }
-
-            Add(Count(g => g.FilterKey == TrcTree.DoorKey), "porte", "portes");
-            Add(Count(g => g.Title.StartsWith("Équipements", StringComparison.Ordinal)), "équipement", "équipements");
-            Add(Count(g => g.Title.StartsWith("Terminaux", StringComparison.Ordinal)), "terminal", "terminaux");
-            return parts.Count == 0 ? "aucun objet" : string.Join(" · ", parts);
-        }
-    }
+    public string Content => TrcTree.Summarize(Groups);
 }
 
-/// <summary>Case du filtre d'affichage (Portes, CVC, Électricité…, Paramètres Revit).</summary>
+/// <summary>Case du filtre d'affichage : catégories (Portes, CVC…) et sections de colonnes (Occurrence, Type).</summary>
 public sealed class TrcFilter : ObservableObject
 {
     private bool _isChecked = true;
@@ -170,17 +182,19 @@ public sealed class TrcFilter : ObservableObject
 public sealed record TrcObject(string Pk, string BimId, IReadOnlyDictionary<string, List<string>> Values, IReadOnlyList<string> ParentPks);
 
 /// <summary>
-/// Arbre des résultats TRC (maquette Figma « WorkItemRunner – arbre de résultats TRC ») : tableau des pièces ; une pièce dépliée montre
-/// ses paramètres puis un sous-tableau par catégorie (Portes, Équipements CVC, Terminaux électricité…), chacun avec ses colonnes ; chaque
-/// ligne se déplie sur ses paramètres Revit. Une porte entre deux pièces figure sous chacune.
+/// Arbre des résultats TRC (maquette Figma v2 « paramètres en colonnes ») : tableau des pièces ; une pièce dépliée montre un sous-tableau par
+/// catégorie (Portes, Équipements CVC, Terminaux électricité…). Chaque tableau a ses propres colonnes, sous trois bandes : Identification,
+/// Paramètres d'occurrence, Paramètres de type (une pièce n'a pas de type). Une porte entre deux pièces figure sous chacune.
 /// </summary>
 public sealed class TrcTree
 {
     public const string DoorKey = "door";
-    public const string ParametersKey = "parametres";
+    public const string OccurrenceKey = "occurrence";
+    public const string TypeKey = "type";
     public const string NoRoom = "(sans pièce)";
 
-    private const string RevitParameterPrefix = "c:parametres revit_";
+    private const string OccurrencePrefix = "c:parametres revit_";
+    private const string TypePrefix = "d:parametres type_";
 
     private static readonly string[] DisciplineOrder = ["cvc", "electricite", "plomberie", "autres"];
 
@@ -193,10 +207,9 @@ public sealed class TrcTree
     };
 
     private const string DoorColor = "#B45309";
-    private const string ParameterColor = "#475569";
 
-    /// <summary>Colonnes possibles d'un sous-tableau, dans l'ordre d'affichage ; seules celles renseignées dans le groupe apparaissent.</summary>
-    private static readonly (string Code, string Header)[] ElementColumns =
+    /// <summary>Colonnes d'identification d'un élément, dans l'ordre ; seules celles renseignées dans le groupe apparaissent.</summary>
+    private static readonly (string Code, string Header)[] ElementIdentity =
     [
         (TrcCodes.Numero, "Numéro"),
         (TrcCodes.ElementMark, "Repère"),
@@ -210,20 +223,25 @@ public sealed class TrcTree
         (TrcCodes.ElementRevitId, "Id Revit"),
     ];
 
-    /// <summary>Codes d'un élément jamais repris dans les paramètres (déjà portés par le groupe ou la colonne « Pièces »).</summary>
-    private static readonly HashSet<string> ElementStructural = new(StringComparer.Ordinal)
+    /// <summary>Colonnes d'identification d'une pièce, dans l'ordre (le contenu est calculé).</summary>
+    private static readonly (string Code, string Header)[] RoomIdentity =
+    [
+        (TrcCodes.Username, "Pièce"),
+        (TrcCodes.Storey, "Niveau"),
+        (TrcCodes.Surface, "Surface (m²)"),
+        (TrcCodes.Volume, "Volume (m³)"),
+        (TrcCodes.Height, "Hauteur (m)"),
+    ];
+
+    /// <summary>Codes jamais affichés en colonne (portés par le groupe, la colonne « Pièces » ou l'info-bulle).</summary>
+    private static readonly HashSet<string> Hidden = new(StringComparer.Ordinal)
     {
         TrcCodes.Category, TrcCodes.SpaceList, "Space", TrcCodes.ElementDiscipline,
     };
 
-    /// <summary>Codes d'une pièce affichés dans ses colonnes (le reste va dans ses paramètres).</summary>
-    private static readonly HashSet<string> RoomColumns = new(StringComparer.Ordinal)
+    private TrcTree(TrcHeader roomHeader, IReadOnlyList<TrcRoomNode> rooms, IReadOnlyList<TrcFilter> filters)
     {
-        TrcCodes.Category, TrcCodes.Username, TrcCodes.Storey, TrcCodes.Surface, TrcCodes.Volume, TrcCodes.Height,
-    };
-
-    private TrcTree(IReadOnlyList<TrcRoomNode> rooms, IReadOnlyList<TrcFilter> filters)
-    {
+        RoomHeader = roomHeader;
         Rooms = rooms;
         Filters = filters;
         foreach (var filter in filters)
@@ -232,12 +250,14 @@ public sealed class TrcTree
         }
     }
 
+    /// <summary>En-tête du tableau des pièces (bandes Identification et Paramètres d'occurrence).</summary>
+    public TrcHeader RoomHeader { get; }
+
     public IReadOnlyList<TrcRoomNode> Rooms { get; }
 
-    /// <summary>Filtres d'affichage : un par catégorie présente (Portes, CVC…), puis « Paramètres Revit ».</summary>
+    /// <summary>Filtres d'affichage : un par catégorie présente (Portes, CVC…), puis « Occurrence » et « Type ».</summary>
     public IReadOnlyList<TrcFilter> Filters { get; }
 
-    /// <summary>Déplie toutes les pièces, leurs sous-tableaux et les paramètres des pièces (pas ceux de chaque élément).</summary>
     public void ExpandAll()
     {
         foreach (var room in Rooms)
@@ -261,15 +281,32 @@ public sealed class TrcTree
     private void ApplyFilters()
     {
         var shown = Filters.Where(f => f.IsChecked).Select(f => f.Key).ToHashSet(StringComparer.Ordinal);
+        bool Visible(TrcSection section) => section switch
+        {
+            TrcSection.Occurrence => shown.Contains(OccurrenceKey),
+            TrcSection.Type => shown.Contains(TypeKey),
+            _ => true,
+        };
+
+        void Apply(IEnumerable<TrcSectionItem> items)
+        {
+            foreach (var item in items)
+            {
+                item.IsVisible = Visible(item.Section);
+            }
+        }
+
+        Apply(RoomHeader.Items);
         foreach (var room in Rooms)
         {
-            room.Parameters.IsVisible = shown.Contains(ParametersKey);
+            Apply(room.Cells);
             foreach (var group in room.Groups)
             {
                 group.IsVisible = shown.Contains(group.FilterKey);
+                Apply(group.Header.Items);
                 foreach (var row in group.Rows)
                 {
-                    row.Parameters.IsVisible = shown.Contains(ParametersKey);
+                    Apply(row.Cells);
                 }
             }
         }
@@ -277,7 +314,6 @@ public sealed class TrcTree
 
     public static TrcTree Build(IReadOnlyList<TrcObject> objects)
     {
-        string? First(TrcObject o, string code) => o.Values.TryGetValue(code, out var list) && list.Count > 0 ? string.Join(" | ", list) : null;
         var byPk = objects.ToDictionary(o => o.Pk, StringComparer.Ordinal);
         var elements = objects.Where(o => o.ParentPks.Count > 0).ToList();
         var roomObjects = objects.Where(o => o.ParentPks.Count == 0 && (First(o, TrcCodes.Category) ?? TrcCategories.Space) == TrcCategories.Space).ToList();
@@ -285,59 +321,110 @@ public sealed class TrcTree
         string RoomName(TrcObject room) => First(room, TrcCodes.Username) ?? room.BimId;
 
         var usedKeys = new HashSet<string>(StringComparer.Ordinal);
-        IReadOnlyList<TrcGroup> Groups(IEnumerable<TrcObject> items)
-        {
-            return items
-                .GroupBy(item => First(item, TrcCodes.Category) ?? string.Empty, StringComparer.Ordinal)
-                .Select(g => (Describe(g.Key), Items: g.ToList()))
-                .OrderBy(g => g.Item1.Order)
-                .Select(g =>
-                {
-                    var (title, key, color, _) = g.Item1;
-                    usedKeys.Add(key);
-                    return BuildGroup(title, key, color, g.Items);
-                })
-                .ToList();
-        }
-
-        TrcGroup BuildGroup(string title, string key, string color, IReadOnlyList<TrcObject> items)
-        {
-            var columns = ElementColumns.Where(c => items.Any(i => First(i, c.Code) is not null)).ToList();
-            var pieces = items.Select(i => string.Join(" · ", i.ParentPks.Where(byPk.ContainsKey).Select(pk => RoomName(byPk[pk])))).ToList();
-            var headers = new List<string>(columns.Select(c => c.Header)) { "Pièces" };
-            var texts = items.Select((item, index) => columns.Select(c => Display(c.Code, First(item, c.Code))).Append(pieces[index]).ToList()).ToList();
-            var widths = headers.Select((header, column) => Width(texts.Select(row => row[column]).Append(header))).ToList();
-            var rows = items.Select((item, index) => new TrcElementNode(
-                    item.BimId,
-                    texts[index].Select((text, column) => new TrcCell(text, widths[column])).ToList(),
-                    new TrcParameterBlock(Parameters(item, ElementStructural.Concat(columns.Select(c => c.Code)).ToHashSet(StringComparer.Ordinal)))))
-                .ToList();
-            return new TrcGroup(title, key, color, headers.Select((h, i) => new TrcCell(h, widths[i])).ToList(), rows);
-        }
-
-        var rooms = roomObjects
-            .Select(room => new TrcRoomNode(
-                room.BimId,
-                RoomName(room),
-                First(room, TrcCodes.Storey),
-                First(room, TrcCodes.Surface),
-                First(room, TrcCodes.Volume),
-                First(room, TrcCodes.Height),
-                new TrcParameterBlock(Parameters(room, RoomColumns)),
-                Groups(elements.Where(e => e.ParentPks.Contains(room.Pk, StringComparer.Ordinal)))))
+        IReadOnlyList<TrcGroup> Groups(IEnumerable<TrcObject> items) => items
+            .GroupBy(item => First(item, TrcCodes.Category) ?? string.Empty, StringComparer.Ordinal)
+            .Select(g => (Info: Describe(g.Key), Items: g.ToList()))
+            .OrderBy(g => g.Info.Order)
+            .Select(g =>
+            {
+                usedKeys.Add(g.Info.Key);
+                var pieces = new Dictionary<TrcObject, string>(g.Items.Select(i => new KeyValuePair<TrcObject, string>(i,
+                    string.Join(" · ", i.ParentPks.Where(byPk.ContainsKey).Select(pk => RoomName(byPk[pk]))))));
+                var (header, rows) = Table(g.Items, ElementIdentity, extra: ("Pièces", item => pieces[item]));
+                return new TrcGroup(g.Info.Title, g.Info.Key, g.Info.Color, header,
+                    g.Items.Select((item, index) => new TrcElementNode(item.BimId, rows[index])).ToList());
+            })
             .ToList();
+
+        var roomGroups = roomObjects.ToDictionary(room => room, room => Groups(elements.Where(e => e.ParentPks.Contains(room.Pk, StringComparer.Ordinal))));
+        var (roomHeader, roomRows) = Table(roomObjects, RoomIdentity, extra: ("Contenu", room => Summarize(roomGroups[room])));
+        var rooms = roomObjects.Select((room, index) => new TrcRoomNode(room.BimId, RoomName(room), roomRows[index], roomGroups[room])).ToList();
+
         var homeless = orphans.Concat(elements.Where(e => !e.ParentPks.Any(byPk.ContainsKey))).ToList();
         if (homeless.Count > 0)
         {
-            rooms.Add(new TrcRoomNode(string.Empty, NoRoom, null, null, null, null, new TrcParameterBlock([]), Groups(homeless)));
+            var cells = roomHeader.Columns.Select((c, i) => new TrcCell(i == 0 ? NoRoom : null, c.Width, c.Section)).ToList();
+            rooms.Add(new TrcRoomNode(string.Empty, NoRoom, cells, Groups(homeless)));
         }
 
         var filters = DisciplineOrder.Prepend(DoorKey)
             .Where(usedKeys.Contains)
             .Select(key => key == DoorKey ? new TrcFilter(key, "Portes", DoorColor) : new TrcFilter(key, Capitalize(Disciplines[key].Label), Disciplines[key].Color))
-            .Append(new TrcFilter(ParametersKey, "Paramètres Revit", ParameterColor))
+            .Append(new TrcFilter(OccurrenceKey, "Occurrence", "#0369A1"))
+            .Append(new TrcFilter(TypeKey, "Type", "#92400E"))
             .ToList();
-        return new TrcTree(rooms, filters);
+        return new TrcTree(roomHeader, rooms, filters);
+    }
+
+    /// <summary>
+    /// Tableau d'un ensemble d'objets : colonnes d'identification connues et renseignées, autres codes TRC, colonne calculée
+    /// (<paramref name="extra"/>), puis tous les paramètres d'occurrence et tous les paramètres de type présents (union, ordre d'apparition).
+    /// </summary>
+    private static (TrcHeader Header, IReadOnlyList<IReadOnlyList<TrcCell>> Rows) Table(
+        IReadOnlyList<TrcObject> items,
+        (string Code, string Header)[] identity,
+        (string Header, Func<TrcObject, string?> Value) extra)
+    {
+        var known = identity.Select(c => c.Code).ToHashSet(StringComparer.Ordinal);
+        var codes = items.SelectMany(i => i.Values.Keys).Distinct(StringComparer.Ordinal).ToList();
+        var columns = new List<(string Header, TrcSection Section, Func<TrcObject, string?> Value)>();
+        foreach (var (code, title) in identity.Where(c => items.Any(i => First(i, c.Code) is not null)))
+        {
+            columns.Add((title, TrcSection.Identification, item => Display(code, First(item, code))));
+        }
+
+        foreach (var code in codes.Where(c => !known.Contains(c) && !Hidden.Contains(c) && !c.StartsWith(OccurrencePrefix, StringComparison.Ordinal) && !c.StartsWith(TypePrefix, StringComparison.Ordinal)))
+        {
+            columns.Add((Label(code), TrcSection.Identification, item => First(item, code)));
+        }
+
+        columns.Add((extra.Header, TrcSection.Identification, extra.Value));
+        foreach (var code in codes.Where(c => c.StartsWith(OccurrencePrefix, StringComparison.Ordinal)))
+        {
+            columns.Add((Capitalize(code[OccurrencePrefix.Length..]), TrcSection.Occurrence, item => First(item, code)));
+        }
+
+        foreach (var code in codes.Where(c => c.StartsWith(TypePrefix, StringComparison.Ordinal)))
+        {
+            columns.Add((Capitalize(code[TypePrefix.Length..]), TrcSection.Type, item => First(item, code)));
+        }
+
+        var texts = items.Select(item => columns.Select(c => c.Value(item)).ToList()).ToList();
+        var widths = columns.Select((c, index) => Width(texts.Select(row => row[index]).Append(c.Header))).ToList();
+        var bands = columns
+            .Select((c, index) => (c.Section, Width: widths[index]))
+            .GroupBy(c => c.Section)
+            .Select(g => new TrcBand(BandTitle(g.Key, g.Count()), g.Sum(c => c.Width), g.Key))
+            .ToList();
+        var header = new TrcHeader(bands, columns.Select((c, index) => new TrcCell(c.Header, widths[index], c.Section)).ToList());
+        var rows = texts.Select(row => (IReadOnlyList<TrcCell>)row.Select((text, index) => new TrcCell(text, widths[index], columns[index].Section)).ToList()).ToList();
+        return (header, rows);
+    }
+
+    private static string BandTitle(TrcSection section, int count) => section switch
+    {
+        TrcSection.Occurrence => $"Paramètres d'occurrence ({count.ToString(CultureInfo.InvariantCulture)})",
+        TrcSection.Type => $"Paramètres de type ({count.ToString(CultureInfo.InvariantCulture)})",
+        _ => "Identification",
+    };
+
+    /// <summary>Résumé des objets d'une pièce : « 1 porte · 2 équipements · 1 terminal ».</summary>
+    public static string Summarize(IReadOnlyList<TrcGroup> groups)
+    {
+        int Count(Func<TrcGroup, bool> predicate) => groups.Where(predicate).Sum(g => g.Rows.Count);
+        var parts = new List<string>();
+        void Add(int n, string one, string many)
+        {
+            if (n > 0)
+            {
+                parts.Add($"{n.ToString(CultureInfo.InvariantCulture)} {(n == 1 ? one : many)}");
+            }
+        }
+
+        Add(Count(g => g.FilterKey == DoorKey), "porte", "portes");
+        Add(Count(g => g.Title.StartsWith("Équipements", StringComparison.Ordinal)), "équipement", "équipements");
+        Add(Count(g => g.Title.StartsWith("Terminaux", StringComparison.Ordinal)), "terminal", "terminaux");
+        return parts.Count == 0 ? "aucun objet" : string.Join(" · ", parts);
     }
 
     /// <summary>Titre, filtre, couleur et rang d'un groupe d'après la Category TRC (<c>Door</c>, <c>cvc equipement</c>, <c>electricite terminal</c>…).</summary>
@@ -363,19 +450,9 @@ public sealed class TrcTree
         return (string.IsNullOrEmpty(category) ? "Autres objets" : category, "autres", Disciplines["autres"].Color, 40);
     }
 
-    /// <summary>Paramètres d'un objet : propriétés TRC hors colonnes (libellé court), puis paramètres Revit (<c>c:parametres revit_…</c>).</summary>
-    private static List<TrcParameter> Parameters(TrcObject item, IReadOnlySet<string> shown)
-    {
-        var values = item.Values.Where(pair => !shown.Contains(pair.Key)).ToList();
-        return values.Where(pair => !pair.Key.StartsWith(RevitParameterPrefix, StringComparison.Ordinal))
-            .Select(pair => new TrcParameter(Label(pair.Key), string.Join(" | ", pair.Value)))
-            .Prepend(new TrcParameter("bim_id", item.BimId))
-            .Concat(values.Where(pair => pair.Key.StartsWith(RevitParameterPrefix, StringComparison.Ordinal))
-                .Select(pair => new TrcParameter(pair.Key[RevitParameterPrefix.Length..], string.Join(" | ", pair.Value))))
-            .ToList();
-    }
+    private static string? First(TrcObject o, string code) => o.Values.TryGetValue(code, out var list) && list.Count > 0 ? string.Join(" | ", list) : null;
 
-    /// <summary>Libellé court d'un code TRC : <c>a:identification data_building</c> → <c>building</c>, <c>bim_object_username</c> → Nom.</summary>
+    /// <summary>Libellé court d'un code TRC : <c>a:identification data_building</c> → Building, <c>bim_object_username</c> → Nom.</summary>
     private static string Label(string code)
     {
         if (code == TrcCodes.Username)
@@ -385,7 +462,7 @@ public sealed class TrcTree
 
         var colon = code.IndexOf(':');
         var underscore = code.IndexOf('_');
-        return colon >= 0 && underscore > colon ? code[(underscore + 1)..] : code;
+        return Capitalize(colon >= 0 && underscore > colon ? code[(underscore + 1)..] : code);
     }
 
     /// <summary>Valeur affichée : unité ajoutée aux dimensions de porte (<c>0.92m</c> → <c>0.92 m</c>, <c>2.13</c> → <c>2.13 m</c>).</summary>
@@ -398,5 +475,5 @@ public sealed class TrcTree
     private static double Width(IEnumerable<string?> texts) =>
         Math.Clamp(texts.Max(t => t?.Length ?? 0) * 7.5 + 24, 60, 320);
 
-    private static string Capitalize(string text) => char.ToUpperInvariant(text[0]) + text[1..];
+    private static string Capitalize(string text) => text.Length == 0 ? text : char.ToUpperInvariant(text[0]) + text[1..];
 }

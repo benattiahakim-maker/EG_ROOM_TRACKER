@@ -104,6 +104,9 @@ public abstract class RoomElementServiceBase(RevitExecutionContext context, IUni
             Discipline = SupportsLinks ? ElementDisciplines.Of(category.ToString()) : null,
             LinkName = source.LinkName,
             Parameters = includeAllParameters ? ParameterDumper.Dump(instance, units) : null,
+            TypeParameters = includeAllParameters && source.Document.GetElement(instance.GetTypeId()) is ElementType elementType
+                ? ParameterDumper.Dump(elementType, units)
+                : null,
         };
         var links = Associate(new ElementContext(host, source, instance, rooms));
         return new ElementPlacement(instance.Id.Value, Enrich(element, instance), links);

@@ -68,7 +68,7 @@ Un élément sans pièce n'est pas exporté (anomalie `ELEMENT_WITHOUT_ROOM` dan
 | `b:dimensions_hauteur renseignee` | `ROOM_HEIGHT` | si renseignée |
 | `b:dimensions_hauteur non limitee` | hauteur non limitée | avec `roomHeights` |
 | `b:dimensions_hauteur element limitant` | `Catégorie (modèle ou lien)` | si un obstacle existe |
-| `c:parametres revit_<nom>` | un code par paramètre de la pièce, nom en minuscules (`c:parametres revit_hauteur limite`) ; nombres sur 4 décimales au plus, sans zéros inutiles | avec `roomParameters: "all"` ; paramètre sans valeur ou texte vide : non écrit |
+| `c:parametres revit_<nom>` | un code par paramètre de la pièce (**tous**, y compris ceux masqués dans la palette Propriétés), nom en minuscules (`c:parametres revit_hauteur limite`) ; nombres sur 4 décimales au plus, sans zéros inutiles | avec `roomParameters: "all"` ; paramètre sans valeur : valeur vide (le paramètre est toujours listé) |
 
 ## Propriétés d'une porte, d'un équipement ou d'un terminal
 
@@ -87,7 +87,8 @@ Un élément sans pièce n'est pas exporté (anomalie `ELEMENT_WITHOUT_ROOM` dan
 | `bim_object_username` | `{niveau}_{famille}_{ElementId}` sans espaces, unique parmi tous les objets | toujours |
 | `b:porte_largeur` | passage libre, `0.90m` (avec `m`, comme TRC) | portes ; omis si inconnu |
 | `b:porte_hauteur` | passage libre, `2.04` (sans unité, comme TRC) | portes ; omis si inconnu |
-| `c:parametres revit_<nom>` | paramètres de l'instance, mêmes règles que pour la pièce | avec `roomParameters: "all"` |
+| `c:parametres revit_<nom>` | **paramètres d'occurrence** de l'instance (tous), mêmes règles que pour la pièce | avec `roomParameters: "all"` |
+| `d:parametres type_<nom>` | **paramètres de type** (tous les paramètres du type de l'instance), après ceux d'occurrence | avec `roomParameters: "all"` |
 
 Règles : **jamais de zéro** pour une dimension inconnue (fiche omise) ; un nombre s'écrit en mètres, point décimal, 2 décimales ;
 une valeur de plus de 255 caractères devient « Voir détail en annexe » et son texte complet est dans `Details_Annexes/` (même démarche
@@ -107,12 +108,15 @@ n'ont besoin d'aucun réglage.
 Il décompresse le ZIP et affiche `TRCValidationDict.json` (prioritaire sur `result.json` quand les deux existent) en **arbre de tableaux**
 (maquette Figma « WorkItemRunner – arbre de résultats TRC ») :
 
-- un tableau des pièces (nom, niveau, surface, volume, hauteur, contenu) ; la flèche ▶ déplie une pièce ;
-- dans une pièce dépliée : ses paramètres (tableau Paramètre / Valeur), puis **un sous-tableau par catégorie** (Portes, Équipements CVC,
-  Terminaux électricité…), chacun avec **ses propres colonnes** (une porte : numéro, famille, type, largeur, hauteur… ; un équipement :
-  famille, type, catégorie Revit, modèle lié…) et une colonne « Pièces » tirée de `ListeSpaces` ; une porte entre deux pièces figure sous
-  chacune ;
-- chaque ligne se déplie à son tour sur **ses** paramètres Revit ;
-- « Tout déplier » / « Tout replier », et des filtres d'affichage par catégorie (Portes, CVC, Électricité…) et pour les paramètres Revit.
+- chaque tableau a un **en-tête à deux niveaux** : des bandes **Identification**, **Paramètres d'occurrence (n)** et **Paramètres de type (n)**,
+  puis une colonne par propriété ; **tous les paramètres sont des colonnes** (maquette Figma v2) ;
+- un tableau des pièces (nom, niveau, surface, volume, hauteur, contenu, puis tous les paramètres d'occurrence de la pièce ; une pièce n'a
+  pas de type) ; la flèche ▶ déplie une pièce ;
+- dans une pièce dépliée : **un sous-tableau par catégorie** (Portes, Équipements CVC, Terminaux électricité…), chacun avec **ses propres
+  colonnes** (une porte : numéro, famille, type, largeur, hauteur… ; un équipement : famille, type, catégorie Revit, modèle lié…), une colonne
+  « Pièces » tirée de `ListeSpaces`, puis ses paramètres d'occurrence et de type ; une porte entre deux pièces figure sous chacune ;
+- les tableaux défilent horizontalement (l'en-tête des pièces suit) ;
+- « Tout déplier » / « Tout replier », et des filtres d'affichage par catégorie (Portes, CVC, Électricité…) et par section de colonnes
+  (Occurrence, Type).
 
 Sans fichier TRC, `result.json` s'affiche en tableau (une ligne par pièce, ses éléments en lignes enfants, colonne `objet`).

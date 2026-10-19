@@ -7,7 +7,9 @@ namespace EgRoomTracker.Revit;
 
 /// <summary>
 /// Liste tous les paramètres d'un élément <b>à plat</b> <c>{ nom : valeur }</c> (<c>roomParameters: all</c>, schéma 1.4), comme
-/// <c>areaM2</c> ou <c>volumeM3</c> : un paramètre, une propriété, donc une colonne dans le tableau de résultats.
+/// <c>areaM2</c> ou <c>volumeM3</c> : un paramètre, une propriété, donc une colonne dans le tableau de résultats. Tous les paramètres de
+/// l'élément (<see cref="Element.Parameters"/>), y compris ceux masqués dans la palette Propriétés ; appelé sur une instance pour ses
+/// paramètres d'occurrence, sur son <see cref="ElementType"/> pour ses paramètres de type.
 /// <list type="bullet">
 /// <item>valeur typée selon le stockage : texte, entier, ElementId en chaîne, double converti en SI pour longueur, surface, volume et
 /// nombre sans unité (comme les paramètres partagés, EGR-10) ;</item>
@@ -21,7 +23,7 @@ internal static class ParameterDumper
     public static IReadOnlyDictionary<string, object?> Dump(Element element, IUnitConversionService units)
     {
         var values = new SortedDictionary<string, object?>(StringComparer.Ordinal);
-        foreach (var parameter in element.GetOrderedParameters())
+        foreach (Parameter parameter in element.Parameters)
         {
             try
             {

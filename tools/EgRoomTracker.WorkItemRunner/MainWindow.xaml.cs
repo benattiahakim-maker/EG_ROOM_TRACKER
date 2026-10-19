@@ -87,6 +87,9 @@ public partial class MainWindow : Window
 
     private void OnCollapseAll(object sender, RoutedEventArgs e) => (TrcPanel.DataContext as TrcTree)?.CollapseAll();
 
+    /// <summary>L'en-tête du tableau des pièces suit le défilement horizontal des lignes.</summary>
+    private void OnTrcRowsScrolled(object sender, ScrollChangedEventArgs e) => TrcHeaderScroll.ScrollToHorizontalOffset(e.HorizontalOffset);
+
     /// <summary>Déplie ou replie une pièce (flèche), puis réaffiche les lignes visibles.</summary>
     private void OnToggleRow(object sender, RoutedEventArgs e)
     {

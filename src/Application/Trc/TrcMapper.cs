@@ -66,6 +66,9 @@ public static class TrcCodes
     /// <c>a:</c> et <c>b:</c>), propriété = nom du paramètre en minuscules (ex. <c>c:parametres revit_hauteur limite</c>).
     /// </summary>
     public static string RevitParameter(string name) => $"c:parametres revit_{name.Trim().ToLowerInvariant()}";
+
+    /// <summary>Code d'un paramètre de type (porte, équipement, terminal) : section <c>D:Parametres type</c>, après les paramètres d'occurrence.</summary>
+    public static string TypeParameter(string name) => $"d:parametres type_{name.Trim().ToLowerInvariant()}";
 }
 
 /// <summary>Valeurs de <see cref="TrcCodes.Category"/> : pièce, porte, et équipement ou terminal suivi de sa discipline.</summary>
@@ -262,7 +265,7 @@ public static class TrcMapper
         }
 
         // C : tous les paramètres de la pièce (roomParameters: all), un code par paramètre, triés par nom
-        foreach (var value in ParameterValues(room.Parameters))
+        foreach (var value in ParameterValues(room.Parameters, TrcCodes.RevitParameter))
         {
             yield return value;
         }
@@ -295,19 +298,20 @@ public static class TrcMapper
         yield return new(TrcCodes.DoorWidth, item.WidthM is > 0 ? Number(item.WidthM) + "m" : null);
         yield return new(TrcCodes.DoorHeight, Number(item.HeightM));
 
-        // C : paramètres de l'instance
-        foreach (var value in ParameterValues(item.Parameters))
+        // C : paramètres d'occurrence de l'instance, puis D : paramètres de son type
+        foreach (var value in ParameterValues(item.Parameters, TrcCodes.RevitParameter).Concat(ParameterValues(item.TypeParameters, TrcCodes.TypeParameter)))
         {
             yield return value;
         }
     }
 
-    private static IEnumerable<TrcValue> ParameterValues(IReadOnlyDictionary<string, object?>? parameters) =>
-        parameters is null ? [] : parameters.Select(pair => new TrcValue(TrcCodes.RevitParameter(pair.Key), ParameterText(pair.Value)));
+    /// <summary>Un code par paramètre ; un paramètre sans valeur est écrit vide (et non omis) pour que tous les paramètres soient listés.</summary>
+    private static IEnumerable<TrcValue> ParameterValues(IReadOnlyDictionary<string, object?>? parameters, Func<string, string> code) =>
+        parameters is null ? [] : parameters.Select(pair => new TrcValue(code(pair.Key), ParameterText(pair.Value) ?? string.Empty));
 
     /// <summary>
     /// Texte d'un paramètre : nombres en notation invariante (4 décimales au plus, sans zéros inutiles), booléens Revit (entiers) tels quels ;
-    /// null pour un paramètre sans valeur ou un texte vide, qui n'est pas écrit.
+    /// null pour un paramètre sans valeur ou un texte vide (écrit vide).
     /// </summary>
     private static string? ParameterText(object? value) => value switch
     {

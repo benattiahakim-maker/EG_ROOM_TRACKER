@@ -13,7 +13,7 @@
                 Visibility="{Binding HasChildren, Converter={StaticResource BoolToVisibility}}" />
       </StackPanel>
     </DataTemplate>
-    <!-- ==== Arbre TRC (maquette Figma « WorkItemRunner – arbre de résultats TRC ») ==== -->
+    <!-- ==== Arbre TRC (maquette Figma v2 « paramètres en colonnes ») ==== -->
     <!-- Flèche ▶ / ▼ : bouton à bascule réduit à son glyphe. -->
     <Style x:Key="ArrowToggle" TargetType="ToggleButton">
       <Setter Property="Cursor" Value="Hand" />
@@ -30,68 +30,39 @@
         </Setter.Value>
       </Setter>
     </Style>
-    <DataTemplate x:Key="TrcHeaderCell">
-      <TextBlock Text="{Binding Text}" Width="{Binding Width}" Padding="8,5" FontSize="11" FontWeight="SemiBold" Foreground="#64748B" />
-    </DataTemplate>
-    <DataTemplate x:Key="TrcCell">
-      <TextBlock Text="{Binding Text}" Width="{Binding Width}" Padding="8,5" TextTrimming="CharacterEllipsis" ToolTip="{Binding Text}" />
-    </DataTemplate>
     <ItemsPanelTemplate x:Key="HorizontalPanel">
       <StackPanel Orientation="Horizontal" />
     </ItemsPanelTemplate>
-    <!-- Tableau Paramètre / Valeur d'un objet. -->
-    <DataTemplate x:Key="TrcParameterTable">
-      <Border BorderBrush="#E2E8F0" BorderThickness="1" CornerRadius="4" Background="White" HorizontalAlignment="Left" Margin="0,2,0,6">
-        <StackPanel>
-          <StackPanel Orientation="Horizontal" Background="#F1F5F9">
-            <TextBlock Text="Paramètre" Width="240" Padding="8,5" FontSize="11" FontWeight="SemiBold" Foreground="#64748B" />
-            <TextBlock Text="Valeur" Width="320" Padding="8,5" FontSize="11" FontWeight="SemiBold" Foreground="#64748B" />
-          </StackPanel>
-          <ItemsControl ItemsSource="{Binding Parameters}">
-            <ItemsControl.ItemTemplate>
-              <DataTemplate>
-                <Border BorderBrush="#E2E8F0" BorderThickness="0,1,0,0">
-                  <StackPanel Orientation="Horizontal">
-                    <TextBlock Text="{Binding Name}" Width="240" Padding="8,4" Foreground="#475569" TextTrimming="CharacterEllipsis" ToolTip="{Binding Name}" />
-                    <TextBlock Text="{Binding Value}" Width="320" Padding="8,4" TextTrimming="CharacterEllipsis" ToolTip="{Binding Value}" />
-                  </StackPanel>
-                </Border>
-              </DataTemplate>
-            </ItemsControl.ItemTemplate>
-          </ItemsControl>
-        </StackPanel>
+    <!-- Bande d'en-tête d'une section (Identification, Paramètres d'occurrence, Paramètres de type). -->
+    <DataTemplate x:Key="TrcBand">
+      <Border Width="{Binding Width}" Background="{Binding BandBackground}" BorderBrush="#CBD5E1" BorderThickness="0,0,1,0"
+              Visibility="{Binding IsVisible, Converter={StaticResource BoolToVisibility}}">
+        <TextBlock Text="{Binding Title}" Foreground="{Binding Foreground}" FontSize="11" FontWeight="SemiBold" Padding="8,4" />
       </Border>
     </DataTemplate>
-    <!-- Paramètres d'une pièce : bandeau repliable puis tableau. -->
-    <DataTemplate x:Key="TrcParameterBlock">
-      <StackPanel Visibility="{Binding IsVisible, Converter={StaticResource BoolToVisibility}}" Margin="0,0,0,4">
-        <StackPanel Orientation="Horizontal">
-          <ToggleButton Style="{StaticResource ArrowToggle}" FontSize="11" IsChecked="{Binding IsExpanded}" Content="{Binding Glyph}" />
-          <TextBlock Text="{Binding Title}" FontSize="11" FontWeight="SemiBold" Foreground="#475569" VerticalAlignment="Center" />
-        </StackPanel>
-        <ContentControl Content="{Binding}" ContentTemplate="{StaticResource TrcParameterTable}" Margin="24,0,0,0"
-                        Visibility="{Binding IsExpanded, Converter={StaticResource BoolToVisibility}}" />
-      </StackPanel>
+    <DataTemplate x:Key="TrcHeaderCell">
+      <TextBlock Text="{Binding Text}" Width="{Binding Width}" Padding="8,5" FontSize="11" FontWeight="SemiBold" Foreground="#64748B"
+                 TextTrimming="CharacterEllipsis" ToolTip="{Binding Text}" Visibility="{Binding IsVisible, Converter={StaticResource BoolToVisibility}}" />
     </DataTemplate>
-    <!-- Ligne d'un sous-tableau (porte, équipement…), dépliable sur ses paramètres. -->
-    <DataTemplate x:Key="TrcElementRow">
+    <DataTemplate x:Key="TrcCell">
+      <Border Width="{Binding Width}" Background="{Binding Background}" Visibility="{Binding IsVisible, Converter={StaticResource BoolToVisibility}}">
+        <TextBlock Text="{Binding Text}" Padding="8,5" TextTrimming="CharacterEllipsis" ToolTip="{Binding Text}" />
+      </Border>
+    </DataTemplate>
+    <!-- En-tête à deux niveaux : bandes puis colonnes ; Tag = largeur de la colonne de flèche. -->
+    <DataTemplate x:Key="TrcHeader">
       <StackPanel>
-        <Border BorderBrush="#E2E8F0" BorderThickness="0,1,0,0" Background="White">
-          <StackPanel Orientation="Horizontal">
-            <Border Width="28">
-              <ToggleButton Style="{StaticResource ArrowToggle}" FontSize="11" IsChecked="{Binding IsExpanded}" Content="{Binding Glyph}"
-                            ToolTip="Paramètres de l'objet" Visibility="{Binding Parameters.IsVisible, Converter={StaticResource BoolToVisibility}}" />
-            </Border>
-            <ItemsControl ItemsSource="{Binding Cells}" ItemTemplate="{StaticResource TrcCell}" ItemsPanel="{StaticResource HorizontalPanel}" />
-          </StackPanel>
-        </Border>
-        <Border Background="#F8FAFC" Padding="28,2,8,2" Visibility="{Binding Parameters.IsVisible, Converter={StaticResource BoolToVisibility}}">
-          <ContentControl Content="{Binding Parameters}" ContentTemplate="{StaticResource TrcParameterTable}"
-                          Visibility="{Binding IsExpanded, Converter={StaticResource BoolToVisibility}}" />
-        </Border>
+        <StackPanel Orientation="Horizontal" Background="White">
+          <Border Width="{Binding Tag, RelativeSource={RelativeSource AncestorType=ContentControl}}" />
+          <ItemsControl ItemsSource="{Binding Bands}" ItemTemplate="{StaticResource TrcBand}" ItemsPanel="{StaticResource HorizontalPanel}" />
+        </StackPanel>
+        <StackPanel Orientation="Horizontal" Background="#F1F5F9">
+          <Border Width="{Binding Tag, RelativeSource={RelativeSource AncestorType=ContentControl}}" />
+          <ItemsControl ItemsSource="{Binding Columns}" ItemTemplate="{StaticResource TrcHeaderCell}" ItemsPanel="{StaticResource HorizontalPanel}" />
+        </StackPanel>
       </StackPanel>
     </DataTemplate>
-    <!-- Sous-tableau d'une catégorie : bandeau (flèche, pastille, nombre) puis en-têtes et lignes propres à la catégorie. -->
+    <!-- Sous-tableau d'une catégorie : bandeau (flèche, pastille, nombre) puis en-tête à bandes et lignes. -->
     <DataTemplate x:Key="TrcGroup">
       <StackPanel Margin="0,4,0,4" Visibility="{Binding IsVisible, Converter={StaticResource BoolToVisibility}}">
         <StackPanel Orientation="Horizontal" Margin="0,0,0,4">
@@ -101,19 +72,25 @@
           </Border>
           <TextBlock Text="{Binding CountText}" Foreground="#64748B" FontSize="11" Margin="8,0,0,0" VerticalAlignment="Center" />
         </StackPanel>
-        <Border BorderBrush="#E2E8F0" BorderThickness="1" CornerRadius="4" HorizontalAlignment="Left"
+        <Border BorderBrush="#CBD5E1" BorderThickness="1" CornerRadius="4" HorizontalAlignment="Left"
                 Visibility="{Binding IsExpanded, Converter={StaticResource BoolToVisibility}}">
           <StackPanel>
-            <StackPanel Orientation="Horizontal" Background="#F1F5F9">
-              <Border Width="28" />
-              <ItemsControl ItemsSource="{Binding Headers}" ItemTemplate="{StaticResource TrcHeaderCell}" ItemsPanel="{StaticResource HorizontalPanel}" />
-            </StackPanel>
-            <ItemsControl ItemsSource="{Binding Rows}" ItemTemplate="{StaticResource TrcElementRow}" />
+            <ContentControl Content="{Binding Header}" ContentTemplate="{StaticResource TrcHeader}" Tag="0" />
+            <ItemsControl ItemsSource="{Binding Rows}">
+              <ItemsControl.ItemTemplate>
+                <DataTemplate>
+                  <Border BorderBrush="#E2E8F0" BorderThickness="0,1,0,0">
+                    <ItemsControl ItemsSource="{Binding Cells}" ItemTemplate="{StaticResource TrcCell}" ItemsPanel="{StaticResource HorizontalPanel}"
+                                  ToolTip="{Binding BimId}" />
+                  </Border>
+                </DataTemplate>
+              </ItemsControl.ItemTemplate>
+            </ItemsControl>
           </StackPanel>
         </Border>
       </StackPanel>
     </DataTemplate>
-    <!-- Pièce : ligne du tableau des pièces, puis, dépliée, ses paramètres et ses sous-tableaux. -->
+    <!-- Pièce : ligne du tableau des pièces, puis, dépliée, un sous-tableau par catégorie. -->
     <DataTemplate x:Key="TrcRoom">
       <StackPanel>
         <Border BorderBrush="#E2E8F0" BorderThickness="0,0,0,1">
@@ -127,26 +104,17 @@
               </Style.Triggers>
             </Style>
           </Border.Style>
-          <Grid>
-            <Grid.ColumnDefinitions>
-              <ColumnDefinition Width="36" /><ColumnDefinition Width="220" /><ColumnDefinition Width="110" /><ColumnDefinition Width="110" />
-              <ColumnDefinition Width="110" /><ColumnDefinition Width="110" /><ColumnDefinition Width="*" />
-            </Grid.ColumnDefinitions>
-            <ToggleButton Style="{StaticResource ArrowToggle}" IsChecked="{Binding IsExpanded}" Content="{Binding Glyph}" ToolTip="Afficher les objets de la pièce" />
-            <TextBlock Grid.Column="1" Text="{Binding Name}" FontWeight="SemiBold" Padding="8,6" TextTrimming="CharacterEllipsis" ToolTip="{Binding BimId}" />
-            <TextBlock Grid.Column="2" Text="{Binding Level}" Padding="8,6" />
-            <TextBlock Grid.Column="3" Text="{Binding Surface}" Padding="8,6" />
-            <TextBlock Grid.Column="4" Text="{Binding Volume}" Padding="8,6" />
-            <TextBlock Grid.Column="5" Text="{Binding Height}" Padding="8,6" />
-            <TextBlock Grid.Column="6" Text="{Binding Content}" Padding="8,6" FontSize="11" Foreground="#64748B" VerticalAlignment="Center" />
-          </Grid>
+          <StackPanel Orientation="Horizontal">
+            <Border Width="36">
+              <ToggleButton Style="{StaticResource ArrowToggle}" IsChecked="{Binding IsExpanded}" Content="{Binding Glyph}" ToolTip="Afficher les objets de la pièce" />
+            </Border>
+            <ItemsControl ItemsSource="{Binding Cells}" ItemTemplate="{StaticResource TrcCell}" ItemsPanel="{StaticResource HorizontalPanel}"
+                          ToolTip="{Binding BimId}" />
+          </StackPanel>
         </Border>
         <Border Background="#FAFBFC" Padding="40,8,12,10" BorderBrush="#E2E8F0" BorderThickness="0,0,0,1"
                 Visibility="{Binding IsExpanded, Converter={StaticResource BoolToVisibility}}">
-          <StackPanel>
-            <ContentControl Content="{Binding Parameters}" ContentTemplate="{StaticResource TrcParameterBlock}" />
-            <ItemsControl ItemsSource="{Binding Groups}" ItemTemplate="{StaticResource TrcGroup}" />
-          </StackPanel>
+          <ItemsControl ItemsSource="{Binding Groups}" ItemTemplate="{StaticResource TrcGroup}" />
         </Border>
       </StackPanel>
     </DataTemplate>
@@ -301,7 +269,7 @@
                     </Style>
                   </DataGrid.RowStyle>
                 </DataGrid>
-                <!-- Fichier TRC : arbre pièces → sous-tableaux par catégorie → paramètres (TrcTree, MainWindow.xaml.cs). -->
+                <!-- Fichier TRC : arbre de tableaux à bandes (TrcTree, MainWindow.xaml.cs). -->
                 <DockPanel x:Name="TrcPanel" Visibility="Collapsed">
                   <StackPanel DockPanel.Dock="Top" Orientation="Horizontal" Margin="0,0,0,8">
                     <Button Content="Tout déplier" Click="OnExpandAll" Padding="10,3" Margin="0,0,6,0" />
@@ -321,19 +289,11 @@
                   </StackPanel>
                   <Border BorderBrush="#CBD5E1" BorderThickness="1" CornerRadius="6">
                     <DockPanel>
-                      <Grid DockPanel.Dock="Top" Background="#F1F5F9">
-                        <Grid.ColumnDefinitions>
-                          <ColumnDefinition Width="36" /><ColumnDefinition Width="220" /><ColumnDefinition Width="110" /><ColumnDefinition Width="110" />
-                          <ColumnDefinition Width="110" /><ColumnDefinition Width="110" /><ColumnDefinition Width="*" />
-                        </Grid.ColumnDefinitions>
-                        <TextBlock Grid.Column="1" Text="Pièce" Padding="8,6" FontSize="11" FontWeight="SemiBold" Foreground="#64748B" />
-                        <TextBlock Grid.Column="2" Text="Niveau" Padding="8,6" FontSize="11" FontWeight="SemiBold" Foreground="#64748B" />
-                        <TextBlock Grid.Column="3" Text="Surface (m²)" Padding="8,6" FontSize="11" FontWeight="SemiBold" Foreground="#64748B" />
-                        <TextBlock Grid.Column="4" Text="Volume (m³)" Padding="8,6" FontSize="11" FontWeight="SemiBold" Foreground="#64748B" />
-                        <TextBlock Grid.Column="5" Text="Hauteur (m)" Padding="8,6" FontSize="11" FontWeight="SemiBold" Foreground="#64748B" />
-                        <TextBlock Grid.Column="6" Text="Contenu" Padding="8,6" FontSize="11" FontWeight="SemiBold" Foreground="#64748B" />
-                      </Grid>
-                      <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Auto">
+                      <!-- En-tête du tableau des pièces : défile horizontalement avec les lignes (MainWindow.xaml.cs). -->
+                      <ScrollViewer x:Name="TrcHeaderScroll" DockPanel.Dock="Top" HorizontalScrollBarVisibility="Hidden" VerticalScrollBarVisibility="Disabled">
+                        <ContentControl Content="{Binding RoomHeader}" ContentTemplate="{StaticResource TrcHeader}" Tag="36" />
+                      </ScrollViewer>
+                      <ScrollViewer x:Name="TrcRowsScroll" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Auto" ScrollChanged="OnTrcRowsScrolled">
                         <ItemsControl ItemsSource="{Binding Rooms}" ItemTemplate="{StaticResource TrcRoom}" />
                       </ScrollViewer>
                     </DockPanel>
