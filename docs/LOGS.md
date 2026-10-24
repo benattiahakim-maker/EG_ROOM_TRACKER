@@ -49,7 +49,10 @@ Exemple :
 
 `EXTRACTION_STARTED`, `CONFIGURATION_VALIDATED`, `DOCUMENT_ACCESSIBLE`, `COLLECTION_COMPLETED`, `ANOMALIES_DETECTED`
 (compteur agrégé par code), `EXPORT_COMPLETED`, `EXTRACTION_FAILED` (avec `data.errorCode`), `EXTRACTION_SUMMARY`
-(statut au format de `result.json`, par exemple `succeededWithWarnings`, compteurs, erreurs, durée).
+(statut au format de `result.json`, par exemple `succeededWithWarnings`, compteurs, erreurs, durée). Dans `data`,
+`roomsCollected` est le nombre de pièces lues dans le document et `roomsExported` le nombre de pièces réellement présentes dans le résultat :
+en sortie `generic`, les pièces d'options de conception secondaires exclues (`includeSecondaryDesignOptions` : `false`) ne sont pas comptées
+(67 collectées, 10 exclues : `roomsExported` = 57). Les noms et le schéma du journal ne changent pas.
 `ROOM_EXTRACTION_FAILED` (niveau `Warning`, avec `roomElementId` et l'exception) signale une pièce exportée avec
 l'indicateur `EXTRACTION_ERROR`.
 
