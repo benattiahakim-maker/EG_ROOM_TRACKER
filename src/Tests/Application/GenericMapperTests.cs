@@ -401,7 +401,7 @@ public sealed class GenericMapperTests
         var complete = result with
         {
             Rooms = [result.Rooms[0], result.Rooms[1], result.Rooms[2] with { BoundingBox = GenericFixtures.Box(9000) }],
-            Anomalies = [.. links.Select(name => DocumentAnomalies.LinkMissing(name, "Liens/" + name))],
+            Anomalies = [.. links.Select(name => DocumentAnomalies.LinkMissing(name, "Liens/" + name)), DocumentAnomalies.LinkNotLoaded("Autre.rvt", null, "Unloaded")],
         };
 
         var envelope = GenericMapper.Map(complete);
@@ -415,7 +415,10 @@ public sealed class GenericMapperTests
         var json = Envelope(complete)["warnings"]!.AsArray();
         Assert.Equal("info", json[0]!["severity"]!.GetValue<string>()); // écrit comme objet {severity, message, code}
         Assert.Empty(GenericEnvelopeChecks.SchemaErrors(Envelope(complete)));
-        Assert.Equal(5, envelope.Objects.Count(o => o.Name == "LINK_MISSING")); // les anomalies restent des objets
+        // Aucun objet « Anomalie » LINK_MISSING ; les autres types d'anomalie restent des objets.
+        Assert.DoesNotContain(envelope.Objects, o => o.Name == DocumentAnomalyCodes.LinkMissing);
+        Assert.DoesNotContain(GenericEnvelopeChecks.AllObjects(Envelope(complete)), o => o["name"]!.GetValue<string>() == DocumentAnomalyCodes.LinkMissing);
+        Assert.Single(envelope.Objects, o => o.Name == DocumentAnomalyCodes.LinkNotLoaded);
     }
 
     [Fact]
@@ -459,6 +462,7 @@ public sealed class GenericMapperTests
         var envelope = GenericMapper.Map(complete);
 
         Assert.Equal("partial", envelope.Status);
+        Assert.DoesNotContain(envelope.Objects, o => o.Name == DocumentAnomalyCodes.LinkMissing);
         Assert.Equal(2, envelope.Warnings.Count);
         Assert.Contains(envelope.Warnings, w => w.Message.StartsWith($"{QualityFlagCodes.ExtractionError} :", StringComparison.Ordinal));
         Assert.Contains(envelope.Warnings, w => w.Severity == GenericSeverities.Info && w.Message.StartsWith("1 lien(s) absent(s)", StringComparison.Ordinal) && w.Message.Contains("A.rvt", StringComparison.Ordinal));

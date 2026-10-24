@@ -162,6 +162,11 @@ public static class GenericMapper
         var anomalyNumber = 0;
         foreach (var anomaly in result.Anomalies)
         {
+            if (anomaly.Code == DocumentAnomalyCodes.LinkMissing)
+            {
+                continue; // Les liens absents ne sont dits que par l'information unique LINK_MISSING (MissingLinksNote).
+            }
+
             var obj = AnomalyObject(anomaly, Unique($"anomaly-{(++anomalyNumber).ToString(CultureInfo.InvariantCulture)}", used));
             if (anomaly.Scope == AnomalyScope.Room && anomaly.ElementId is { } roomElementId && roomIdByElementId.ContainsKey(roomElementId))
             {
