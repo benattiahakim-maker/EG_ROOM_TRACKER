@@ -74,10 +74,9 @@ TRC). `categorie_libelle` (texte, groupe `Identification`) donne le libellé lis
 Revit (unité inconnue du plugin) : 12 chiffres significatifs, ce qui retire seulement le bruit de virgule flottante (`2.6999999999999997` devient
 `2.7`) ; les valeurs entières et zéro ne changent pas. Une valeur inconnue reste omise, jamais mise à zéro.
 
-**Unité de la `box`.** La `box` est toujours en **millimètres**, repère du modèle principal (contrat de la plateforme). Elle n'a **pas** de clé
-`unit` : le validateur de la plateforme (`validateEnvelope`) n'accepte `unit` que sur le type `number` et refuserait l'enveloppe (`RESULT_INVALID`).
-Le libellé de la propriété dit « (mm) ». Si PM veut une `unit` sur la boîte, il faut d'abord que la plateforme l'autorise pour `box` (« `unit` :
-permis pour `number` et `box` ») ; le plugin pourra alors écrire `"unit": "mm"`.
+**Unité de la `box`.** La `box` est toujours en **millimètres**, repère du modèle principal (contrat de la plateforme). Elle est arrondie (1 décimale) et n'a **pas** de clé
+`unit` : ne jamais en ajouter (le validateur de la plateforme n'accepte `unit` que sur le type `number` et refuserait l'enveloppe, `RESULT_INVALID`).
+Le libellé de la propriété dit « (mm) ». Décision PM : c'est la règle, pas une étape provisoire.
 
 La `box` vient de `Room.get_BoundingBox(null)`, convertie en millimètres (`CollectedRoom.BoundingBox`, lue à la collecte, y compris pour une
 pièce en `EXTRACTION_ERROR`). Elle est alignée sur les axes : fidèle pour une pièce rectangulaire, englobante pour une pièce en L.
