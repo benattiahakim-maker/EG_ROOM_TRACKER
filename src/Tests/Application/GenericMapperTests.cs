@@ -18,6 +18,8 @@ public sealed class GenericMapperTests
 
     private static JsonNode? Find(JsonNode envelope, string id) => GenericEnvelopeChecks.AllObjects(envelope).FirstOrDefault(o => o["id"]!.GetValue<string>() == id);
 
+    private static string? Text(JsonNode envelope, string id, string key) => Property(Find(envelope, id)!, key)?["value"]?.GetValue<string>();
+
     private static JsonNode? Property(JsonNode obj, string key) => ((JsonArray)obj["properties"]!).FirstOrDefault(p => p!["key"]!.GetValue<string>() == key);
 
     private static IEnumerable<string> RefsOf(JsonNode obj, string key) =>
@@ -100,7 +102,7 @@ public sealed class GenericMapperTests
 
         var volume = Property(Find(Envelope(computed), "room-100")!, "volume")!;
 
-        Assert.Equal(49.7625, volume["value"]!.GetValue<double>());
+        Assert.Equal(49.763, volume["value"]!.GetValue<double>()); // 3 décimales
         Assert.Equal("m³", volume["unit"]!.GetValue<string>());
     }
 
@@ -462,6 +464,48 @@ public sealed class GenericMapperTests
         Assert.Contains(envelope.Warnings, w => w.Message.StartsWith($"{QualityFlagCodes.ExtractionError} :", StringComparison.Ordinal));
         Assert.Contains(envelope.Warnings, w => w.Severity == GenericSeverities.Info && w.Message.StartsWith("1 lien(s) absent(s)", StringComparison.Ordinal) && w.Message.Contains("A.rvt", StringComparison.Ordinal));
     }
+
+    [Fact]
+    public void Quantities_AreRoundedToThreeDecimals_BoxToOneDecimal_ParametersLoseOnlyFloatingNoise()
+    {
+        var result = GenericFixtures.Result();
+        var noisy = result.Rooms[0] with
+        {
+            AreaM2 = 18.425000000000001 + 1e-13,
+            BoundingBox = new BoundingBoxMm(0.04, 1234.5678, -0.06, 4300.123456, 4285.0000001, 2700),
+            Parameters = new Dictionary<string, object?> { ["Bruit"] = 2.6999999999999997, ["Petit"] = 0.000123456789012345, ["Entier"] = 123456789.0, ["Grand"] = 1234567.891 },
+        };
+        var json = Envelope(result with { Rooms = [noisy, .. result.Rooms.Skip(1)] });
+        var room = Find(json, "room-100")!;
+
+        Assert.Equal(18.425, Property(room, "surface")!["value"]!.GetValue<double>());
+        var box = Property(room, "box")!["value"]!;
+        Assert.Equal([0.0, 1234.6, -0.1], box["min"]!.AsArray().Select(v => v!.GetValue<double>()));
+        Assert.Equal([4300.1, 4285.0, 2700.0], box["max"]!.AsArray().Select(v => v!.GetValue<double>()));
+        Assert.Equal(2.7, Property(room, "occurrence:Bruit")!["value"]!.GetValue<double>());
+        Assert.Equal(0.000123456789012, Property(room, "occurrence:Petit")!["value"]!.GetValue<double>());
+        Assert.Equal(123456789.0, Property(room, "occurrence:Entier")!["value"]!.GetValue<double>());
+        Assert.Equal(1234567.891, Property(room, "occurrence:Grand")!["value"]!.GetValue<double>());
+    }
+
+    [Fact]
+    public void Category_KeepsTheTechnicalValue_AndAddsAReadableLabel()
+    {
+        var json = Envelope(GenericFixtures.Result(anomalies: [Rooms.VolumeNotComputed(3)]), new GenericMapContext { ResultFiles = [new GenericFile("a.json", "application/json", "/a.json")] });
+
+        Assert.Equal("Space", Text(json, "room-100", "Category"));
+        Assert.Equal("Pièce", Text(json, "room-100", "categorie_libelle"));
+        Assert.Equal("Anomalie", Text(json, "anomaly-1", "categorie_libelle"));
+        Assert.Equal("Fichiers", Text(json, "result-files", "categorie_libelle"));
+    }
+
+    [Theory]
+    [InlineData("Space", "Pièce")]
+    [InlineData("Door", "Porte")]
+    [InlineData("cvc equipement", "Équipement CVC")]
+    [InlineData("electricite terminal", "Terminal electricite")]
+    [InlineData("inconnue", "inconnue")]
+    public void CategoryLabel_IsReadable(string category, string expected) => Assert.Equal(expected, GenericMapper.CategoryLabel(category));
 
     [Fact]
     public void FailedExtraction_HasNoEnvelope()
