@@ -1,0 +1,549 @@
+using System.Globalization;
+using System.Text.Json;
+using EgRoomTracker.Application.Trc;
+using EgRoomTracker.Contracts.Generic;
+using EgRoomTracker.Contracts.Results;
+
+namespace EgRoomTracker.Application.Generic;
+
+/// <summary>Groupes d'affichage des propriétés (champ <c>group</c>).</summary>
+public static class GenericGroups
+{
+    public const string Identification = "Identification";
+    public const string Dimensions = "Dimensions";
+    public const string Finishes = "Finitions";
+    public const string Images = "Images";
+    public const string Relations = "Relations";
+    public const string Shared = "Paramètres partagés";
+    public const string Occurrence = "Paramètres d'occurrence";
+    public const string Type = "Paramètres de type";
+    public const string Anomaly = "Anomalie";
+    public const string Files = "Fichiers";
+}
+
+/// <summary>Clés des propriétés de l'enveloppe (la propriété réservée <c>viewerId</c> est dans <see cref="GenericContract"/>).</summary>
+public static class GenericKeys
+{
+    public const string UniqueId = "unique_id";
+    public const string RevitId = "id_revit";
+    public const string Category = "Category";
+    public const string ModelKey = "modelKey";
+    public const string Room = "room";
+    public const string Contains = "contains";
+    public const string RoomFrom = "room_from";
+    public const string RoomTo = "room_to";
+    public const string Box = "box";
+    public const string Image = "image";
+
+    /// <summary>Préfixe des paramètres d'occurrence (<c>occurrence:Nom</c>).</summary>
+    public const string OccurrencePrefix = "occurrence:";
+
+    /// <summary>Préfixe des paramètres de type (<c>type:Nom</c>).</summary>
+    public const string TypePrefix = "type:";
+
+    /// <summary>Préfixe des paramètres partagés de la pièce (<c>partage:cléDuMapping</c>).</summary>
+    public const string SharedPrefix = "partage:";
+}
+
+/// <summary>Valeurs de la propriété <c>Category</c> propres à la sortie <c>generic</c> (les autres sont celles du TRC : <c>Space</c>, <c>Door</c>…).</summary>
+public static class GenericCategories
+{
+    public const string Anomaly = "Anomaly";
+    public const string Files = "Files";
+}
+
+/// <summary>Contexte de conversion : ce que l'extraction ne sait pas, parce que cela dépend des fichiers écrits.</summary>
+public sealed record GenericMapContext
+{
+    /// <summary>Noms des fichiers réellement présents dans <c>Images/</c> ; null ou vide : aucune propriété <c>image</c>.</summary>
+    public IReadOnlySet<string>? ImageFileNames { get; init; }
+
+    /// <summary>Identifiant du service dans l'enveloppe (<c>serviceId</c>).</summary>
+    public string ServiceId { get; init; } = GenericContract.ServiceId;
+
+    /// <summary>Dossier des images dans le ZIP de sortie, sans barre finale (<c>Images</c>).</summary>
+    public string ImagesDirectory { get; init; } = "Images";
+
+    /// <summary>Fichiers produits à la racine du résultat (ex. <c>TRCValidationDict.json</c>), listés dans un objet « Fichiers du résultat ».</summary>
+    public IReadOnlyList<GenericFile> ResultFiles { get; init; } = [];
+}
+
+/// <summary>
+/// Conversion pure de l'extraction en enveloppe commune de la plateforme (<c>result.generic.json</c>), sans Revit ni fichier.
+/// <list type="bullet">
+/// <item>Une pièce = un objet racine (<c>id</c> <c>room-{ElementId}</c>), ses anomalies de portée pièce en enfants.</item>
+/// <item>Une porte, un équipement ou un terminal = un objet (<c>id</c> <c>element-{UniqueId}</c>) rangé <b>une seule fois</b>, sous la
+/// première pièce qui le contient ; il pointe toutes ses pièces par des <c>ref</c> <c>room</c> (portes : aussi <c>room_from</c> et
+/// <c>room_to</c>), et chaque autre pièce le pointe par un <c>ref</c> <c>contains</c>.</item>
+/// <item>Aucun champ de type de contenu : <c>Category</c> (<c>Space</c>, <c>Door</c>, <c>cvc equipement</c>…) est une propriété normale.</item>
+/// <item>Valeurs typées : nombres avec unité (m, m², m³), jamais de texte arrondi ; une valeur inconnue est omise, jamais mise à zéro.</item>
+/// </list>
+/// </summary>
+public static class GenericMapper
+{
+    public const string ImageMimeType = "image/jpeg";
+
+    public static GenericEnvelope Map(ExtractionResult result, GenericMapContext? context = null)
+    {
+        ArgumentNullException.ThrowIfNull(result);
+        context ??= new GenericMapContext();
+        var source = result.Summary.Source ?? throw new InvalidOperationException("Modèle source inconnu : sortie generic impossible.");
+        if (result.Summary.Status == ExtractionStatus.Failed)
+        {
+            throw new InvalidOperationException("Extraction en échec : pas d'enveloppe (result.json explique l'échec).");
+        }
+
+        var codeFile = TrcNaming.CodeFile(source.FileName);
+        var warnings = new List<string>();
+        var used = new HashSet<string>(StringComparer.Ordinal);
+
+        var elements = Elements(result.Rooms);
+        var models = BuildModels(source, elements);
+        var linkKeys = models.Where(m => m.Key != GenericContract.MainModelKey).ToDictionary(m => m.Title, m => m.Key, StringComparer.Ordinal);
+
+        // Identifiants : stables et uniques (UniqueId d'élément, ElementId de pièce propre au modèle principal).
+        var roomIds = new Dictionary<string, string>(StringComparer.Ordinal); // UniqueId de pièce -> id d'objet
+        var roomIdByElementId = new Dictionary<string, string>(StringComparer.Ordinal);
+        foreach (var room in result.Rooms)
+        {
+            var id = Unique($"room-{room.ElementId}", used);
+            roomIds[room.UniqueId] = id;
+            roomIdByElementId.TryAdd(room.ElementId, id);
+        }
+
+        var elementIds = new Dictionary<string, string>(StringComparer.Ordinal);
+        foreach (var element in elements)
+        {
+            elementIds[element.Item.UniqueId] = Unique($"element-{element.Item.UniqueId}", used);
+        }
+
+        // Éléments rangés sous leur première pièce ; les autres pièces les pointent par « contains ».
+        var childrenOf = new Dictionary<string, List<GenericObject>>(StringComparer.Ordinal);
+        var containsOf = new Dictionary<string, List<string>>(StringComparer.Ordinal);
+        foreach (var element in elements)
+        {
+            var id = elementIds[element.Item.UniqueId];
+            Add(childrenOf, element.Rooms[0].Space, ElementObject(element, id, roomIds, linkKeys));
+            foreach (var other in element.Spaces.Skip(1))
+            {
+                Add(containsOf, other, id);
+            }
+        }
+
+        // Anomalies : portée pièce en enfants de la pièce, portée document en objets racines.
+        var roomAnomalies = new Dictionary<string, List<GenericObject>>(StringComparer.Ordinal);
+        var documentAnomalies = new List<GenericObject>();
+        var anomalyNumber = 0;
+        foreach (var anomaly in result.Anomalies)
+        {
+            var obj = AnomalyObject(anomaly, Unique($"anomaly-{(++anomalyNumber).ToString(CultureInfo.InvariantCulture)}", used));
+            if (anomaly.Scope == AnomalyScope.Room && anomaly.ElementId is { } roomElementId && roomIdByElementId.ContainsKey(roomElementId))
+            {
+                Add(roomAnomalies, roomElementId, obj);
+            }
+            else
+            {
+                documentAnomalies.Add(obj);
+            }
+        }
+
+        var withoutBox = 0;
+        var objects = new List<GenericObject>(result.Rooms.Count + documentAnomalies.Count + 1);
+        foreach (var room in result.Rooms)
+        {
+            var properties = RoomProperties(room, codeFile, context, ref withoutBox);
+            foreach (var contained in containsOf.GetValueOrDefault(room.UniqueId) ?? [])
+            {
+                properties.Add(Ref(GenericKeys.Contains, "Contient", contained, GenericGroups.Relations));
+            }
+
+            var children = new List<GenericObject>();
+            children.AddRange(childrenOf.GetValueOrDefault(room.UniqueId) ?? []);
+            children.AddRange(roomAnomalies.GetValueOrDefault(room.ElementId) ?? []);
+            objects.Add(new GenericObject { Id = roomIds[room.UniqueId], Name = RoomName(room), Children = children, Properties = properties });
+        }
+
+        objects.AddRange(documentAnomalies);
+        if (context.ResultFiles.Count > 0)
+        {
+            objects.Add(FilesObject(context.ResultFiles, Unique("result-files", used)));
+        }
+
+        if (withoutBox > 0)
+        {
+            warnings.Add($"{withoutBox.ToString(CultureInfo.InvariantCulture)} pièce(s) sans boîte englobante (pièce non placée ou boîte illisible) : propriété box omise.");
+        }
+
+        warnings.AddRange(AnomalyWarnings(result.Anomalies));
+        if (warnings.Count == 0 && result.Summary.Status == ExtractionStatus.SucceededWithWarnings)
+        {
+            warnings.Add("Extraction terminée avec avertissements ; voir les anomalies.");
+        }
+
+        return new GenericEnvelope
+        {
+            ServiceId = context.ServiceId,
+            Status = warnings.Count > 0 ? GenericStatuses.Partial : GenericStatuses.Done,
+            Warnings = warnings,
+            Models = models,
+            Objects = objects,
+        };
+    }
+
+    // ---------------------------------------------------------------- éléments (collecte)
+
+    /// <summary>
+    /// Porte, équipement ou terminal, une seule fois (clé : UniqueId), avec ses pièces dans l'ordre des pièces du résultat et la
+    /// relation (<c>from</c>, <c>to</c>, <c>in</c>) de chacune. <see cref="Spaces"/> : UniqueId des pièces ; la première le range.
+    /// </summary>
+    private sealed record GenericElement(RoomElementDto Item, string Category, List<(string Space, string Relation)> Rooms)
+    {
+        public IEnumerable<string> Spaces => Rooms.Select(r => r.Space);
+    }
+
+    private static IReadOnlyList<GenericElement> Elements(IEnumerable<RoomDto> rooms)
+    {
+        var order = new List<GenericElement>();
+        var byId = new Dictionary<string, GenericElement>(StringComparer.Ordinal);
+        foreach (var room in rooms)
+        {
+            var items = (room.Doors ?? []).Select(item => (item, Category: TrcCategories.Door))
+                .Concat((room.Equipment ?? []).Select(item => (item, Category: TrcCategories.Equipment(item.Discipline))))
+                .Concat((room.Terminals ?? []).Select(item => (item, Category: TrcCategories.Terminal(item.Discipline))));
+            foreach (var (item, category) in items)
+            {
+                if (!byId.TryGetValue(item.UniqueId, out var entry))
+                {
+                    byId[item.UniqueId] = entry = new GenericElement(item, category, []);
+                    order.Add(entry);
+                }
+
+                if (!entry.Rooms.Any(r => r.Space == room.UniqueId))
+                {
+                    entry.Rooms.Add((room.UniqueId, item.Relation));
+                }
+            }
+        }
+
+        return order;
+    }
+
+    // ---------------------------------------------------------------- modèles
+
+    /// <summary>
+    /// <c>models[]</c> : la maquette principale (<c>main</c>), puis un <c>link-n</c> par modèle lié d'où vient au moins un élément, triés
+    /// par nom. L'URN est celui de la conversion, que seule la plateforme connaît : il reste vide.
+    /// </summary>
+    private static List<GenericModel> BuildModels(SourceInfo source, IReadOnlyList<GenericElement> elements)
+    {
+        var models = new List<GenericModel>
+        {
+            new(GenericContract.MainModelKey, Path.GetFileNameWithoutExtension(source.FileName), string.Empty),
+        };
+        var number = 0;
+        foreach (var link in elements.Select(e => e.Item.LinkName).Where(n => !string.IsNullOrWhiteSpace(n)).Distinct(StringComparer.Ordinal).Order(StringComparer.Ordinal))
+        {
+            models.Add(new($"link-{(++number).ToString(CultureInfo.InvariantCulture)}", link!, string.Empty));
+        }
+
+        return models;
+    }
+
+    // ---------------------------------------------------------------- pièces
+
+    private static string RoomName(RoomDto room)
+    {
+        var name = string.Join(' ', new[] { room.Number, room.Name }.Where(part => !string.IsNullOrWhiteSpace(part)));
+        return name.Length > 0 ? name : $"Pièce {room.ElementId}";
+    }
+
+    private static List<GenericProperty> RoomProperties(RoomDto room, string codeFile, GenericMapContext context, ref int withoutBox)
+    {
+        var p = new List<GenericProperty>
+        {
+            Text(GenericContract.ViewerIdKey, "Identifiant du viewer", room.UniqueId, GenericGroups.Identification),
+            Text(GenericKeys.UniqueId, "UniqueId Revit", room.UniqueId, GenericGroups.Identification),
+            Text(GenericKeys.RevitId, "ElementId Revit", room.ElementId, GenericGroups.Identification),
+            Text(GenericKeys.Category, "Catégorie", TrcCategories.Space, GenericGroups.Identification),
+            Text(GenericKeys.ModelKey, "Maquette", GenericContract.MainModelKey, GenericGroups.Identification),
+        };
+        AddText(p, "numero", "Numéro", room.Number, GenericGroups.Identification);
+        AddText(p, "niveau", "Niveau", room.Level?.Name, GenericGroups.Identification);
+        AddText(p, "phase", "Phase", room.Phase?.Name, GenericGroups.Identification);
+        AddText(p, "variante", "Variante", room.DesignOption?.Name, GenericGroups.Identification);
+        AddText(p, "occupation", "Occupation", room.Occupancy, GenericGroups.Identification);
+        if (room.NamedParameters is { } named)
+        {
+            AddText(p, "ouvrage", "Ouvrage", Named(named, TrcIdentification.Ouvrage), GenericGroups.Identification);
+            AddText(p, "typologie_espace", "Typologie d'espace", Named(named, TrcIdentification.Typologie), GenericGroups.Identification);
+            AddText(p, "local_code", "Code du local", Named(named, TrcIdentification.LocalCode), GenericGroups.Identification);
+        }
+
+        AddNumber(p, "surface", "Surface", room.AreaM2, "m²", GenericGroups.Dimensions);
+        if (room.VolumeStatus == VolumeStatus.Computed)
+        {
+            AddNumber(p, "volume", "Volume", room.VolumeM3, "m³", GenericGroups.Dimensions);
+        }
+
+        if (room.Heights is { } heights)
+        {
+            AddNumber(p, "hauteur", "Hauteur effective", heights.EffectiveM, "m", GenericGroups.Dimensions);
+            AddNumber(p, "hauteur_mesuree", "Hauteur mesurée", heights.MeasuredMinM, "m", GenericGroups.Dimensions);
+            AddNumber(p, "hauteur_renseignee", "Hauteur renseignée", heights.DeclaredM, "m", GenericGroups.Dimensions);
+            AddText(p, "hauteur_source", "Source de la hauteur effective", heights.EffectiveSource, GenericGroups.Dimensions);
+            AddText(p, "hauteur_element_limitant", "Élément limitant la hauteur", heights.LimitingCategory is null ? null : $"{heights.LimitingCategory} ({heights.LimitingDocument})", GenericGroups.Dimensions);
+        }
+
+        AddNumber(p, "hauteur_non_limitee", "Hauteur non limitée", room.UnboundedHeightM, "m", GenericGroups.Dimensions);
+
+        if (room.BoundingBox is { } box && Box(box) is { } value)
+        {
+            p.Add(new GenericProperty { Key = GenericKeys.Box, Label = "Boîte englobante (mm)", Type = GenericPropertyTypes.Box, Value = value, Group = GenericGroups.Dimensions });
+        }
+        else
+        {
+            withoutBox++;
+        }
+
+        AddText(p, "finition_sol", "Finition du sol", room.Finishes.Floor, GenericGroups.Finishes);
+        AddText(p, "finition_murs", "Finition des murs", room.Finishes.Wall, GenericGroups.Finishes);
+        AddText(p, "finition_plafond", "Finition du plafond", room.Finishes.Ceiling, GenericGroups.Finishes);
+        AddText(p, "finition_plinthe", "Finition de la plinthe", room.Finishes.Base, GenericGroups.Finishes);
+
+        foreach (var (key, shared) in room.SharedParameters.OrderBy(pair => pair.Key, StringComparer.Ordinal))
+        {
+            AddValue(p, GenericKeys.SharedPrefix + key, key, shared.Value, null, GenericGroups.Shared);
+        }
+
+        if (context.ImageFileNames is { Count: > 0 } images && long.TryParse(room.ElementId, NumberStyles.None, CultureInfo.InvariantCulture, out var elementId))
+        {
+            var fileName = TrcNaming.RoomImageFileName(room.UniqueId, codeFile, elementId);
+            if (images.Contains(fileName))
+            {
+                p.Add(File(GenericKeys.Image, "Vue 3D de la pièce", new GenericFile(fileName, ImageMimeType, RelativeUrl(context.ImagesDirectory, fileName)), GenericGroups.Images));
+            }
+        }
+
+        AddParameters(p, room.Parameters, GenericKeys.OccurrencePrefix, GenericGroups.Occurrence);
+        return p;
+    }
+
+    private static string? Named(IReadOnlyDictionary<string, string?> named, string name) =>
+        named.TryGetValue(name, out var value) && !string.IsNullOrWhiteSpace(value) ? value : null;
+
+    // ---------------------------------------------------------------- éléments
+
+    private static GenericObject ElementObject(GenericElement element, string id, IReadOnlyDictionary<string, string> roomIds, IReadOnlyDictionary<string, string> linkKeys)
+    {
+        var item = element.Item;
+        var linked = !string.IsNullOrWhiteSpace(item.LinkName);
+        var p = new List<GenericProperty>
+        {
+            Text(GenericContract.ViewerIdKey, "Identifiant du viewer", item.UniqueId, GenericGroups.Identification),
+            Text(GenericKeys.UniqueId, "UniqueId Revit", item.UniqueId, GenericGroups.Identification),
+            Text(GenericKeys.RevitId, "ElementId Revit", item.ElementId, GenericGroups.Identification),
+            Text(GenericKeys.Category, "Catégorie", element.Category, GenericGroups.Identification),
+            Text(GenericKeys.ModelKey, "Maquette", linked ? linkKeys[item.LinkName!] : GenericContract.MainModelKey, GenericGroups.Identification),
+            new GenericProperty { Key = "modele_lie", Label = "Élément d'un modèle lié", Type = GenericPropertyTypes.Boolean, Value = linked, Group = GenericGroups.Identification },
+        };
+        AddText(p, "lien", "Modèle lié", item.LinkName, GenericGroups.Identification);
+        AddText(p, "categorie_revit", "Catégorie Revit", item.Category, GenericGroups.Identification);
+        AddText(p, "famille", "Famille", item.Family, GenericGroups.Identification);
+        AddText(p, "type", "Type", item.Type, GenericGroups.Identification);
+        AddText(p, "repere", "Repère", item.Mark, GenericGroups.Identification);
+        AddText(p, "numero", "Numéro", item.Number, GenericGroups.Identification);
+        AddText(p, "niveau", "Niveau", item.Level, GenericGroups.Identification);
+        AddText(p, "discipline", "Discipline", item.Discipline, GenericGroups.Identification);
+        AddNumber(p, "largeur", "Largeur de passage libre", item.WidthM, "m", GenericGroups.Dimensions);
+        AddNumber(p, "hauteur", "Hauteur de passage libre", item.HeightM, "m", GenericGroups.Dimensions);
+        AddText(p, "source_dimensions", "Source des dimensions", item.DimensionSource, GenericGroups.Dimensions);
+
+        // Pièces : « room » pour chacune ; une porte précise aussi son côté (relation from / to de result.json).
+        foreach (var space in element.Spaces)
+        {
+            p.Add(Ref(GenericKeys.Room, "Pièce", roomIds[space], GenericGroups.Relations));
+        }
+
+        if (element.Category == TrcCategories.Door)
+        {
+            foreach (var (space, relation) in element.Rooms)
+            {
+                if (RelationKey(relation) is { } key)
+                {
+                    p.Add(Ref(key, RelationLabel(relation), roomIds[space], GenericGroups.Relations));
+                }
+            }
+        }
+
+        AddParameters(p, item.Parameters, GenericKeys.OccurrencePrefix, GenericGroups.Occurrence);
+        AddParameters(p, item.TypeParameters, GenericKeys.TypePrefix, GenericGroups.Type);
+        return new GenericObject { Id = id, Name = ElementName(item), Properties = p };
+    }
+
+    private static string? RelationKey(string relation) => relation switch
+    {
+        ElementRoomRelation.From => GenericKeys.RoomFrom,
+        ElementRoomRelation.To => GenericKeys.RoomTo,
+        _ => null,
+    };
+
+    private static string RelationLabel(string relation) => relation == ElementRoomRelation.From ? "Pièce de départ" : "Pièce d'arrivée";
+
+    private static string ElementName(RoomElementDto item)
+    {
+        var name = string.Join(" : ", new[] { item.Family, item.Type }.Where(part => !string.IsNullOrWhiteSpace(part)));
+        return name.Length > 0 ? name : $"{item.Category} {item.ElementId}";
+    }
+
+    // ---------------------------------------------------------------- anomalies
+
+    private static GenericObject AnomalyObject(AnomalyDto anomaly, string id)
+    {
+        var p = new List<GenericProperty>
+        {
+            Text(GenericKeys.Category, "Catégorie", GenericCategories.Anomaly, GenericGroups.Anomaly),
+            Text("code", "Code", anomaly.Code, GenericGroups.Anomaly),
+            Text("severity", "Gravité", anomaly.Severity.ToString().ToLowerInvariant(), GenericGroups.Anomaly),
+            Text("scope", "Portée", anomaly.Scope.ToString().ToLowerInvariant(), GenericGroups.Anomaly),
+            Text("message", "Message", anomaly.Message, GenericGroups.Anomaly),
+        };
+        if (anomaly.Details.Count > 0)
+        {
+            p.Add(Text("details", "Détails (JSON)", JsonSerializer.Serialize(anomaly.Details, DetailsOptions), GenericGroups.Anomaly));
+        }
+
+        return new GenericObject { Id = id, Name = anomaly.Code, Properties = p };
+    }
+
+    private static readonly JsonSerializerOptions DetailsOptions = new() { Encoder = System.Text.Encodings.Web.JavaScriptEncoder.UnsafeRelaxedJsonEscaping };
+
+    /// <summary>Un avertissement par code d'anomalie de gravité warning ou error.</summary>
+    private static IEnumerable<string> AnomalyWarnings(IReadOnlyList<AnomalyDto> anomalies) =>
+        anomalies
+            .Where(a => a.Severity != AnomalySeverity.Info)
+            .GroupBy(a => a.Code, StringComparer.Ordinal)
+            .OrderBy(g => g.Key, StringComparer.Ordinal)
+            .Select(g => g.Count() == 1
+                ? $"{g.Key} : {g.First().Message}"
+                : $"{g.Key} : {g.Count().ToString(CultureInfo.InvariantCulture)} anomalies (ex. {g.First().Message})");
+
+    private static GenericObject FilesObject(IReadOnlyList<GenericFile> files, string id)
+    {
+        var p = new List<GenericProperty> { Text(GenericKeys.Category, "Catégorie", GenericCategories.Files, GenericGroups.Files) };
+        var keys = new HashSet<string>(StringComparer.Ordinal);
+        foreach (var file in files)
+        {
+            p.Add(File(Unique($"file:{file.Name}", keys), file.Name, file, GenericGroups.Files));
+        }
+
+        return new GenericObject { Id = id, Name = "Fichiers du résultat", Properties = p };
+    }
+
+    // ---------------------------------------------------------------- propriétés
+
+    private static GenericProperty Text(string key, string label, string value, string group) =>
+        new() { Key = key, Label = label, Type = GenericPropertyTypes.Text, Value = value, Group = group };
+
+    private static GenericProperty Ref(string key, string label, string id, string group) =>
+        new() { Key = key, Label = label, Type = GenericPropertyTypes.Ref, Value = id, Group = group };
+
+    private static GenericProperty File(string key, string label, GenericFile file, string group) =>
+        new() { Key = key, Label = label, Type = GenericPropertyTypes.File, Value = file, Group = group };
+
+    private static void AddText(List<GenericProperty> list, string key, string label, string? value, string group)
+    {
+        if (!string.IsNullOrWhiteSpace(value))
+        {
+            list.Add(Text(key, label, value, group));
+        }
+    }
+
+    private static void AddNumber(List<GenericProperty> list, string key, string label, double? value, string? unit, string group)
+    {
+        if (value is { } number && double.IsFinite(number))
+        {
+            list.Add(new GenericProperty { Key = key, Label = label, Type = GenericPropertyTypes.Number, Value = number, Unit = unit, Group = group });
+        }
+    }
+
+    /// <summary>Paramètres Revit à plat <c>{ nom : valeur }</c> : texte, nombre ou booléen selon la valeur ; sans valeur : omis (jamais d'inventé).</summary>
+    private static void AddParameters(List<GenericProperty> list, IReadOnlyDictionary<string, object?>? parameters, string prefix, string group)
+    {
+        if (parameters is null)
+        {
+            return;
+        }
+
+        foreach (var (name, value) in parameters)
+        {
+            AddValue(list, prefix + name, name, value, null, group);
+        }
+    }
+
+    private static void AddValue(List<GenericProperty> list, string key, string label, object? value, string? unit, string group)
+    {
+        switch (value)
+        {
+            case null:
+                return;
+            case string text:
+                list.Add(new GenericProperty { Key = key, Label = label, Type = GenericPropertyTypes.Text, Value = text, Group = group });
+                return;
+            case bool flag:
+                list.Add(new GenericProperty { Key = key, Label = label, Type = GenericPropertyTypes.Boolean, Value = flag, Group = group });
+                return;
+            case double or float or decimal or int or long or short or byte or uint or ulong:
+                var number = Convert.ToDouble(value, CultureInfo.InvariantCulture);
+                // Un entier au-delà de 2^53 n'est pas représentable sans perte en JSON : texte.
+                if (value is long or ulong && Math.Abs(number) > MaxExactInteger)
+                {
+                    list.Add(new GenericProperty { Key = key, Label = label, Type = GenericPropertyTypes.Text, Value = Convert.ToString(value, CultureInfo.InvariantCulture)!, Group = group });
+                }
+                else if (double.IsFinite(number))
+                {
+                    list.Add(new GenericProperty { Key = key, Label = label, Type = GenericPropertyTypes.Number, Value = number, Unit = unit, Group = group });
+                }
+
+                return;
+            default:
+                list.Add(new GenericProperty { Key = key, Label = label, Type = GenericPropertyTypes.Text, Value = Convert.ToString(value, CultureInfo.InvariantCulture) ?? string.Empty, Group = group });
+                return;
+        }
+    }
+
+    private const double MaxExactInteger = 9_007_199_254_740_992d;
+
+    /// <summary>Boîte valide (valeurs finies, min ≤ max sur chaque axe) ; null sinon.</summary>
+    private static GenericBox? Box(BoundingBoxMm box)
+    {
+        double[] min = [box.MinX, box.MinY, box.MinZ];
+        double[] max = [box.MaxX, box.MaxY, box.MaxZ];
+        var valid = min.Concat(max).All(double.IsFinite) && min[0] <= max[0] && min[1] <= max[1] && min[2] <= max[2];
+        return valid ? new GenericBox(min, max) : null;
+    }
+
+    /// <summary>Chemin relatif au ZIP de sortie, commençant par <c>/</c> ; le nom est encodé (espaces, <c>£</c>…).</summary>
+    private static string RelativeUrl(string directory, string fileName) =>
+        $"/{string.Join('/', directory.Trim('/').Split('/', StringSplitOptions.RemoveEmptyEntries).Select(Uri.EscapeDataString))}/{Uri.EscapeDataString(fileName)}";
+
+    private static string Unique(string raw, HashSet<string> used)
+    {
+        var id = raw;
+        for (var counter = 2; !used.Add(id); counter++)
+        {
+            id = $"{raw}-{counter.ToString(CultureInfo.InvariantCulture)}";
+        }
+
+        return id;
+    }
+
+    private static void Add<T>(Dictionary<string, List<T>> map, string key, T value)
+    {
+        if (!map.TryGetValue(key, out var list))
+        {
+            map[key] = list = [];
+        }
+
+        list.Add(value);
+    }
+}
