@@ -16,6 +16,8 @@ Exemples : `docs/examples/generic.example.json` (sortie), `docs/examples/setting
 { "schemaVersion": "1.0", "roomImages": true, "elements": ["doors", "equipment", "terminals"], "outputFormat": "generic" }
 ```
 
+`includeSecondaryDesignOptions` (booléen, `false` par défaut) : voir « Options de conception » ci-dessous.
+
 | `outputFormat` | Fichiers du dossier `result/` (ZIP de sortie) |
 | --- | --- |
 | `generic` | `result.generic.json` seul ; avec `roomImages`, le dossier `Images/` l'accompagne |
@@ -66,6 +68,20 @@ Racine : `contractVersion` (`1.0`), `serviceId` (`pieces-roomtracker`), `status`
 
 La `box` vient de `Room.get_BoundingBox(null)`, convertie en millimètres (`CollectedRoom.BoundingBox`, lue à la collecte, y compris pour une
 pièce en `EXTRACTION_ERROR`). Elle est alignée sur les axes : fidèle pour une pièce rectangulaire, englobante pour une pièce en L.
+
+### Options de conception
+
+Une pièce peut appartenir à une option de conception Revit. Par défaut (`includeSecondaryDesignOptions: false`), la sortie `generic`
+n'exporte que les pièces **hors option** et celles de l'**option principale** de leur jeu (`DesignOption.IsPrimary`). Les pièces des
+options secondaires sont exclues avec leurs éléments et leurs anomalies de pièce, ce qui évite les surfaces comptées deux fois et les
+emprises qui se chevauchent. Une information `{ severity: "info", code: "DESIGN_OPTIONS_EXCLUDED", message: "N pièce(s)… exclues" }`
+donne le nombre ; elle ne rend pas l'enveloppe `partial`. Si Revit ne dit pas si l'option est principale, la pièce est conservée.
+Avec `true`, toutes les pièces sont exportées.
+
+Chaque pièce porte `option_conception` (texte) : `Principal` hors option, le nom de l'option suivi de `(principale)` pour l'option principale
+(ex. `Unoccupied (principale)`), le nom de l'option sinon. `variante` est nettoyée : le repère `<principal>` que Revit ajoute au nom
+est retiré, les chevrons restants aussi, les espaces sont normalisés (`Unoccupied  <principal>` donne `Unoccupied`). Ces réglages ne
+changent ni `result.json` ni le TRC.
 
 ### Porte, équipement, terminal (objets)
 

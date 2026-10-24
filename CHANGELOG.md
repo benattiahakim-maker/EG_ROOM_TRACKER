@@ -21,6 +21,11 @@ Le format s'inspire de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/).
 
 ### Modifié
 
+- **Sortie `generic` : options de conception** : par défaut, seules les pièces hors option et de l'option principale sont exportées ;
+  les pièces des options secondaires sont exclues avec une information chiffrée `DESIGN_OPTIONS_EXCLUDED`. Nouveau réglage
+  `includeSecondaryDesignOptions` (`false` par défaut, `true` = tout exporter). Nouvelle propriété `option_conception` sur chaque pièce ;
+  `variante` nettoyée (repère `<principal>` et chevrons retirés, espaces normalisés). Sans effet sur `result.json` ni le TRC.
+  Voir [`docs/GENERIC.md`](docs/GENERIC.md) et [`docs/INPUTS.md`](docs/INPUTS.md).
 - **Sortie `generic` : `warnings[]` accepte des informations** : un élément est un texte (avertissement) ou un objet
   `{ severity: "info"|"warning", message, code? }`. `LINK_MISSING` devient une seule information
   `{ severity: "info", code: "LINK_MISSING", message: "N lien(s) absent(s) : a, b, c" }` qui nomme tous les liens (avant, seul le premier

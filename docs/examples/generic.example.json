@@ -364,6 +364,13 @@
           "group": "Identification"
         },
         {
+          "key": "option_conception",
+          "label": "Option de conception",
+          "type": "text",
+          "value": "Principal",
+          "group": "Identification"
+        },
+        {
           "key": "surface",
           "label": "Surface",
           "type": "number",
@@ -468,6 +475,13 @@
           "label": "Niveau",
           "type": "text",
           "value": "R+0",
+          "group": "Identification"
+        },
+        {
+          "key": "option_conception",
+          "label": "Option de conception",
+          "type": "text",
+          "value": "Principal",
           "group": "Identification"
         },
         {
@@ -614,6 +628,13 @@
           "label": "Niveau",
           "type": "text",
           "value": "R+0",
+          "group": "Identification"
+        },
+        {
+          "key": "option_conception",
+          "label": "Option de conception",
+          "type": "text",
+          "value": "Principal",
           "group": "Identification"
         },
         {

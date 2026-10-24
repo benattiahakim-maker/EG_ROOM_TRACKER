@@ -22,7 +22,7 @@ public static partial class SettingsReader
     public const int MaxSizeBytes = 1024 * 1024;
 
     private static readonly string[] KnownProperties =
-        ["schemaVersion", "mainModelPath", "phaseIds", "volumeMode", "sharedParameters", "roomParameters", "elements", "elementCategories", "roomImages", "imageWidthPx", "roomHeights", "heightStepM", "linkedElements", "outputFormat"];
+        ["schemaVersion", "mainModelPath", "phaseIds", "volumeMode", "sharedParameters", "roomParameters", "elements", "elementCategories", "roomImages", "imageWidthPx", "roomHeights", "heightStepM", "linkedElements", "includeSecondaryDesignOptions", "outputFormat"];
     private static readonly string[] KnownMappingProperties = ["key", "guid"];
 
     public static ExtractionSettings Read(string settingsPath, OutputFormat defaultOutputFormat = OutputFormat.Contract)
@@ -81,6 +81,7 @@ public static partial class SettingsReader
                 RoomHeights = ReadRoomHeights(properties),
                 HeightStepM = ReadHeightStep(properties),
                 LinkedElements = ReadLinkedElements(properties),
+                IncludeSecondaryDesignOptions = ReadIncludeSecondaryDesignOptions(properties),
                 OutputFormat = ReadOutputFormat(properties, defaultOutputFormat),
             };
         }
@@ -325,6 +326,18 @@ public static partial class SettingsReader
         return element.ValueKind is JsonValueKind.True or JsonValueKind.False
             ? element.GetBoolean()
             : throw Invalid("linkedElements doit être true ou false.");
+    }
+
+    private static bool ReadIncludeSecondaryDesignOptions(IReadOnlyDictionary<string, JsonElement> properties)
+    {
+        if (!properties.TryGetValue("includeSecondaryDesignOptions", out var element) || element.ValueKind == JsonValueKind.Null)
+        {
+            return false;
+        }
+
+        return element.ValueKind is JsonValueKind.True or JsonValueKind.False
+            ? element.GetBoolean()
+            : throw Invalid("includeSecondaryDesignOptions doit être true ou false.");
     }
 
     private static bool ReadRoomHeights(IReadOnlyDictionary<string, JsonElement> properties)

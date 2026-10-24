@@ -96,9 +96,15 @@ public sealed class RoomReadBuilder
     }
 
     /// <param name="designOptionSetId">Jeu de variantes de la variante (donnée interne non sérialisée) ; null si inconnu.</param>
-    public RoomReadBuilder DesignOption(ElementRef? designOption, string? designOptionSetId = null)
+    /// <param name="isPrimary">La variante est l'option principale de son jeu (donnée interne non sérialisée) ; null si inconnu.</param>
+    public RoomReadBuilder DesignOption(ElementRef? designOption, string? designOptionSetId = null, bool? isPrimary = null)
     {
-        _room = _room with { DesignOption = designOption, DesignOptionSetId = designOption is null ? null : designOptionSetId };
+        _room = _room with
+        {
+            DesignOption = designOption,
+            DesignOptionSetId = designOption is null ? null : designOptionSetId,
+            DesignOptionIsPrimary = designOption is null ? null : isPrimary,
+        };
         return this;
     }
 

@@ -50,6 +50,7 @@ Le service retourne la configuration **telle que lue**, complétée par deux cha
 
 | `linkedElements` | null / absent / `true` (défaut) : les équipements et terminaux des modèles liés sont aussi collectés (`false` : modèle principal seulement) | `CONFIG_INVALID` |
 
+| `includeSecondaryDesignOptions` | null / absent / `false` (défaut) : la sortie `generic` n'exporte que les pièces hors option de conception et celles de l'option principale ; les pièces des options secondaires sont exclues, avec une information chiffrée `DESIGN_OPTIONS_EXCLUDED` dans `warnings[]`. `true` : toutes les pièces sont exportées, `option_conception` indiquant l'option. Sans effet sur `contract`, `trc` et `both` (voir `docs/GENERIC.md`) | `CONFIG_INVALID` |
 | `outputFormat` | `"contract"` (`result.json`), `"trc"`, `"trc"` (`TRCValidationDict.json`, données seules, voir `docs/TRC.md`), `"both"` (les deux) ou `"generic"` (`result.generic.json`, enveloppe commune de la plateforme, voir `docs/GENERIC.md`). **Absent ou null** : `result.json` (`contract`) pour la bibliothèque et l'outil local ; **`generic` dans l'AppBundle Design Automation** (la plateforme n'envoie que `schemaVersion` et `mainModelPath`). Une valeur explicite est toujours respectée | `CONFIG_INVALID` |
 
 Les messages d'erreur nomment la propriété en cause (ex. `settings.json : sharedParameters[1].key « a » en double…`)

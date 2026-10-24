@@ -92,6 +92,14 @@ public class RoomReadBuilderTests
     }
 
     [Fact]
+    public void DesignOption_KeepsTheInternalPrimaryFlag_OnlyWithAnOption()
+    {
+        var option = new ElementRef("9", "Option");
+        Assert.True(NewBuilder().DesignOption(option, "3", isPrimary: true).Build().Room.DesignOptionIsPrimary);
+        Assert.Null(NewBuilder().DesignOption(null, "3", isPrimary: true).Build().Room.DesignOptionIsPrimary);
+    }
+
+    [Fact]
     public void PhaseAndDesignOption_AreReferencesOrNull()
     {
         var result = NewBuilder()
