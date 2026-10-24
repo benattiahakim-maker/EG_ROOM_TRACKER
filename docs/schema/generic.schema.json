@@ -21,13 +21,14 @@
             "required": ["severity", "message"],
             "properties": {
               "severity": { "enum": ["info", "warning"] },
-              "message": { "type": "string", "minLength": 1 },
-              "code": { "type": "string", "pattern": "^[A-Za-z0-9_-]{1,64}$" }
+              "message": { "type": "string", "minLength": 1, "maxLength": 400 },
+              "code": { "type": "string", "pattern": "^[A-Za-z0-9][A-Za-z0-9_-]{0,63}$" }
             }
           }
         ]
       },
-      "description": "Textes (avertissements) ou objets { severity: info|warning, message, code? }. Un seul message info par code, 20 informations au plus."
+      "maxItems": 20,
+      "description": "Textes (avertissements) ou objets { severity: info|warning, message (400 caractères au plus), code? }. 20 éléments au plus ; un seul message info par code."
     },
     "models": {
       "type": "array",

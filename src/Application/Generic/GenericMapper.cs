@@ -445,9 +445,35 @@ public static class GenericMapper
             .Select(name => string.IsNullOrWhiteSpace(name) ? "(nom inconnu)" : name.Trim())
             .Distinct(StringComparer.Ordinal)
             .ToList();
-        return names.Count == 0
-            ? null
-            : GenericWarning.Info(DocumentAnomalyCodes.LinkMissing, $"{names.Count.ToString(CultureInfo.InvariantCulture)} lien(s) absent(s) : {string.Join(", ", names)}");
+        return names.Count == 0 ? null : GenericWarning.Info(DocumentAnomalyCodes.LinkMissing, LinkMessage(names));
+    }
+
+    /// <summary>
+    /// <c>N lien(s) absent(s) : a, b, c</c>, limité à <see cref="GenericWarning.MaxMessageLength"/> caractères : la liste est coupée
+    /// proprement (noms entiers) et finit par « … et K autre(s) ».
+    /// </summary>
+    internal static string LinkMessage(IReadOnlyList<string> names)
+    {
+        var count = names.Count.ToString(CultureInfo.InvariantCulture);
+        var head = $"{count} lien(s) absent(s) : ";
+        var full = head + string.Join(", ", names);
+        if (full.Length <= GenericWarning.MaxMessageLength)
+        {
+            return full;
+        }
+
+        for (var kept = names.Count - 1; kept >= 0; kept--)
+        {
+            var rest = names.Count - kept;
+            var tail = $"… et {rest.ToString(CultureInfo.InvariantCulture)} autre(s)";
+            var text = head + (kept == 0 ? string.Empty : string.Join(", ", names.Take(kept)) + ", ") + tail;
+            if (text.Length <= GenericWarning.MaxMessageLength)
+            {
+                return text;
+            }
+        }
+
+        return (head + "…")[..Math.Min(head.Length + 1, GenericWarning.MaxMessageLength)];
     }
 
     private static GenericObject FilesObject(IReadOnlyList<GenericFile> files, string id)

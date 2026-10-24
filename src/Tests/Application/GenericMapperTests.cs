@@ -339,6 +339,21 @@ public sealed class GenericMapperTests
     }
 
     [Fact]
+    public void LinkMessage_IsTruncatedCleanlyTo400Characters()
+    {
+        var names = Enumerable.Range(1, 40).Select(i => $"Modele_lie_numero_{i:00}.rvt").ToList();
+
+        var message = GenericMapper.LinkMessage(names);
+
+        Assert.True(message.Length <= 400);
+        Assert.StartsWith("40 lien(s) absent(s) : Modele_lie_numero_01.rvt, ", message, StringComparison.Ordinal);
+        Assert.Matches(@"\.rvt, … et \d+ autre\(s\)$", message);
+        var kept = message.Split(": ", 2)[1].Split(", ").Count(n => n.EndsWith(".rvt", StringComparison.Ordinal));
+        Assert.Equal(40 - kept, int.Parse(System.Text.RegularExpressions.Regex.Match(message, @"et (\d+) autre").Groups[1].Value, System.Globalization.CultureInfo.InvariantCulture));
+        Assert.Equal("2 lien(s) absent(s) : A.rvt, B.rvt", GenericMapper.LinkMessage(["A.rvt", "B.rvt"]));
+    }
+
+    [Fact]
     public void AWarningWithoutCode_IsWrittenAsAPlainText()
     {
         var envelope = Envelope(GenericFixtures.Result(anomalies: [Rooms.VolumeNotComputed(3)]));

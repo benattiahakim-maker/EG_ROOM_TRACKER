@@ -35,12 +35,15 @@ public static class GenericSeverities
 
 /// <summary>
 /// Élément de <c>warnings[]</c> : un texte (= avertissement) ou un objet <c>{ severity, message, code? }</c>. <see cref="Code"/> : lettres,
-/// chiffres, <c>-</c> et <c>_</c>, 64 au plus. Un avertissement sans code s'écrit comme un simple texte ; une information
+/// chiffres, <c>-</c> et <c>_</c>, 64 au plus, commence par une lettre ou un chiffre. Message : 400 caractères au plus (la plateforme refuse au-delà). Un avertissement sans code s'écrit comme un simple texte ; une information
 /// (<see cref="GenericSeverities.Info"/>) ne rend jamais l'enveloppe <c>partial</c> (un seul message info par code, 20 au plus).
 /// </summary>
 [JsonConverter(typeof(GenericWarningConverter))]
 public sealed record GenericWarning(string Severity, string Message, string? Code = null)
 {
+    /// <summary>Longueur maximale d'un message (limite de la validation de la plateforme).</summary>
+    public const int MaxMessageLength = 400;
+
     public static GenericWarning Warning(string message) => new(GenericSeverities.Warning, message);
 
     public static GenericWarning Info(string code, string message) => new(GenericSeverities.Info, message, code);
