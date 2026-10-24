@@ -161,7 +161,7 @@ Les codes de portée pièce figurent dans `rooms[].indicateurs_qualite` et sont 
 | `EXTRACTION_ERROR` | pièce | error | Exception limitée à la pièce ; identité exportée, champs illisibles à null, `volumeStatus: notAvailable` | — | orchestration (filet par pièce) |
 | `VOLUME_NOT_COMPUTED` | document | info | Calcul des volumes désactivé dans le document et non activé (mode `preserve`) ; pièces en `notComputed` | `volumeMode`, `roomsAffected` | qualité (EGR-11) |
 | `VOLUME_COMPUTE_FAILED` | document | warning | Mode `compute` : activation temporaire du calcul impossible ; `volumeM3: null` et `volumeStatus: notAvailable` pour toutes les pièces ; remplace `VOLUME_NOT_COMPUTED` (schéma 1.3) | `volumeMode`, `reason`, `roomsAffected` | qualité (EGR-16) |
-| `LINK_MISSING` | document | warning | Lien Revit référencé absent du ZIP | `linkName`, `linkPath` | document (EGR-05/06) |
+| `LINK_MISSING` | document | warning | Lien Revit référencé absent du ZIP | `linkName`, `linkPath` (noms de fichier, sans chemin) | document (EGR-05/06) |
 | `LINK_NOT_LOADED` | document | info | Lien Revit présent mais déchargé (statut `Unloaded` ou `LocallyUnloaded`) ; sans effet sur le statut (schéma 1.1) | `linkName`, `linkPath`, `linkStatus` | document (EGR-06) |
 | `REVIT_WARNING_ON_OPEN` | document | warning | Avertissements Revit tolérés par la politique d'ouverture (D2) ; une anomalie agrégée | `warningCount`, `distinctCount`, `warnings` (`description`, `count`) | document (EGR-06) |
 | `SHARED_PARAMETER_NOT_FOUND` | document | warning | GUID de `sharedParameters` inconnu dans le document ; `value: null` pour toutes les pièces, sans `MISSING_PARAMETER` | `key`, `guid` | lecture (EGR-10) |

@@ -104,7 +104,9 @@ changent ni `result.json` ni le TRC.
   de la porte). Chaque autre pièce le pointe par un `ref` `contains`.
 - Un élément d'un modèle lié porte `modelKey` (`link-n`), `modele_lie` (`true`) et `lien` (nom du lien) ; sa `box` n'est pas exportée.
 - Paramètres d'occurrence et de type : propriétés typées, groupes « Paramètres d'occurrence » et « Paramètres de type », clés préfixées
-  `occurrence:` et `type:`. Les unités des paramètres Revit ne sont pas connues du plugin : ce sont des nombres sans `unit`.
+  `occurrence:` et `type:`. **Les valeurs sont celles de Revit, sans aucune conversion** : elles peuvent être en unités anglaises
+  (`Btu/h`, `W/ft²`, `%`…). Quand la propriété porte une `unit`, c'est l'unité de la valeur ; aujourd'hui le plugin ne connaît pas l'unité
+  d'un paramètre Revit et écrit un nombre sans `unit`. Décision PM : pas de conversion maintenant, sujet à rediscuter avec Hakim.
 
 ### Anomalies
 

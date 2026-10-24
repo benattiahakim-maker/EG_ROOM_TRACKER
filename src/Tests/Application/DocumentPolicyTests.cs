@@ -82,7 +82,32 @@ public sealed class DocumentPolicyTests : IDisposable
         Assert.Equal(AnomalySeverity.Warning, anomaly.Severity);
         Assert.Equal(AnomalyScope.Document, anomaly.Scope);
         Assert.Null(anomaly.ElementId);
-        Assert.Equal("Liens/Structure.rvt", anomaly.Details["linkPath"]);
+        Assert.Equal("Structure.rvt", anomaly.Details["linkPath"]);
+    }
+
+    [Theory]
+    [InlineData(@"C:\Users\jean\Projets\Liens\Structure.rvt", "Structure.rvt")]
+    [InlineData(@"\\serveur\partage\Structure.rvt", "Structure.rvt")]
+    [InlineData("/home/jean/Liens/Structure.rvt", "Structure.rvt")]
+    [InlineData("Liens/Structure.rvt", "Structure.rvt")]
+    [InlineData("Structure.rvt", "Structure.rvt")]
+    [InlineData("Liens/", null)]
+    [InlineData("  ", null)]
+    [InlineData(null, null)]
+    public void LinkPaths_KeepOnlyTheFileName(string? path, string? expected)
+    {
+        Assert.Equal(expected, DocumentAnomalies.FileNameOnly(path));
+        Assert.Equal(expected, DocumentAnomalies.LinkMissing("Lien.rvt", path).Details["linkPath"]);
+        Assert.Equal(expected, DocumentAnomalies.LinkNotLoaded("Lien.rvt", path, "Unloaded").Details["linkPath"]);
+    }
+
+    [Fact]
+    public void LinkName_IsAFileNameToo_InDetailsAndMessage()
+    {
+        var anomaly = DocumentAnomalies.LinkMissing(@"C:\Machine\Liens\Structure.rvt", @"C:\Machine\Liens\Structure.rvt");
+
+        Assert.Equal("Structure.rvt", anomaly.Details["linkName"]);
+        Assert.Equal("Lien Revit absent : Structure.rvt.", anomaly.Message);
     }
 
     [Fact]
@@ -95,7 +120,7 @@ public sealed class DocumentPolicyTests : IDisposable
         Assert.Equal(AnomalyScope.Document, anomaly.Scope);
         Assert.Null(anomaly.ElementId);
         Assert.Equal("Unloaded", anomaly.Details["linkStatus"]);
-        Assert.Equal("Liens/MEP.rvt", anomaly.Details["linkPath"]);
+        Assert.Equal("MEP.rvt", anomaly.Details["linkPath"]);
     }
 
     [Fact]

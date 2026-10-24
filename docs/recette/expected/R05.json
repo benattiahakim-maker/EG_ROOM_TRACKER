@@ -73,7 +73,7 @@
       "message": "Lien Revit absent : EGR_Lien_B.rvt.",
       "details": {
         "linkName": "EGR_Lien_B.rvt",
-        "linkPath": "Liens/EGR_Lien_B.rvt"
+        "linkPath": "EGR_Lien_B.rvt"
       }
     },
     {
@@ -84,7 +84,7 @@
       "message": "Lien Revit présent mais non chargé : EGR_Lien_C.rvt.",
       "details": {
         "linkName": "EGR_Lien_C.rvt",
-        "linkPath": "Liens/EGR_Lien_C.rvt",
+        "linkPath": "EGR_Lien_C.rvt",
         "linkStatus": "Unloaded"
       }
     },

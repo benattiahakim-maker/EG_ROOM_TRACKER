@@ -40,7 +40,7 @@ Pendant l'ouverture seulement (abonnement à `Application.FailuresProcessing`) :
 ## Liens
 
 Après ouverture, chaque `RevitLinkType` de premier niveau au statut `NotFound` produit une anomalie `LINK_MISSING`
-(`details.linkName`, `details.linkPath`). Un lien présent mais déchargé (`Unloaded`, `LocallyUnloaded`) produit
+(`details.linkName`, `details.linkPath`) ; ces deux valeurs sont des **noms de fichier** (jamais un chemin de la machine d'origine). Un lien présent mais déchargé (`Unloaded`, `LocallyUnloaded`) produit
 une anomalie d'information `LINK_NOT_LOADED` (`details.linkStatus` en plus), sans effet sur le statut. Les pièces des liens ne sont pas collectées (MVP). L'arborescence des
 liens dans le ZIP relève de D4 (EGR-05).
 
