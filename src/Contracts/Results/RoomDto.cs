@@ -57,6 +57,13 @@ public sealed record RoomDto
     [JsonIgnore]
     public string? DesignOptionSetId { get; init; }
 
+    /// <summary>
+    /// <see cref="DesignOption"/> est l'option principale de son jeu (<c>DesignOption.IsPrimary</c>) ; null hors variante ou si
+    /// illisible. Donnée interne pour la sortie <c>generic</c> (options secondaires exclues par défaut) ; non sérialisée.
+    /// </summary>
+    [JsonIgnore]
+    public bool? DesignOptionIsPrimary { get; init; }
+
     /// <summary>Une entrée par clé de mapping de <c>settings.json</c>.</summary>
     [JsonPropertyName("parametres_partages")]
     public IReadOnlyDictionary<string, SharedParameterValue> SharedParameters { get; init; } =

@@ -313,6 +313,85 @@ public sealed class GenericMapperTests
         Assert.NotEmpty(envelope.Warnings);
     }
 
+    private static ExtractionResult WithDesignOptions(IReadOnlyList<AnomalyDto>? anomalies = null)
+    {
+        var result = GenericFixtures.Result(anomalies: anomalies);
+        var box = GenericFixtures.Box(9000);
+        return result with
+        {
+            Rooms =
+            [
+                result.Rooms[0] with { BoundingBox = box },
+                result.Rooms[1] with { BoundingBox = box, DesignOption = new ElementRef("700", "Unoccupied  <principal>"), DesignOptionIsPrimary = true },
+                result.Rooms[2] with { BoundingBox = box, DesignOption = new ElementRef("701", "Occupied"), DesignOptionIsPrimary = false },
+            ],
+        };
+    }
+
+    private static string? Text(JsonNode envelope, string id, string key) => Property(Find(envelope, id)!, key)?["value"]?.GetValue<string>();
+
+    [Fact]
+    public void SecondaryDesignOptions_AreExcludedByDefault_WithACountedInformation_AndTheStatusStaysDone()
+    {
+        var result = WithDesignOptions(anomalies: [Rooms.RoomAnomaly(QualityFlagCodes.ExtractionError, "102", AnomalySeverity.Info)]);
+
+        var envelope = GenericMapper.Map(result);
+        var json = Envelope(result);
+
+        Assert.Equal("done", envelope.Status);
+        var note = Assert.Single(envelope.Warnings);
+        Assert.Equal(GenericSeverities.Info, note.Severity);
+        Assert.Equal("DESIGN_OPTIONS_EXCLUDED", note.Code);
+        Assert.Equal("1 pièce(s) d'options de conception secondaires exclues (réglage includeSecondaryDesignOptions : false).", note.Message);
+        Assert.NotNull(Find(json, "room-100"));
+        Assert.NotNull(Find(json, "room-101")); // option principale : conservée
+        Assert.Null(Find(json, "room-102"));
+        Assert.DoesNotContain(GenericEnvelopeChecks.AllObjects(json), o => o["name"]!.GetValue<string>() == QualityFlagCodes.ExtractionError); // anomalie de la pièce exclue : retirée
+    }
+
+    [Fact]
+    public void SecondaryDesignOptions_Included_ExportsEverything_WithoutInformation()
+    {
+        var result = WithDesignOptions();
+        var context = new GenericMapContext { IncludeSecondaryDesignOptions = true };
+
+        var json = Envelope(result, context);
+
+        Assert.Empty(GenericMapper.Map(result, context).Warnings);
+        Assert.Equal("Principal", Text(json, "room-100", "option_conception"));
+        Assert.Equal("Unoccupied (principale)", Text(json, "room-101", "option_conception"));
+        Assert.Equal("Occupied", Text(json, "room-102", "option_conception"));
+        Assert.Null(Property(Find(json, "room-100")!, "variante"));
+    }
+
+    [Fact]
+    public void UnknownPrimaryFlag_KeepsTheRoom()
+    {
+        var result = WithDesignOptions();
+        result = result with { Rooms = [.. result.Rooms.Select(r => r with { DesignOptionIsPrimary = null })] };
+
+        Assert.Equal(3, Envelope(result)["objects"]!.AsArray().Count);
+    }
+
+    [Theory]
+    [InlineData("Unoccupied  <principal>", "Unoccupied")]
+    [InlineData("Option 1 <primary>", "Option 1")]
+    [InlineData("  Occupied   Plan  B ", "Occupied Plan B")]
+    [InlineData("A <B> C", "A B C")]
+    [InlineData("<principal>", "Principal")]
+    [InlineData("", "Principal")]
+    [InlineData(null, "Principal")]
+    public void CleanOptionName_RemovesTheMarkerAndNormalizesSpaces(string? name, string expected) =>
+        Assert.Equal(expected, GenericMapper.CleanOptionName(name));
+
+    [Fact]
+    public void Variante_IsCleaned()
+    {
+        var json = Envelope(WithDesignOptions());
+
+        Assert.Equal("Unoccupied", Text(json, "room-101", "variante"));
+    }
+
     [Fact]
     public void MissingLinks_AreNamedInOneInformationText_AndDoNotMakeTheEnvelopePartial()
     {

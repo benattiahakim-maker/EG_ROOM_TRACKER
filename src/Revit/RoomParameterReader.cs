@@ -110,7 +110,7 @@ public sealed class RoomParameterReader(RevitExecutionContext context, IUnitConv
             units: units));
         builder.Phase(ReadPhase(document, element));
         var option = element.DesignOption;
-        builder.DesignOption(option is null ? null : new ElementRef(Id(option.Id), option.Name), ReadOptionSetId(option));
+        builder.DesignOption(option is null ? null : new ElementRef(Id(option.Id), option.Name), ReadOptionSetId(option), ReadIsPrimary(option));
 
         builder.Finishes(
             floor: builder.Text(ReadText(element, BuiltInParameter.ROOM_FINISH_FLOOR), nameof(BuiltInParameter.ROOM_FINISH_FLOOR)),
@@ -241,6 +241,18 @@ public sealed class RoomParameterReader(RevitExecutionContext context, IUnitConv
     /// Jeu de variantes d'une variante : <c>BuiltInParameter.OPTION_SET_ID</c> (« Design Option Set Id ») lu sur la
     /// <c>DesignOption</c>. Type de stockage non documenté : ElementId ou entier acceptés ; sinon null (inconnu).
     /// </summary>
+    private static bool? ReadIsPrimary(DesignOption? option)
+    {
+        try
+        {
+            return option?.IsPrimary;
+        }
+        catch (Exception)
+        {
+            return null;
+        }
+    }
+
     private static string? ReadOptionSetId(DesignOption? option)
     {
         if (option is null)

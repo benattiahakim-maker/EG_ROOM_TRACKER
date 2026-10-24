@@ -69,6 +69,12 @@ public sealed record ExtractionSettings
     public bool LinkedElements { get; init; } = true;
 
     /// <summary>
+    /// Sortie <c>generic</c> : exporte aussi les pièces des options de conception secondaires (<c>false</c> par défaut : option principale
+    /// et pièces hors option seulement, avec un avertissement chiffré). Sans effet sur <c>contract</c> ni <c>trc</c>.
+    /// </summary>
+    public bool IncludeSecondaryDesignOptions { get; init; }
+
+    /// <summary>
     /// Format du fichier de sortie : <c>contract</c> (<c>result.json</c>, défaut), <c>trc</c> (<c>TRCValidationDict.json</c>, fiches de
     /// l'application TRC, données seules, sans statut), <c>both</c> (les deux) ou <c>generic</c> (<c>result.generic.json</c>, enveloppe
     /// commune des résultats de la plateforme ; le TRC reste un export à part).

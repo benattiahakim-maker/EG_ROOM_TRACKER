@@ -79,8 +79,11 @@ public sealed class GenericExportTests
 
         public string? ImagesDirectory { get; private set; }
 
-        public string Write(ExtractionResult result, string directory, string? imagesDirectory)
+        public bool? IncludeSecondary { get; private set; }
+
+        public string Write(ExtractionResult result, string directory, string? imagesDirectory, bool includeSecondaryDesignOptions = false)
         {
+            IncludeSecondary = includeSecondaryDesignOptions;
             Calls++;
             Written = result;
             Directory = directory;
@@ -114,6 +117,25 @@ public sealed class GenericExportTests
         Assert.Equal(Box, generic.Written!.Rooms.Single(r => r.ElementId == "415002").BoundingBox);
         Assert.Null(generic.Written.Rooms.Single(r => r.ElementId == "412345").BoundingBox);
         Assert.All(generic.Written.Rooms, room => Assert.Equal("v-SGP-DI-Ouvrage", room.NamedParameters![TrcIdentification.Ouvrage]));
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public void Generic_format_passes_the_secondary_design_options_setting(bool include)
+    {
+        var generic = new FakeGeneric();
+        var pipeline = new Pipeline
+        {
+            LoadSettings = () => new ExtractionSettings { SchemaVersion = "1.0", OutputFormat = OutputFormat.Generic, IncludeSecondaryDesignOptions = include },
+            GenericExport = generic,
+            NamedParameters = (_, names) => names.ToDictionary(n => n, n => (string?)$"v-{n}"),
+            Rooms = [new(415002, "u-415002", Box)],
+        };
+
+        pipeline.CreateService().Run(Pipeline.Request);
+
+        Assert.Equal(include, generic.IncludeSecondary);
     }
 
     [Fact]

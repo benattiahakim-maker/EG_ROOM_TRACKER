@@ -1,5 +1,6 @@
 using System.Globalization;
 using System.Text.Json;
+using System.Text.RegularExpressions;
 using EgRoomTracker.Application.Trc;
 using EgRoomTracker.Contracts.Codes;
 using EgRoomTracker.Contracts.Generic;
@@ -59,6 +60,12 @@ public sealed record GenericMapContext
     /// <summary>Noms des fichiers réellement présents dans <c>Images/</c> ; null ou vide : aucune propriété <c>image</c>.</summary>
     public IReadOnlySet<string>? ImageFileNames { get; init; }
 
+    /// <summary>
+    /// <c>false</c> (défaut) : les pièces d'une option de conception secondaire sont exclues (avec une information chiffrée dans
+    /// <c>warnings</c>) ; <c>true</c> : toutes les pièces sont exportées, <c>option_conception</c> indiquant l'option.
+    /// </summary>
+    public bool IncludeSecondaryDesignOptions { get; init; }
+
     /// <summary>Identifiant du service dans l'enveloppe (<c>serviceId</c>).</summary>
     public string ServiceId { get; init; } = GenericContract.ServiceId;
 
@@ -92,6 +99,21 @@ public static class GenericMapper
         if (result.Summary.Status == ExtractionStatus.Failed)
         {
             throw new InvalidOperationException("Extraction en échec : pas d'enveloppe (result.json explique l'échec).");
+        }
+
+        var excludedRooms = 0;
+        if (!context.IncludeSecondaryDesignOptions)
+        {
+            var secondary = result.Rooms.Where(IsSecondaryDesignOption).Select(r => r.ElementId).ToHashSet(StringComparer.Ordinal);
+            if (secondary.Count > 0)
+            {
+                excludedRooms = secondary.Count;
+                result = result with
+                {
+                    Rooms = [.. result.Rooms.Where(r => !secondary.Contains(r.ElementId))],
+                    Anomalies = [.. result.Anomalies.Where(a => !(a.Scope == AnomalyScope.Room && a.ElementId is { } id && secondary.Contains(id)))],
+                };
+            }
         }
 
         var codeFile = TrcNaming.CodeFile(source.FileName);
@@ -182,11 +204,18 @@ public static class GenericMapper
             warnings.Add(GenericWarning.Warning("Extraction terminée avec avertissements ; voir les anomalies."));
         }
 
-        // Informations (gravité info) : après les avertissements ; elles ne rendent jamais l'enveloppe « partial ».
+        // Informations (gravité info) : après les avertissements ; elles ne rendent jamais l'enveloppe « partial » (statut calculé avant).
         var status = warnings.Count > 0 ? GenericStatuses.Partial : GenericStatuses.Done;
         if (linkNote is not null)
         {
             warnings.Add(linkNote);
+        }
+
+        if (excludedRooms > 0)
+        {
+            warnings.Add(GenericWarning.Info(
+                "DESIGN_OPTIONS_EXCLUDED",
+                $"{excludedRooms.ToString(CultureInfo.InvariantCulture)} pièce(s) d'options de conception secondaires exclues (réglage includeSecondaryDesignOptions : false)."));
         }
 
         return new GenericEnvelope
@@ -279,7 +308,8 @@ public static class GenericMapper
         AddText(p, "numero", "Numéro", room.Number, GenericGroups.Identification);
         AddText(p, "niveau", "Niveau", room.Level?.Name, GenericGroups.Identification);
         AddText(p, "phase", "Phase", room.Phase?.Name, GenericGroups.Identification);
-        AddText(p, "variante", "Variante", room.DesignOption?.Name, GenericGroups.Identification);
+        AddText(p, "variante", "Variante", room.DesignOption is null ? null : CleanOptionName(room.DesignOption.Name), GenericGroups.Identification);
+        AddText(p, "option_conception", "Option de conception", DesignOptionLabel(room), GenericGroups.Identification);
         AddText(p, "occupation", "Occupation", room.Occupancy, GenericGroups.Identification);
         if (room.NamedParameters is { } named)
         {
@@ -335,6 +365,35 @@ public static class GenericMapper
 
         AddParameters(p, room.Parameters, GenericKeys.OccurrencePrefix, GenericGroups.Occurrence);
         return p;
+    }
+
+    /// <summary>Pièce d'une option de conception secondaire : option connue et non principale (option inconnue : conservée, par prudence).</summary>
+    private static bool IsSecondaryDesignOption(RoomDto room) => room.DesignOption is not null && room.DesignOptionIsPrimary == false;
+
+    private static readonly Regex PrimaryMarker = new(@"<\s*(principale?|primary)\s*>", RegexOptions.IgnoreCase | RegexOptions.CultureInvariant, TimeSpan.FromSeconds(1));
+    private static readonly Regex Spaces = new(@"\s+", RegexOptions.CultureInvariant, TimeSpan.FromSeconds(1));
+
+    /// <summary>
+    /// Nom d'option lisible : Revit ajoute un repère à l'option principale (« Unoccupied  &lt;principal&gt; ») : le repère est retiré, les
+    /// chevrons restants aussi, les espaces sont normalisés ; un nom vide donne « Principal ».
+    /// </summary>
+    internal static string CleanOptionName(string? name)
+    {
+        var text = PrimaryMarker.Replace(name ?? string.Empty, " ").Replace("<", " ", StringComparison.Ordinal).Replace(">", " ", StringComparison.Ordinal);
+        text = Spaces.Replace(text, " ").Trim();
+        return text.Length == 0 ? "Principal" : text;
+    }
+
+    /// <summary>« Principal » hors option ; sinon le nom nettoyé de l'option, suivi de « (principale) » pour l'option principale de son jeu.</summary>
+    private static string DesignOptionLabel(RoomDto room)
+    {
+        if (room.DesignOption is null)
+        {
+            return "Principal";
+        }
+
+        var name = CleanOptionName(room.DesignOption.Name);
+        return room.DesignOptionIsPrimary == true && name != "Principal" ? $"{name} (principale)" : name;
     }
 
     private static string? Named(IReadOnlyDictionary<string, string?> named, string name) =>

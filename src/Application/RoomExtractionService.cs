@@ -213,7 +213,7 @@ public sealed class RoomExtractionService
             if (format == OutputFormat.Generic && !runFailed)
             {
                 var generic = _genericExport ?? throw new InvalidOperationException("Service d'export generic non disponible.");
-                var file = generic.Write(result, Path.GetDirectoryName(Path.GetFullPath(request.OutputPath))!, request.ImagesDirectory);
+                var file = generic.Write(result, Path.GetDirectoryName(Path.GetFullPath(request.OutputPath))!, request.ImagesDirectory, settings?.IncludeSecondaryDesignOptions ?? false);
                 _log.Info(LogEventCodes.ExportCompleted, Stages.Export, $"{file} écrit (format generic).");
             }
 

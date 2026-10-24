@@ -10,7 +10,7 @@ public interface IGenericExportService
     /// Écrit <c>result.generic.json</c> dans <paramref name="directory"/> et retourne son nom. Les propriétés <c>image</c> ne
     /// référencent que les fichiers réellement présents dans <paramref name="imagesDirectory"/> (null : aucune image).
     /// </summary>
-    string Write(ExtractionResult result, string directory, string? imagesDirectory);
+    string Write(ExtractionResult result, string directory, string? imagesDirectory, bool includeSecondaryDesignOptions = false);
 }
 
 /// <summary>Écrit le fichier de façon atomique (fichier temporaire puis déplacement), UTF-8 sans BOM : un échec ne laisse aucun fichier partiel.</summary>
@@ -19,7 +19,7 @@ public sealed class GenericExportService : IGenericExportService
     /// <summary>Nom du fichier dans <c>result/</c> (et dans le ZIP de sortie).</summary>
     public const string FileName = "result.generic.json";
 
-    public string Write(ExtractionResult result, string directory, string? imagesDirectory)
+    public string Write(ExtractionResult result, string directory, string? imagesDirectory, bool includeSecondaryDesignOptions = false)
     {
         ArgumentNullException.ThrowIfNull(result);
         ArgumentException.ThrowIfNullOrWhiteSpace(directory);
@@ -27,6 +27,7 @@ public sealed class GenericExportService : IGenericExportService
         var context = new GenericMapContext
         {
             ImageFileNames = ListImages(imagesDirectory),
+            IncludeSecondaryDesignOptions = includeSecondaryDesignOptions,
             ImagesDirectory = imagesDirectory is null ? "Images" : Path.GetFileName(Path.TrimEndingDirectorySeparator(imagesDirectory)),
         };
         var json = GenericJson.Serialize(GenericMapper.Map(result, context));

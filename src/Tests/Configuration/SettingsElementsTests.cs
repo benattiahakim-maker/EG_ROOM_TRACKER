@@ -129,6 +129,20 @@ public sealed class SettingsElementsTests
     [InlineData(""", "linkedElements": 0""", "linkedElements doit être true ou false")]
     public void LinkedElements_Invalid(string body, string expected) => AssertInvalid(body, expected);
 
+    [Fact]
+    public void IncludeSecondaryDesignOptions_DefaultsToFalse()
+    {
+        Assert.False(Parse(string.Empty).IncludeSecondaryDesignOptions);
+        Assert.False(Parse(""", "includeSecondaryDesignOptions": null""").IncludeSecondaryDesignOptions);
+        Assert.False(Parse(""", "includeSecondaryDesignOptions": false""").IncludeSecondaryDesignOptions);
+        Assert.True(Parse(""", "includeSecondaryDesignOptions": true""").IncludeSecondaryDesignOptions);
+    }
+
+    [Theory]
+    [InlineData(""", "includeSecondaryDesignOptions": "oui" """, "includeSecondaryDesignOptions doit être true ou false")]
+    [InlineData(""", "includeSecondaryDesignOptions": 1""", "includeSecondaryDesignOptions doit être true ou false")]
+    public void IncludeSecondaryDesignOptions_Invalid(string body, string expected) => AssertInvalid(body, expected);
+
     [Theory]
     [InlineData(""", "outputFormat": "contract" """, OutputFormat.Contract)]
     [InlineData(""", "outputFormat": "trc" """, OutputFormat.Trc)]
