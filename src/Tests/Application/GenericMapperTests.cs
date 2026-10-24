@@ -18,7 +18,6 @@ public sealed class GenericMapperTests
 
     private static JsonNode? Find(JsonNode envelope, string id) => GenericEnvelopeChecks.AllObjects(envelope).FirstOrDefault(o => o["id"]!.GetValue<string>() == id);
 
-    private static string? Text(JsonNode envelope, string id, string key) => Property(Find(envelope, id)!, key)?["value"]?.GetValue<string>();
 
     private static JsonNode? Property(JsonNode obj, string key) => ((JsonArray)obj["properties"]!).FirstOrDefault(p => p!["key"]!.GetValue<string>() == key);
 
