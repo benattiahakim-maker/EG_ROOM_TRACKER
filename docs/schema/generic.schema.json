@@ -9,8 +9,27 @@
   "properties": {
     "contractVersion": { "const": "1.0" },
     "serviceId": { "const": "pieces-roomtracker" },
-    "status": { "enum": ["done", "partial"], "description": "done, ou partial avec au moins un texte dans warnings." },
-    "warnings": { "type": "array", "items": { "type": "string", "minLength": 1 } },
+    "status": { "enum": ["done", "partial"], "description": "done, ou partial avec au moins un avertissement (texte, ou objet de gravité warning) dans warnings. Une information (gravité info) ne rend jamais partial." },
+    "warnings": {
+      "type": "array",
+      "items": {
+        "oneOf": [
+          { "type": "string", "minLength": 1, "description": "Texte seul = avertissement." },
+          {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["severity", "message"],
+            "properties": {
+              "severity": { "enum": ["info", "warning"] },
+              "message": { "type": "string", "minLength": 1, "maxLength": 400 },
+              "code": { "type": "string", "pattern": "^[A-Za-z0-9][A-Za-z0-9_-]{0,63}$" }
+            }
+          }
+        ]
+      },
+      "maxItems": 20,
+      "description": "Textes (avertissements) ou objets { severity: info|warning, message (400 caractères au plus), code? }. 20 éléments au plus ; un seul message info par code."
+    },
     "models": {
       "type": "array",
       "items": { "$ref": "#/$defs/model" },
@@ -21,7 +40,13 @@
   "allOf": [
     {
       "if": { "properties": { "status": { "const": "partial" } }, "required": ["status"] },
-      "then": { "properties": { "warnings": { "minItems": 1 } } }
+      "then": {
+        "properties": {
+          "warnings": {
+            "contains": { "oneOf": [{ "type": "string" }, { "type": "object", "properties": { "severity": { "const": "warning" } }, "required": ["severity"] }] }
+          }
+        }
+      }
     }
   ],
   "$defs": {

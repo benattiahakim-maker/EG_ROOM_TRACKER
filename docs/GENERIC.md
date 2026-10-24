@@ -33,8 +33,14 @@ Exemples : `docs/examples/generic.example.json` (sortie), `docs/examples/setting
 
 Racine : `contractVersion` (`1.0`), `serviceId` (`pieces-roomtracker`), `status`, `warnings[]`, `models[]`, `objects[]`.
 
-- **`status`** : `done` ; `partial` dès qu'il y a au moins un avertissement (pièce sans boîte, anomalie d'extraction, d'image, d'éléments…).
-  `warnings[]` résume ces points en texte.
+- **`status`** et **`warnings[]`** : un élément de `warnings[]` est un **texte** (= avertissement) ou un objet
+  `{ severity: "info" | "warning", message, code? }` (`message` : 400 caractères au plus ; `code` : lettres, chiffres, `-`, `_`, 64 au plus, commence par une lettre ou un
+  chiffre ; 20 éléments au plus, un seul message `info` par code). `status` vaut `done`, ou `partial` dès qu'il y a au moins un **avertissement** (pièce sans boîte, anomalie
+  d'extraction, d'image, d'éléments…, écrits comme des textes). Une **information** ne rend jamais l'enveloppe `partial`.
+  **`LINK_MISSING`** : les liens Revit absents de l'envoi sont nommés **tous dans une seule information**
+  `{ "severity": "info", "code": "LINK_MISSING", "message": "5 lien(s) absent(s) : A.rvt, B.rvt…" }`, placée après les avertissements :
+  un projet envoyé sans ses liens est `done`. Au-delà de 400 caractères, la liste est coupée sur un nom entier et finit par « … et K autre(s) ». Les objets d'anomalie `LINK_MISSING` restent dans `objects[]` (gravité `warning`).
+  Ce format demande que la plateforme (validation) et le site acceptent les objets dans `warnings[]` ; un texte seul reste valide.
 - **`models[]`** : `main` (le RVT principal, titre = nom du fichier sans extension) et `link-1`, `link-2`… pour les modèles liés dont un
   élément est exporté. `urn` est **vide** : le plugin ne connaît pas l'URN de conversion (voir « Écarts »).
 - **Objet** : `{ id, name, children[], properties[] }`, `id` unique dans tout le fichier.

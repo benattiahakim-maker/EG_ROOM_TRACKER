@@ -1,6 +1,7 @@
 using System.Globalization;
 using System.Text.Json;
 using EgRoomTracker.Application.Trc;
+using EgRoomTracker.Contracts.Codes;
 using EgRoomTracker.Contracts.Generic;
 using EgRoomTracker.Contracts.Results;
 
@@ -94,7 +95,7 @@ public static class GenericMapper
         }
 
         var codeFile = TrcNaming.CodeFile(source.FileName);
-        var warnings = new List<string>();
+        var warnings = new List<GenericWarning>();
         var used = new HashSet<string>(StringComparer.Ordinal);
 
         var elements = Elements(result.Rooms);
@@ -171,19 +172,27 @@ public static class GenericMapper
 
         if (withoutBox > 0)
         {
-            warnings.Add($"{withoutBox.ToString(CultureInfo.InvariantCulture)} pièce(s) sans boîte englobante (pièce non placée ou boîte illisible) : propriété box omise.");
+            warnings.Add(GenericWarning.Warning($"{withoutBox.ToString(CultureInfo.InvariantCulture)} pièce(s) sans boîte englobante (pièce non placée ou boîte illisible) : propriété box omise."));
         }
 
-        warnings.AddRange(AnomalyWarnings(result.Anomalies));
-        if (warnings.Count == 0 && result.Summary.Status == ExtractionStatus.SucceededWithWarnings)
+        warnings.AddRange(AnomalyWarnings(result.Anomalies).Select(GenericWarning.Warning));
+        var linkNote = MissingLinksNote(result.Anomalies);
+        if (warnings.Count == 0 && linkNote is null && result.Summary.Status == ExtractionStatus.SucceededWithWarnings)
         {
-            warnings.Add("Extraction terminée avec avertissements ; voir les anomalies.");
+            warnings.Add(GenericWarning.Warning("Extraction terminée avec avertissements ; voir les anomalies."));
+        }
+
+        // Informations (gravité info) : après les avertissements ; elles ne rendent jamais l'enveloppe « partial ».
+        var status = warnings.Count > 0 ? GenericStatuses.Partial : GenericStatuses.Done;
+        if (linkNote is not null)
+        {
+            warnings.Add(linkNote);
         }
 
         return new GenericEnvelope
         {
             ServiceId = context.ServiceId,
-            Status = warnings.Count > 0 ? GenericStatuses.Partial : GenericStatuses.Done,
+            Status = status,
             Warnings = warnings,
             Models = models,
             Objects = objects,
@@ -417,15 +426,55 @@ public static class GenericMapper
 
     private static readonly JsonSerializerOptions DetailsOptions = new() { Encoder = System.Text.Encodings.Web.JavaScriptEncoder.UnsafeRelaxedJsonEscaping };
 
-    /// <summary>Un avertissement par code d'anomalie de gravité warning ou error.</summary>
+    /// <summary>Un avertissement par code d'anomalie de gravité warning ou error, sauf <c>LINK_MISSING</c> (voir <see cref="MissingLinksNote"/>).</summary>
     private static IEnumerable<string> AnomalyWarnings(IReadOnlyList<AnomalyDto> anomalies) =>
         anomalies
-            .Where(a => a.Severity != AnomalySeverity.Info)
+            .Where(a => a.Severity != AnomalySeverity.Info && a.Code != DocumentAnomalyCodes.LinkMissing)
             .GroupBy(a => a.Code, StringComparer.Ordinal)
             .OrderBy(g => g.Key, StringComparer.Ordinal)
             .Select(g => g.Count() == 1
                 ? $"{g.Key} : {g.First().Message}"
                 : $"{g.Key} : {g.Count().ToString(CultureInfo.InvariantCulture)} anomalies (ex. {g.First().Message})");
+
+    /// <summary>Information unique <c>LINK_MISSING</c> qui nomme tous les liens Revit absents (sans doublon, dans l'ordre) ; null s'il n'y en a pas.</summary>
+    private static GenericWarning? MissingLinksNote(IReadOnlyList<AnomalyDto> anomalies)
+    {
+        var names = anomalies
+            .Where(a => a.Code == DocumentAnomalyCodes.LinkMissing)
+            .Select(a => a.Details.TryGetValue("linkName", out var name) ? Convert.ToString(name, CultureInfo.InvariantCulture) : null)
+            .Select(name => string.IsNullOrWhiteSpace(name) ? "(nom inconnu)" : name.Trim())
+            .Distinct(StringComparer.Ordinal)
+            .ToList();
+        return names.Count == 0 ? null : GenericWarning.Info(DocumentAnomalyCodes.LinkMissing, LinkMessage(names));
+    }
+
+    /// <summary>
+    /// <c>N lien(s) absent(s) : a, b, c</c>, limité à <see cref="GenericWarning.MaxMessageLength"/> caractères : la liste est coupée
+    /// proprement (noms entiers) et finit par « … et K autre(s) ».
+    /// </summary>
+    internal static string LinkMessage(IReadOnlyList<string> names)
+    {
+        var count = names.Count.ToString(CultureInfo.InvariantCulture);
+        var head = $"{count} lien(s) absent(s) : ";
+        var full = head + string.Join(", ", names);
+        if (full.Length <= GenericWarning.MaxMessageLength)
+        {
+            return full;
+        }
+
+        for (var kept = names.Count - 1; kept >= 0; kept--)
+        {
+            var rest = names.Count - kept;
+            var tail = $"… et {rest.ToString(CultureInfo.InvariantCulture)} autre(s)";
+            var text = head + (kept == 0 ? string.Empty : string.Join(", ", names.Take(kept)) + ", ") + tail;
+            if (text.Length <= GenericWarning.MaxMessageLength)
+            {
+                return text;
+            }
+        }
+
+        return (head + "…")[..Math.Min(head.Length + 1, GenericWarning.MaxMessageLength)];
+    }
 
     private static GenericObject FilesObject(IReadOnlyList<GenericFile> files, string id)
     {
