@@ -31,6 +31,10 @@ Le format s'inspire de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/).
   `{ severity: "info", code: "LINK_MISSING", message: "N lien(s) absent(s) : a, b, c" }` qui nomme tous les liens (avant, seul le premier
   était nommé) et ne rend plus l'enveloppe `partial`. Les objets d'anomalie restent. `contractVersion` reste `1.0` ; schéma
   `generic.schema.json` mis à jour. Demande la validation côté plateforme et l'affichage côté site. Voir [`docs/GENERIC.md`](docs/GENERIC.md).
+- **Sortie `generic` : format** : nombres avec unité arrondis à 3 décimales, coordonnées de `box` à 1 décimale, paramètres Revit à
+  12 chiffres significatifs (bruit de virgule flottante retiré, enveloppe plus petite) ; nouvelle propriété `categorie_libelle`
+  (`Pièce`, `Porte`, `Équipement CVC`…) à côté de `Category`, qui garde sa valeur technique. La `box` reste en mm sans `unit` (la plateforme
+  n'accepte `unit` que sur un nombre). Voir [`docs/GENERIC.md`](docs/GENERIC.md).
 - **Design Automation : `outputFormat` vaut `generic` par défaut** quand `settings.json` ne le précise pas (absent ou `null`). La plateforme
   n'envoie que `schemaVersion` et `mainModelPath` et attend `result.generic.json` (sinon `RESULT_MISSING`). Un `outputFormat` explicite est
   toujours respecté ; `SettingsReader` sans option, les tests et l'outil local gardent `contract`. Voir [`docs/GENERIC.md`](docs/GENERIC.md).

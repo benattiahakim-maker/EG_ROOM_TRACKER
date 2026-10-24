@@ -29,6 +29,9 @@ public static class GenericKeys
     public const string UniqueId = "unique_id";
     public const string RevitId = "id_revit";
     public const string Category = "Category";
+
+    /// <summary>Libellé lisible de <see cref="Category"/> (la valeur technique reste inchangée).</summary>
+    public const string CategoryLabel = "categorie_libelle";
     public const string ModelKey = "modelKey";
     public const string Room = "room";
     public const string Contains = "contains";
@@ -303,6 +306,7 @@ public static class GenericMapper
             Text(GenericKeys.UniqueId, "UniqueId Revit", room.UniqueId, GenericGroups.Identification),
             Text(GenericKeys.RevitId, "ElementId Revit", room.ElementId, GenericGroups.Identification),
             Text(GenericKeys.Category, "Catégorie", TrcCategories.Space, GenericGroups.Identification),
+            Text(GenericKeys.CategoryLabel, "Catégorie (libellé)", CategoryLabel(TrcCategories.Space), GenericGroups.Identification),
             Text(GenericKeys.ModelKey, "Maquette", GenericContract.MainModelKey, GenericGroups.Identification),
         };
         AddText(p, "numero", "Numéro", room.Number, GenericGroups.Identification);
@@ -411,6 +415,7 @@ public static class GenericMapper
             Text(GenericKeys.UniqueId, "UniqueId Revit", item.UniqueId, GenericGroups.Identification),
             Text(GenericKeys.RevitId, "ElementId Revit", item.ElementId, GenericGroups.Identification),
             Text(GenericKeys.Category, "Catégorie", element.Category, GenericGroups.Identification),
+            Text(GenericKeys.CategoryLabel, "Catégorie (libellé)", CategoryLabel(element.Category), GenericGroups.Identification),
             Text(GenericKeys.ModelKey, "Maquette", linked ? linkKeys[item.LinkName!] : GenericContract.MainModelKey, GenericGroups.Identification),
             new GenericProperty { Key = "modele_lie", Label = "Élément d'un modèle lié", Type = GenericPropertyTypes.Boolean, Value = linked, Group = GenericGroups.Identification },
         };
@@ -470,6 +475,7 @@ public static class GenericMapper
         var p = new List<GenericProperty>
         {
             Text(GenericKeys.Category, "Catégorie", GenericCategories.Anomaly, GenericGroups.Anomaly),
+            Text(GenericKeys.CategoryLabel, "Catégorie (libellé)", CategoryLabel(GenericCategories.Anomaly), GenericGroups.Anomaly),
             Text("code", "Code", anomaly.Code, GenericGroups.Anomaly),
             Text("severity", "Gravité", anomaly.Severity.ToString().ToLowerInvariant(), GenericGroups.Anomaly),
             Text("scope", "Portée", anomaly.Scope.ToString().ToLowerInvariant(), GenericGroups.Anomaly),
@@ -537,7 +543,11 @@ public static class GenericMapper
 
     private static GenericObject FilesObject(IReadOnlyList<GenericFile> files, string id)
     {
-        var p = new List<GenericProperty> { Text(GenericKeys.Category, "Catégorie", GenericCategories.Files, GenericGroups.Files) };
+        var p = new List<GenericProperty>
+        {
+            Text(GenericKeys.Category, "Catégorie", GenericCategories.Files, GenericGroups.Files),
+            Text(GenericKeys.CategoryLabel, "Catégorie (libellé)", CategoryLabel(GenericCategories.Files), GenericGroups.Files),
+        };
         var keys = new HashSet<string>(StringComparer.Ordinal);
         foreach (var file in files)
         {
@@ -570,7 +580,7 @@ public static class GenericMapper
     {
         if (value is { } number && double.IsFinite(number))
         {
-            list.Add(new GenericProperty { Key = key, Label = label, Type = GenericPropertyTypes.Number, Value = number, Unit = unit, Group = group });
+            list.Add(new GenericProperty { Key = key, Label = label, Type = GenericPropertyTypes.Number, Value = Math.Round(number, QuantityDecimals, MidpointRounding.AwayFromZero), Unit = unit, Group = group });
         }
     }
 
@@ -609,7 +619,7 @@ public static class GenericMapper
                 }
                 else if (double.IsFinite(number))
                 {
-                    list.Add(new GenericProperty { Key = key, Label = label, Type = GenericPropertyTypes.Number, Value = number, Unit = unit, Group = group });
+                    list.Add(new GenericProperty { Key = key, Label = label, Type = GenericPropertyTypes.Number, Value = RoundSignificant(number), Unit = unit, Group = group });
                 }
 
                 return;
@@ -621,14 +631,71 @@ public static class GenericMapper
 
     private const double MaxExactInteger = 9_007_199_254_740_992d;
 
+    /// <summary>Décimales des quantités avec unité (surfaces, volumes, hauteurs : m, m², m³) : 3, soit le millimètre ou le litre.</summary>
+    public const int QuantityDecimals = 3;
+
+    /// <summary>Décimales des coordonnées de la boîte (mm) : 1, soit le dixième de millimètre.</summary>
+    public const int CoordinateDecimals = 1;
+
+    /// <summary>Chiffres significatifs des paramètres Revit (unité inconnue du plugin) : retire le bruit de virgule flottante (17 chiffres) sans perdre de valeur : Revit ne donne pas 12 chiffres justes.</summary>
+    public const int ParameterSignificantDigits = 12;
+
+    /// <summary>Arrondit à <see cref="ParameterSignificantDigits"/> chiffres significatifs (zéro et valeurs entières inchangés).</summary>
+    internal static double RoundSignificant(double value)
+    {
+        if (value == 0 || !double.IsFinite(value) || value == Math.Floor(value))
+        {
+            return value;
+        }
+
+        var digits = ParameterSignificantDigits - 1 - (int)Math.Floor(Math.Log10(Math.Abs(value)));
+        if (digits > 15)
+        {
+            return value;
+        }
+
+        return digits >= 0
+            ? Math.Round(value, digits, MidpointRounding.AwayFromZero)
+            : Math.Round(value / Math.Pow(10, -digits), MidpointRounding.AwayFromZero) * Math.Pow(10, -digits);
+    }
+
+    /// <summary>Libellé lisible d'une valeur de <c>Category</c> : <c>Pièce</c>, <c>Porte</c>, <c>Équipement CVC</c>, <c>Terminal électricité</c>…</summary>
+    internal static string CategoryLabel(string category)
+    {
+        switch (category)
+        {
+            case TrcCategories.Space:
+                return "Pièce";
+            case TrcCategories.Door:
+                return "Porte";
+            case GenericCategories.Anomaly:
+                return "Anomalie";
+            case GenericCategories.Files:
+                return "Fichiers";
+        }
+
+        foreach (var (suffix, label) in new[] { (" equipement", "Équipement"), (" terminal", "Terminal") })
+        {
+            if (category.EndsWith(suffix, StringComparison.Ordinal) && category.Length > suffix.Length)
+            {
+                var discipline = category[..^suffix.Length];
+                return $"{label} {(discipline == "cvc" ? "CVC" : discipline)}";
+            }
+        }
+
+        return category;
+    }
+
     /// <summary>Boîte valide (valeurs finies, min ≤ max sur chaque axe) ; null sinon.</summary>
     private static GenericBox? Box(BoundingBoxMm box)
     {
         double[] min = [box.MinX, box.MinY, box.MinZ];
         double[] max = [box.MaxX, box.MaxY, box.MaxZ];
         var valid = min.Concat(max).All(double.IsFinite) && min[0] <= max[0] && min[1] <= max[1] && min[2] <= max[2];
-        return valid ? new GenericBox(min, max) : null;
+        return valid ? new GenericBox([.. min.Select(RoundCoordinate)], [.. max.Select(RoundCoordinate)]) : null;
     }
+
+    private static double RoundCoordinate(double value) => Math.Round(value, CoordinateDecimals, MidpointRounding.AwayFromZero);
 
     /// <summary>Chemin relatif au ZIP de sortie, commençant par <c>/</c> ; le nom est encodé (espaces, <c>£</c>…).</summary>
     private static string RelativeUrl(string directory, string fileName) =>
