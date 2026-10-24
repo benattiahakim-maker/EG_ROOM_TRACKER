@@ -25,6 +25,22 @@ public sealed class SettingsReaderTests : IDisposable
     }
 
     [Fact]
+    public void OutputFormat_WithoutOption_DefaultsToContract_AbsentOrNull()
+    {
+        Assert.Equal(OutputFormat.Contract, SettingsReader.Parse("""{ "schemaVersion": "1.0" }""").OutputFormat);
+        Assert.Equal(OutputFormat.Contract, SettingsReader.Parse("""{ "schemaVersion": "1.0", "outputFormat": null }""").OutputFormat);
+    }
+
+    [Fact]
+    public void OutputFormat_WithDefaultOption_AppliesWhenAbsentOrNull_ButExplicitWins()
+    {
+        Assert.Equal(OutputFormat.Generic, SettingsReader.Parse("""{ "schemaVersion": "1.0" }""", OutputFormat.Generic).OutputFormat);
+        Assert.Equal(OutputFormat.Generic, SettingsReader.Parse("""{ "schemaVersion": "1.0", "outputFormat": null }""", OutputFormat.Generic).OutputFormat);
+        Assert.Equal(OutputFormat.Contract, SettingsReader.Parse("""{ "schemaVersion": "1.0", "outputFormat": "contract" }""", OutputFormat.Generic).OutputFormat);
+        Assert.Equal(OutputFormat.Both, SettingsReader.Parse("""{ "schemaVersion": "1.0", "outputFormat": "both" }""", OutputFormat.Generic).OutputFormat);
+    }
+
+    [Fact]
     public void Example_IsReadAsTyped()
     {
         var settings = SettingsReader.Read(Path.Combine(AppContext.BaseDirectory, "Data", "settings.example.json"));

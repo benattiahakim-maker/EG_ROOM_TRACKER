@@ -25,14 +25,17 @@ public static partial class SettingsReader
         ["schemaVersion", "mainModelPath", "phaseIds", "volumeMode", "sharedParameters", "roomParameters", "elements", "elementCategories", "roomImages", "imageWidthPx", "roomHeights", "heightStepM", "linkedElements", "outputFormat"];
     private static readonly string[] KnownMappingProperties = ["key", "guid"];
 
-    public static ExtractionSettings Read(string settingsPath)
+    public static ExtractionSettings Read(string settingsPath, OutputFormat defaultOutputFormat = OutputFormat.Contract)
     {
         var text = ReadText(settingsPath);
-        return Parse(text);
+        return Parse(text, defaultOutputFormat);
     }
 
-    /// <summary>Valide le contenu de <c>settings.json</c>.</summary>
-    public static ExtractionSettings Parse(string json)
+    /// <summary>
+    /// Valide le contenu de <c>settings.json</c>. <paramref name="defaultOutputFormat"/> s'applique quand <c>outputFormat</c>
+    /// est absent ou <c>null</c> ; un <c>outputFormat</c> explicite est toujours respecté. Sans option : <see cref="OutputFormat.Contract"/>.
+    /// </summary>
+    public static ExtractionSettings Parse(string json, OutputFormat defaultOutputFormat = OutputFormat.Contract)
     {
         JsonDocument document;
         try
@@ -78,7 +81,7 @@ public static partial class SettingsReader
                 RoomHeights = ReadRoomHeights(properties),
                 HeightStepM = ReadHeightStep(properties),
                 LinkedElements = ReadLinkedElements(properties),
-                OutputFormat = ReadOutputFormat(properties),
+                OutputFormat = ReadOutputFormat(properties, defaultOutputFormat),
             };
         }
     }
@@ -293,11 +296,11 @@ public static partial class SettingsReader
             : throw Invalid("roomImages doit être true ou false.");
     }
 
-    private static OutputFormat ReadOutputFormat(IReadOnlyDictionary<string, JsonElement> properties)
+    private static OutputFormat ReadOutputFormat(IReadOnlyDictionary<string, JsonElement> properties, OutputFormat defaultOutputFormat)
     {
         if (!properties.TryGetValue("outputFormat", out var element) || element.ValueKind == JsonValueKind.Null)
         {
-            return OutputFormat.Contract;
+            return defaultOutputFormat;
         }
 
         return element.ValueKind == JsonValueKind.String
