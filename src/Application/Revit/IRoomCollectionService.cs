@@ -1,3 +1,5 @@
+using EgRoomTracker.Contracts.Results;
+
 namespace EgRoomTracker.Application.Revit;
 
 /// <summary>
@@ -12,6 +14,7 @@ public interface IRoomCollectionService
 
 /// <summary>
 /// Identité d'une pièce collectée : <c>ElementId.Value</c> et <c>Element.UniqueId</c>. Permet d'exporter
-/// l'identité d'une pièce même si la lecture de ses paramètres échoue (EXTRACTION_ERROR).
+/// l'identité d'une pièce même si la lecture de ses paramètres échoue (EXTRACTION_ERROR). <paramref name="BoundingBox"/> :
+/// boîte englobante en millimètres (repère du modèle principal), null si la pièce n'en a pas (non placée) ou si elle est illisible.
 /// </summary>
-public sealed record CollectedRoom(long ElementId, string UniqueId);
+public sealed record CollectedRoom(long ElementId, string UniqueId, BoundingBoxMm? BoundingBox = null);

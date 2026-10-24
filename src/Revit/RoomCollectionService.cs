@@ -2,6 +2,7 @@ using Autodesk.Revit.DB;
 using Autodesk.Revit.DB.Architecture;
 using EgRoomTracker.Application.Revit;
 using EgRoomTracker.Contracts.Codes;
+using EgRoomTracker.Contracts.Results;
 using EgRoomTracker.Logging;
 
 namespace EgRoomTracker.Revit;
@@ -49,7 +50,7 @@ public sealed class RoomCollectionService(RevitExecutionContext context, ILogSer
                     inDesignOption++;
                 }
 
-                rooms.Add(new CollectedRoom(room.Id.Value, room.UniqueId));
+                rooms.Add(new CollectedRoom(room.Id.Value, room.UniqueId, BoxMm(room)));
             }
         }
 
@@ -66,6 +67,39 @@ public sealed class RoomCollectionService(RevitExecutionContext context, ILogSer
             },
         });
         return rooms;
+    }
+
+    /// <summary>
+    /// Boîte englobante de la pièce (<c>Room.get_BoundingBox(null)</c>) en millimètres, dans le repère du modèle principal ; null si la
+    /// pièce n'en a pas (non placée), si elle est illisible ou si une valeur n'est pas finie. Ne lève jamais : la boîte est facultative.
+    /// </summary>
+    internal static BoundingBoxMm? BoxMm(Room room)
+    {
+        try
+        {
+            var box = room.get_BoundingBox(null);
+            if (box is null)
+            {
+                return null;
+            }
+
+            var a = box.Transform.OfPoint(box.Min);
+            var b = box.Transform.OfPoint(box.Max);
+            double[] values = [a.X, a.Y, a.Z, b.X, b.Y, b.Z];
+            if (values.Any(v => !double.IsFinite(v)))
+            {
+                return null;
+            }
+
+            double Mm(double feet) => UnitUtils.ConvertFromInternalUnits(feet, UnitTypeId.Millimeters);
+            return new BoundingBoxMm(
+                Mm(Math.Min(a.X, b.X)), Mm(Math.Min(a.Y, b.Y)), Mm(Math.Min(a.Z, b.Z)),
+                Mm(Math.Max(a.X, b.X)), Mm(Math.Max(a.Y, b.Y)), Mm(Math.Max(a.Z, b.Z)));
+        }
+        catch (Exception)
+        {
+            return null;
+        }
     }
 
     /// <summary>Phase de la pièce (<c>ROOM_PHASE_ID</c>) ; <c>-1</c> si absente.</summary>

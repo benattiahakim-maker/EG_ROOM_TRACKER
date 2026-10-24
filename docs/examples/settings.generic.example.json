@@ -1,0 +1,12 @@
+{
+  "schemaVersion": "1.0",
+  "mainModelPath": "Projet/EG_Batiment_A.rvt",
+  "phaseIds": null,
+  "volumeMode": "preserve",
+  "sharedParameters": [
+    { "key": "codeLocal", "guid": "3f2b8c1e-6d4a-4b7e-9a51-2c0d8e7f4a10" }
+  ],
+  "elements": ["doors", "equipment", "terminals"],
+  "roomImages": true,
+  "outputFormat": "generic"
+}

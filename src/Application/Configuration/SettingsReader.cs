@@ -306,9 +306,10 @@ public static partial class SettingsReader
                 "contract" => OutputFormat.Contract,
                 "trc" => OutputFormat.Trc,
                 "both" => OutputFormat.Both,
-                var other => throw Invalid($"outputFormat « {Truncate(other!)} » inconnu (contract, trc ou both)."),
+                "generic" => OutputFormat.Generic,
+                var other => throw Invalid($"outputFormat « {Truncate(other!)} » inconnu (contract, trc, both ou generic)."),
             }
-            : throw Invalid("outputFormat doit être \"contract\", \"trc\" ou \"both\".");
+            : throw Invalid("outputFormat doit être \"contract\", \"trc\", \"both\" ou \"generic\".");
     }
 
     private static bool ReadLinkedElements(IReadOnlyDictionary<string, JsonElement> properties)

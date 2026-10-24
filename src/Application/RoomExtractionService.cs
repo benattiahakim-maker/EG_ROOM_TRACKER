@@ -2,6 +2,7 @@ using System.Diagnostics;
 using System.Globalization;
 using System.Reflection;
 using EgRoomTracker.Application.Configuration;
+using EgRoomTracker.Application.Generic;
 using EgRoomTracker.Application.Quality;
 using EgRoomTracker.Application.Revit;
 using EgRoomTracker.Application.Trc;
@@ -32,6 +33,7 @@ public sealed class RoomExtractionService
     private readonly IRoomImageService? _imageService;
     private readonly IRoomHeightService? _heightService;
     private readonly ITrcExportService? _trcExport;
+    private readonly IGenericExportService? _genericExport;
 
     public RoomExtractionService(
         IInputConfigurationService configuration,
@@ -46,7 +48,8 @@ public sealed class RoomExtractionService
         IReadOnlyList<IRoomElementService>? elementServices = null,
         IRoomImageService? imageService = null,
         IRoomHeightService? heightService = null,
-        ITrcExportService? trcExport = null)
+        ITrcExportService? trcExport = null,
+        IGenericExportService? genericExport = null)
     {
         _configuration = configuration;
         _document = document;
@@ -61,6 +64,7 @@ public sealed class RoomExtractionService
         _imageService = imageService;
         _heightService = heightService;
         _trcExport = trcExport;
+        _genericExport = genericExport;
     }
 
     /// <summary>Version de l'extracteur, issue de l'assembly (sans métadonnées de build).</summary>
@@ -131,7 +135,8 @@ public sealed class RoomExtractionService
                         }
                     }
 
-                    rooms.Add(read.Room);
+                    // Boîte englobante (sortie generic) : lue à la collecte, y compris pour une pièce en EXTRACTION_ERROR.
+                    rooms.Add(room.BoundingBox is null ? read.Room : read.Room with { BoundingBox = room.BoundingBox });
                     anomalies.AddRange(read.Anomalies);
                 }
 
@@ -190,7 +195,7 @@ public sealed class RoomExtractionService
 
     /// <summary>
     /// Écrit la sortie selon <c>outputFormat</c> : <c>result.json</c> (défaut), <c>TRCValidationDict.json</c> (données seules, sans
-    /// statut) ou les deux. Une extraction en échec écrit toujours <c>result.json</c> : sans pièces, il n'y a pas de données TRC, et le
+    /// statut), les deux, ou <c>result.generic.json</c> (enveloppe commune de la plateforme, sans <c>result.json</c>). Une extraction en échec écrit toujours <c>result.json</c> : sans pièces, il n'y a pas de données TRC, et le
     /// fichier explique l'échec.
     /// </summary>
     private ExtractionResult Export(ExtractionRequest request, ExtractionResult result, ExtractionSettings? settings)
@@ -199,13 +204,20 @@ public sealed class RoomExtractionService
         var runFailed = result.Summary.Status == ExtractionStatus.Failed;
         try
         {
-            if (format != OutputFormat.Trc || runFailed)
+            if ((format is OutputFormat.Contract or OutputFormat.Both) || runFailed)
             {
                 _export.Write(result, request.OutputPath);
                 _log.Info(LogEventCodes.ExportCompleted, Stages.Export, "result.json écrit.");
             }
 
-            if (format != OutputFormat.Contract && !runFailed)
+            if (format == OutputFormat.Generic && !runFailed)
+            {
+                var generic = _genericExport ?? throw new InvalidOperationException("Service d'export generic non disponible.");
+                var file = generic.Write(result, Path.GetDirectoryName(Path.GetFullPath(request.OutputPath))!, request.ImagesDirectory);
+                _log.Info(LogEventCodes.ExportCompleted, Stages.Export, $"{file} écrit (format generic).");
+            }
+
+            if (format is OutputFormat.Trc or OutputFormat.Both && !runFailed)
             {
                 var trc = _trcExport ?? throw new InvalidOperationException("Service d'export TRC non disponible.");
                 var file = trc.Write(result, Path.GetDirectoryName(Path.GetFullPath(request.OutputPath))!);
@@ -698,7 +710,7 @@ public sealed class RoomExtractionService
             settings is { RoomHeights: true } ? true : null,
             settings is { RoomHeights: true } ? settings.HeightStepM : null,
             settings is { LinkedElements: false } ? false : null,
-            settings is { OutputFormat: not OutputFormat.Contract } ? (settings.OutputFormat == OutputFormat.Trc ? "trc" : "both") : null);
+            settings is { OutputFormat: not OutputFormat.Contract } ? OutputFormatNames.Of(settings.OutputFormat) : null);
 
         return new ExtractionResult
         {

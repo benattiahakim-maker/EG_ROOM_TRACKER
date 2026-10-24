@@ -133,12 +133,14 @@ public sealed class SettingsElementsTests
     [InlineData(""", "outputFormat": "contract" """, OutputFormat.Contract)]
     [InlineData(""", "outputFormat": "trc" """, OutputFormat.Trc)]
     [InlineData(""", "outputFormat": "both" """, OutputFormat.Both)]
+    [InlineData(""", "outputFormat": "generic" """, OutputFormat.Generic)]
     [InlineData(""", "outputFormat": null""", OutputFormat.Contract)]
     [InlineData("", OutputFormat.Contract)]
     public void OutputFormat_IsRead(string body, OutputFormat expected) => Assert.Equal(expected, Parse(body).OutputFormat);
 
     [Theory]
     [InlineData(""", "outputFormat": "TRC" """, "outputFormat « TRC » inconnu")]
+    [InlineData(""", "outputFormat": "Generic" """, "outputFormat « Generic » inconnu (contract, trc, both ou generic)")]
     [InlineData(""", "outputFormat": true""", "outputFormat doit être")]
     public void OutputFormat_Invalid(string body, string expected) => AssertInvalid(body, expected);
 
