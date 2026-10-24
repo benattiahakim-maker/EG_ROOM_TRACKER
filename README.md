@@ -58,6 +58,7 @@ Détails : [Build et tests](docs/BUILD.md) ; publication : [PUBLISHING.md](docs/
 - [Accès au document Revit](docs/DOCUMENT.md)
 - [Collecte des pièces](docs/COLLECTE.md) ; [lecture des champs et volumes](docs/LECTURE.md) ; [qualité](docs/QUALITE.md)
 - [Logs d’exécution](docs/LOGS.md)
+- [Créer un nouveau service de la plateforme (AppBundle APS + service)](docs/NOUVEAU-SERVICE.md)
 - [Schéma JSON du résultat](docs/schema/result.schema.json)
 - [Sortie generic (enveloppe commune de la plateforme)](docs/GENERIC.md) et [schéma](docs/schema/generic.schema.json)
 - [Exemple de configuration](docs/examples/settings.example.json) et [exemple de résultat](docs/examples/result.example.json), données illustratives
