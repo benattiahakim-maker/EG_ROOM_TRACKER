@@ -5,6 +5,7 @@ using EgRoomTracker.Application.Revit;
 using EgRoomTracker.Application.Trc;
 using EgRoomTracker.Contracts.Configuration;
 using EgRoomTracker.Contracts.Results;
+using EgRoomTracker.Logging;
 using EgRoomTracker.Tests.Support;
 
 namespace EgRoomTracker.Tests.Application;
@@ -117,6 +118,37 @@ public sealed class GenericExportTests
         Assert.Equal(Box, generic.Written!.Rooms.Single(r => r.ElementId == "415002").BoundingBox);
         Assert.Null(generic.Written.Rooms.Single(r => r.ElementId == "412345").BoundingBox);
         Assert.All(generic.Written.Rooms, room => Assert.Equal("v-SGP-DI-Ouvrage", room.NamedParameters![TrcIdentification.Ouvrage]));
+    }
+
+    [Theory]
+    [InlineData(false, 2)]
+    [InlineData(true, 3)]
+    public void Generic_format_counts_in_roomsExported_only_the_rooms_present_in_the_result(bool include, int expected)
+    {
+        var pipeline = new Pipeline
+        {
+            LoadSettings = () => new ExtractionSettings { SchemaVersion = "1.0", OutputFormat = OutputFormat.Generic, IncludeSecondaryDesignOptions = include },
+            GenericExport = new FakeGeneric(),
+            Rooms = [new(415002, "u-415002"), new(412345, "u-412345"), new(412346, "u-412346")],
+            ReadRoom = room => new RoomReadResult(
+                new RoomDto
+                {
+                    ElementId = room.ElementId.ToString(),
+                    UniqueId = room.UniqueId,
+                    VolumeStatus = VolumeStatus.NotComputed,
+                    DesignOption = room.ElementId == 412346 ? new ElementRef("701", "Occupied") : null,
+                    DesignOptionIsPrimary = room.ElementId == 412346 ? false : null,
+                },
+                []),
+        };
+
+        var result = pipeline.CreateService().Run(Pipeline.Request);
+
+        Assert.Equal(3, result.Summary.Counts.RoomsCollected);
+        Assert.Equal(expected, result.Summary.Counts.RoomsExported);
+        var summary = Assert.Single(pipeline.Logs, l => l.EventCode == LogEventCodes.ExtractionSummary);
+        Assert.Equal(3, summary.Data!["roomsCollected"]);
+        Assert.Equal(expected, summary.Data["roomsExported"]);
     }
 
     [Theory]

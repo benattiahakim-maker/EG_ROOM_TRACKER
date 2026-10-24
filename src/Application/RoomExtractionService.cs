@@ -215,6 +215,10 @@ public sealed class RoomExtractionService
                 var generic = _genericExport ?? throw new InvalidOperationException("Service d'export generic non disponible.");
                 var file = generic.Write(result, Path.GetDirectoryName(Path.GetFullPath(request.OutputPath))!, request.ImagesDirectory, settings?.IncludeSecondaryDesignOptions ?? false);
                 _log.Info(LogEventCodes.ExportCompleted, Stages.Export, $"{file} écrit (format generic).");
+
+                // roomsExported = pièces réellement présentes dans l'enveloppe (options secondaires exclues non comptées) ; roomsCollected reste le total lu.
+                var exported = result.Rooms.Count(r => settings?.IncludeSecondaryDesignOptions == true || !GenericMapper.IsSecondaryDesignOption(r));
+                result = result with { Summary = result.Summary with { Counts = result.Summary.Counts with { RoomsExported = exported } } };
             }
 
             if (format is OutputFormat.Trc or OutputFormat.Both && !runFailed)
