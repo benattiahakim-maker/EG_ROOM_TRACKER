@@ -1,0 +1,718 @@
+{
+  "contractVersion": "1.0",
+  "serviceId": "pieces-roomtracker",
+  "status": "partial",
+  "warnings": [
+    "1 pièce(s) sans boîte englobante (pièce non placée ou boîte illisible) : propriété box omise.",
+    "EXTRACTION_ERROR : EXTRACTION_ERROR sur la pièce 102."
+  ],
+  "models": [
+    {
+      "key": "main",
+      "title": "EG_Batiment_A",
+      "urn": ""
+    },
+    {
+      "key": "link-1",
+      "title": "CVC lien",
+      "urn": ""
+    }
+  ],
+  "objects": [
+    {
+      "id": "room-100",
+      "name": "001 Bureau",
+      "children": [
+        {
+          "id": "element-door-uid-5001",
+          "name": "Porte simple : 0915 x 2134",
+          "children": [],
+          "properties": [
+            {
+              "key": "viewerId",
+              "label": "Identifiant du viewer",
+              "type": "text",
+              "value": "door-uid-5001",
+              "group": "Identification"
+            },
+            {
+              "key": "unique_id",
+              "label": "UniqueId Revit",
+              "type": "text",
+              "value": "door-uid-5001",
+              "group": "Identification"
+            },
+            {
+              "key": "id_revit",
+              "label": "ElementId Revit",
+              "type": "text",
+              "value": "5001",
+              "group": "Identification"
+            },
+            {
+              "key": "Category",
+              "label": "Catégorie",
+              "type": "text",
+              "value": "Door",
+              "group": "Identification"
+            },
+            {
+              "key": "modelKey",
+              "label": "Maquette",
+              "type": "text",
+              "value": "main",
+              "group": "Identification"
+            },
+            {
+              "key": "modele_lie",
+              "label": "Élément d'un modèle lié",
+              "type": "boolean",
+              "value": false,
+              "group": "Identification"
+            },
+            {
+              "key": "categorie_revit",
+              "label": "Catégorie Revit",
+              "type": "text",
+              "value": "Portes",
+              "group": "Identification"
+            },
+            {
+              "key": "famille",
+              "label": "Famille",
+              "type": "text",
+              "value": "Porte simple",
+              "group": "Identification"
+            },
+            {
+              "key": "type",
+              "label": "Type",
+              "type": "text",
+              "value": "0915 x 2134",
+              "group": "Identification"
+            },
+            {
+              "key": "repere",
+              "label": "Repère",
+              "type": "text",
+              "value": "P01",
+              "group": "Identification"
+            },
+            {
+              "key": "numero",
+              "label": "Numéro",
+              "type": "text",
+              "value": "1.02",
+              "group": "Identification"
+            },
+            {
+              "key": "niveau",
+              "label": "Niveau",
+              "type": "text",
+              "value": "R+0",
+              "group": "Identification"
+            },
+            {
+              "key": "largeur",
+              "label": "Largeur de passage libre",
+              "type": "number",
+              "value": 0.9,
+              "unit": "m",
+              "group": "Dimensions"
+            },
+            {
+              "key": "hauteur",
+              "label": "Hauteur de passage libre",
+              "type": "number",
+              "value": 2.04,
+              "unit": "m",
+              "group": "Dimensions"
+            },
+            {
+              "key": "source_dimensions",
+              "label": "Source des dimensions",
+              "type": "text",
+              "value": "geometry",
+              "group": "Dimensions"
+            },
+            {
+              "key": "room",
+              "label": "Pièce",
+              "type": "ref",
+              "value": "room-100",
+              "group": "Relations"
+            },
+            {
+              "key": "room",
+              "label": "Pièce",
+              "type": "ref",
+              "value": "room-101",
+              "group": "Relations"
+            },
+            {
+              "key": "room_from",
+              "label": "Pièce de départ",
+              "type": "ref",
+              "value": "room-100",
+              "group": "Relations"
+            },
+            {
+              "key": "room_to",
+              "label": "Pièce d'arrivée",
+              "type": "ref",
+              "value": "room-101",
+              "group": "Relations"
+            },
+            {
+              "key": "occurrence:Commentaires",
+              "label": "Commentaires",
+              "type": "text",
+              "value": "Coupe-feu",
+              "group": "Paramètres d'occurrence"
+            },
+            {
+              "key": "occurrence:Marque",
+              "label": "Marque",
+              "type": "text",
+              "value": "P01",
+              "group": "Paramètres d'occurrence"
+            },
+            {
+              "key": "type:Largeur",
+              "label": "Largeur",
+              "type": "number",
+              "value": 0.9,
+              "group": "Paramètres de type"
+            },
+            {
+              "key": "type:Epaisseur",
+              "label": "Epaisseur",
+              "type": "number",
+              "value": 40,
+              "group": "Paramètres de type"
+            }
+          ]
+        },
+        {
+          "id": "element-equip-uid-6001",
+          "name": "CTA : CTA 5000",
+          "children": [],
+          "properties": [
+            {
+              "key": "viewerId",
+              "label": "Identifiant du viewer",
+              "type": "text",
+              "value": "equip-uid-6001",
+              "group": "Identification"
+            },
+            {
+              "key": "unique_id",
+              "label": "UniqueId Revit",
+              "type": "text",
+              "value": "equip-uid-6001",
+              "group": "Identification"
+            },
+            {
+              "key": "id_revit",
+              "label": "ElementId Revit",
+              "type": "text",
+              "value": "6001",
+              "group": "Identification"
+            },
+            {
+              "key": "Category",
+              "label": "Catégorie",
+              "type": "text",
+              "value": "cvc equipement",
+              "group": "Identification"
+            },
+            {
+              "key": "modelKey",
+              "label": "Maquette",
+              "type": "text",
+              "value": "link-1",
+              "group": "Identification"
+            },
+            {
+              "key": "modele_lie",
+              "label": "Élément d'un modèle lié",
+              "type": "boolean",
+              "value": true,
+              "group": "Identification"
+            },
+            {
+              "key": "lien",
+              "label": "Modèle lié",
+              "type": "text",
+              "value": "CVC lien",
+              "group": "Identification"
+            },
+            {
+              "key": "categorie_revit",
+              "label": "Catégorie Revit",
+              "type": "text",
+              "value": "Equipement de génie climatique",
+              "group": "Identification"
+            },
+            {
+              "key": "famille",
+              "label": "Famille",
+              "type": "text",
+              "value": "CTA",
+              "group": "Identification"
+            },
+            {
+              "key": "type",
+              "label": "Type",
+              "type": "text",
+              "value": "CTA 5000",
+              "group": "Identification"
+            },
+            {
+              "key": "niveau",
+              "label": "Niveau",
+              "type": "text",
+              "value": "R+0",
+              "group": "Identification"
+            },
+            {
+              "key": "discipline",
+              "label": "Discipline",
+              "type": "text",
+              "value": "cvc",
+              "group": "Identification"
+            },
+            {
+              "key": "room",
+              "label": "Pièce",
+              "type": "ref",
+              "value": "room-100",
+              "group": "Relations"
+            },
+            {
+              "key": "occurrence:Puissance",
+              "label": "Puissance",
+              "type": "number",
+              "value": 12.5,
+              "group": "Paramètres d'occurrence"
+            },
+            {
+              "key": "occurrence:Actif",
+              "label": "Actif",
+              "type": "boolean",
+              "value": true,
+              "group": "Paramètres d'occurrence"
+            },
+            {
+              "key": "occurrence:Identifiant long",
+              "label": "Identifiant long",
+              "type": "text",
+              "value": "9000000000000000000",
+              "group": "Paramètres d'occurrence"
+            }
+          ]
+        }
+      ],
+      "properties": [
+        {
+          "key": "viewerId",
+          "label": "Identifiant du viewer",
+          "type": "text",
+          "value": "room-uid-100",
+          "group": "Identification"
+        },
+        {
+          "key": "unique_id",
+          "label": "UniqueId Revit",
+          "type": "text",
+          "value": "room-uid-100",
+          "group": "Identification"
+        },
+        {
+          "key": "id_revit",
+          "label": "ElementId Revit",
+          "type": "text",
+          "value": "100",
+          "group": "Identification"
+        },
+        {
+          "key": "Category",
+          "label": "Catégorie",
+          "type": "text",
+          "value": "Space",
+          "group": "Identification"
+        },
+        {
+          "key": "modelKey",
+          "label": "Maquette",
+          "type": "text",
+          "value": "main",
+          "group": "Identification"
+        },
+        {
+          "key": "numero",
+          "label": "Numéro",
+          "type": "text",
+          "value": "001",
+          "group": "Identification"
+        },
+        {
+          "key": "niveau",
+          "label": "Niveau",
+          "type": "text",
+          "value": "R+0",
+          "group": "Identification"
+        },
+        {
+          "key": "surface",
+          "label": "Surface",
+          "type": "number",
+          "value": 18.425,
+          "unit": "m²",
+          "group": "Dimensions"
+        },
+        {
+          "key": "box",
+          "label": "Boîte englobante (mm)",
+          "type": "box",
+          "value": {
+            "min": [
+              0,
+              0,
+              0
+            ],
+            "max": [
+              4300,
+              4285,
+              2700
+            ]
+          },
+          "group": "Dimensions"
+        },
+        {
+          "key": "image",
+          "label": "Vue 3D de la pièce",
+          "type": "file",
+          "value": {
+            "name": "room-uid-100_EG-Batiment-A_100_AdjustedCornerView_1.jpg",
+            "mimeType": "image/jpeg",
+            "url": "/Images/room-uid-100_EG-Batiment-A_100_AdjustedCornerView_1.jpg"
+          },
+          "group": "Images"
+        },
+        {
+          "key": "occurrence:Hauteur limite",
+          "label": "Hauteur limite",
+          "type": "number",
+          "value": 2.7,
+          "group": "Paramètres d'occurrence"
+        },
+        {
+          "key": "occurrence:Commentaires",
+          "label": "Commentaires",
+          "type": "text",
+          "value": "RAS",
+          "group": "Paramètres d'occurrence"
+        }
+      ]
+    },
+    {
+      "id": "room-101",
+      "name": "002 Bureau",
+      "children": [],
+      "properties": [
+        {
+          "key": "viewerId",
+          "label": "Identifiant du viewer",
+          "type": "text",
+          "value": "room-uid-101",
+          "group": "Identification"
+        },
+        {
+          "key": "unique_id",
+          "label": "UniqueId Revit",
+          "type": "text",
+          "value": "room-uid-101",
+          "group": "Identification"
+        },
+        {
+          "key": "id_revit",
+          "label": "ElementId Revit",
+          "type": "text",
+          "value": "101",
+          "group": "Identification"
+        },
+        {
+          "key": "Category",
+          "label": "Catégorie",
+          "type": "text",
+          "value": "Space",
+          "group": "Identification"
+        },
+        {
+          "key": "modelKey",
+          "label": "Maquette",
+          "type": "text",
+          "value": "main",
+          "group": "Identification"
+        },
+        {
+          "key": "numero",
+          "label": "Numéro",
+          "type": "text",
+          "value": "002",
+          "group": "Identification"
+        },
+        {
+          "key": "niveau",
+          "label": "Niveau",
+          "type": "text",
+          "value": "R+0",
+          "group": "Identification"
+        },
+        {
+          "key": "surface",
+          "label": "Surface",
+          "type": "number",
+          "value": 18.425,
+          "unit": "m²",
+          "group": "Dimensions"
+        },
+        {
+          "key": "box",
+          "label": "Boîte englobante (mm)",
+          "type": "box",
+          "value": {
+            "min": [
+              5000,
+              0,
+              0
+            ],
+            "max": [
+              9300,
+              4285,
+              2700
+            ]
+          },
+          "group": "Dimensions"
+        },
+        {
+          "key": "occurrence:Hauteur limite",
+          "label": "Hauteur limite",
+          "type": "number",
+          "value": 2.7,
+          "group": "Paramètres d'occurrence"
+        },
+        {
+          "key": "occurrence:Commentaires",
+          "label": "Commentaires",
+          "type": "text",
+          "value": "RAS",
+          "group": "Paramètres d'occurrence"
+        },
+        {
+          "key": "contains",
+          "label": "Contient",
+          "type": "ref",
+          "value": "element-door-uid-5001",
+          "group": "Relations"
+        }
+      ]
+    },
+    {
+      "id": "room-102",
+      "name": "003 Bureau",
+      "children": [
+        {
+          "id": "anomaly-1",
+          "name": "EXTRACTION_ERROR",
+          "children": [],
+          "properties": [
+            {
+              "key": "Category",
+              "label": "Catégorie",
+              "type": "text",
+              "value": "Anomaly",
+              "group": "Anomalie"
+            },
+            {
+              "key": "code",
+              "label": "Code",
+              "type": "text",
+              "value": "EXTRACTION_ERROR",
+              "group": "Anomalie"
+            },
+            {
+              "key": "severity",
+              "label": "Gravité",
+              "type": "text",
+              "value": "warning",
+              "group": "Anomalie"
+            },
+            {
+              "key": "scope",
+              "label": "Portée",
+              "type": "text",
+              "value": "room",
+              "group": "Anomalie"
+            },
+            {
+              "key": "message",
+              "label": "Message",
+              "type": "text",
+              "value": "EXTRACTION_ERROR sur la pièce 102.",
+              "group": "Anomalie"
+            }
+          ]
+        }
+      ],
+      "properties": [
+        {
+          "key": "viewerId",
+          "label": "Identifiant du viewer",
+          "type": "text",
+          "value": "room-uid-102",
+          "group": "Identification"
+        },
+        {
+          "key": "unique_id",
+          "label": "UniqueId Revit",
+          "type": "text",
+          "value": "room-uid-102",
+          "group": "Identification"
+        },
+        {
+          "key": "id_revit",
+          "label": "ElementId Revit",
+          "type": "text",
+          "value": "102",
+          "group": "Identification"
+        },
+        {
+          "key": "Category",
+          "label": "Catégorie",
+          "type": "text",
+          "value": "Space",
+          "group": "Identification"
+        },
+        {
+          "key": "modelKey",
+          "label": "Maquette",
+          "type": "text",
+          "value": "main",
+          "group": "Identification"
+        },
+        {
+          "key": "numero",
+          "label": "Numéro",
+          "type": "text",
+          "value": "003",
+          "group": "Identification"
+        },
+        {
+          "key": "niveau",
+          "label": "Niveau",
+          "type": "text",
+          "value": "R+0",
+          "group": "Identification"
+        },
+        {
+          "key": "surface",
+          "label": "Surface",
+          "type": "number",
+          "value": 18.425,
+          "unit": "m²",
+          "group": "Dimensions"
+        },
+        {
+          "key": "occurrence:Hauteur limite",
+          "label": "Hauteur limite",
+          "type": "number",
+          "value": 2.7,
+          "group": "Paramètres d'occurrence"
+        },
+        {
+          "key": "occurrence:Commentaires",
+          "label": "Commentaires",
+          "type": "text",
+          "value": "RAS",
+          "group": "Paramètres d'occurrence"
+        }
+      ]
+    },
+    {
+      "id": "anomaly-2",
+      "name": "VOLUME_NOT_COMPUTED",
+      "children": [],
+      "properties": [
+        {
+          "key": "Category",
+          "label": "Catégorie",
+          "type": "text",
+          "value": "Anomaly",
+          "group": "Anomalie"
+        },
+        {
+          "key": "code",
+          "label": "Code",
+          "type": "text",
+          "value": "VOLUME_NOT_COMPUTED",
+          "group": "Anomalie"
+        },
+        {
+          "key": "severity",
+          "label": "Gravité",
+          "type": "text",
+          "value": "info",
+          "group": "Anomalie"
+        },
+        {
+          "key": "scope",
+          "label": "Portée",
+          "type": "text",
+          "value": "document",
+          "group": "Anomalie"
+        },
+        {
+          "key": "message",
+          "label": "Message",
+          "type": "text",
+          "value": "Calcul des volumes désactivé dans le document ; volumeM3 exporté à null (mode preserve).",
+          "group": "Anomalie"
+        },
+        {
+          "key": "details",
+          "label": "Détails (JSON)",
+          "type": "text",
+          "value": "{\"volumeMode\":\"preserve\",\"roomsAffected\":3}",
+          "group": "Anomalie"
+        }
+      ]
+    },
+    {
+      "id": "result-files",
+      "name": "Fichiers du résultat",
+      "children": [],
+      "properties": [
+        {
+          "key": "Category",
+          "label": "Catégorie",
+          "type": "text",
+          "value": "Files",
+          "group": "Fichiers"
+        },
+        {
+          "key": "file:TRCValidationDict.json",
+          "label": "TRCValidationDict.json",
+          "type": "file",
+          "value": {
+            "name": "TRCValidationDict.json",
+            "mimeType": "application/json",
+            "url": "/TRCValidationDict.json"
+          },
+          "group": "Fichiers"
+        }
+      ]
+    }
+  ]
+}

@@ -83,6 +83,14 @@ public sealed record RoomDto
     [JsonPropertyName("parametres")]
     public IReadOnlyDictionary<string, object?>? Parameters { get; init; }
 
+    /// <summary>
+    /// Boîte englobante de la pièce en millimètres, dans le repère de la maquette principale (<c>Room.get_BoundingBox</c>) ; null si la
+    /// pièce n'est pas placée ou si la boîte est illisible. Donnée interne pour la sortie <c>generic</c> : non sérialisée, absente de
+    /// <c>result.json</c>.
+    /// </summary>
+    [JsonIgnore]
+    public BoundingBoxMm? BoundingBox { get; init; }
+
     /// <summary>Hauteurs renseignée, mesurée et effective (schéma 1.4) ; absent sauf <c>roomHeights</c>.</summary>
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     [JsonPropertyName("hauteurs")]
@@ -103,6 +111,9 @@ public sealed record RoomDto
     [JsonPropertyName("terminaux")]
     public IReadOnlyList<RoomElementDto>? Terminals { get; init; }
 }
+
+/// <summary>Boîte alignée sur les axes, en millimètres.</summary>
+public sealed record BoundingBoxMm(double MinX, double MinY, double MinZ, double MaxX, double MaxY, double MaxZ);
 
 public sealed record LevelRef(
     [property: JsonPropertyName("id_revit")] string ElementId,

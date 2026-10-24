@@ -1,0 +1,100 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/benattiahakim-maker/EG_ROOM_TRACKER/docs/schema/generic.schema.json",
+  "title": "EG_ROOM_TRACKER result.generic.json : enveloppe commune des résultats de la plateforme",
+  "description": "Enveloppe commune (contractVersion 1.0) de la plateforme « platforme automation » : un arbre d'objets et leurs propriétés typées, sans type de contenu. Spécification officielle : docs/frontend-contract.md de system-filter-backend, « Enveloppe commune des résultats » et « Ajouts RoomTracker ». Ce schéma ne vérifie que la forme ; les règles croisées (id d'objet unique, ref résolue, clé unique par objet hors ref, modelKey connue de models[], profondeur 64 au plus) sont contrôlées par les tests et par docs/schema/validate_examples.py.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["contractVersion", "serviceId", "status", "warnings", "models", "objects"],
+  "properties": {
+    "contractVersion": { "const": "1.0" },
+    "serviceId": { "const": "pieces-roomtracker" },
+    "status": { "enum": ["done", "partial"], "description": "done, ou partial avec au moins un texte dans warnings." },
+    "warnings": { "type": "array", "items": { "type": "string", "minLength": 1 } },
+    "models": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/model" },
+      "description": "Une entrée par maquette : main (maquette principale), puis link-n pour chaque modèle lié d'où vient un élément."
+    },
+    "objects": { "type": "array", "items": { "$ref": "#/$defs/object" } }
+  },
+  "allOf": [
+    {
+      "if": { "properties": { "status": { "const": "partial" } }, "required": ["status"] },
+      "then": { "properties": { "warnings": { "minItems": 1 } } }
+    }
+  ],
+  "$defs": {
+    "model": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["key", "title", "urn"],
+      "properties": {
+        "key": { "type": "string", "minLength": 1 },
+        "title": { "type": "string", "minLength": 1 },
+        "urn": { "type": "string", "description": "URN de la conversion, connu de la plateforme seulement : vide dans le fichier de l'extracteur, la plateforme le renseigne." }
+      }
+    },
+    "object": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "name", "children", "properties"],
+      "properties": {
+        "id": { "type": "string", "minLength": 1 },
+        "name": { "type": "string" },
+        "children": { "type": "array", "items": { "$ref": "#/$defs/object" } },
+        "properties": { "type": "array", "items": { "$ref": "#/$defs/property" } }
+      }
+    },
+    "box": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["min", "max"],
+      "properties": {
+        "min": { "$ref": "#/$defs/point" },
+        "max": { "$ref": "#/$defs/point" }
+      },
+      "description": "Millimètres, repère de la maquette principale ; min ≤ max sur chaque axe (contrôlé par les tests)."
+    },
+    "point": { "type": "array", "minItems": 3, "maxItems": 3, "items": { "type": "number" } },
+    "file": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["name", "mimeType", "url"],
+      "properties": {
+        "name": { "type": "string", "minLength": 1 },
+        "mimeType": { "type": "string", "pattern": "^[A-Za-z0-9][A-Za-z0-9!#$&^_.+-]{0,126}/[A-Za-z0-9][A-Za-z0-9!#$&^_.+-]{0,126}$" },
+        "url": { "type": "string", "maxLength": 2048, "pattern": "^(https://[^\\s]+|/(?!/)[^\\s]*)$", "description": "https://… ou chemin relatif commençant par / (jamais http:, javascript: ni //hôte)." }
+      }
+    },
+    "property": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["key", "label", "type", "value"],
+      "properties": {
+        "key": { "type": "string", "minLength": 1 },
+        "label": { "type": "string", "minLength": 1 },
+        "type": { "enum": ["text", "number", "boolean", "date", "box", "ref", "file"] },
+        "value": {},
+        "unit": { "type": "string", "minLength": 1, "description": "Pour un nombre seulement." },
+        "group": { "type": "string", "minLength": 1, "maxLength": 120, "description": "Libellé de groupe pour l'affichage." }
+      },
+      "allOf": [
+        { "if": { "properties": { "type": { "const": "text" } }, "required": ["type"] }, "then": { "properties": { "value": { "type": "string" } } } },
+        { "if": { "properties": { "type": { "const": "number" } }, "required": ["type"] }, "then": { "properties": { "value": { "type": "number" } } } },
+        { "if": { "properties": { "type": { "const": "boolean" } }, "required": ["type"] }, "then": { "properties": { "value": { "type": "boolean" } } } },
+        {
+          "if": { "properties": { "type": { "const": "date" } }, "required": ["type"] },
+          "then": { "properties": { "value": { "type": "string", "format": "date-time" } } }
+        },
+        { "if": { "properties": { "type": { "const": "box" } }, "required": ["type"] }, "then": { "properties": { "value": { "$ref": "#/$defs/box" } } } },
+        { "if": { "properties": { "type": { "const": "ref" } }, "required": ["type"] }, "then": { "properties": { "value": { "type": "string", "minLength": 1 } } } },
+        { "if": { "properties": { "type": { "const": "file" } }, "required": ["type"] }, "then": { "properties": { "value": { "$ref": "#/$defs/file" } } } },
+        {
+          "if": { "properties": { "type": { "const": "number" } }, "required": ["type"] },
+          "else": { "not": { "required": ["unit"] } }
+        }
+      ]
+    }
+  }
+}
