@@ -422,6 +422,28 @@ public sealed class GenericMapperTests
     }
 
     [Fact]
+    public void LinkMessage_AndDetails_NeverCarryAMachinePath()
+    {
+        var result = GenericFixtures.Result();
+        var complete = result with
+        {
+            Anomalies =
+            [
+                DocumentAnomalies.LinkMissing(@"C:\Users\jean\Liens\A.rvt", @"C:\Users\jean\Liens\A.rvt"),
+                DocumentAnomalies.LinkNotLoaded("B.rvt", @"\\serveur\partage\B.rvt", "Unloaded"),
+            ],
+        };
+
+        var text = Envelope(complete).ToJsonString();
+
+        Assert.Contains("1 lien(s) absent(s) : A.rvt", text, StringComparison.Ordinal);
+        Assert.DoesNotContain("Users", text, StringComparison.Ordinal);
+        Assert.DoesNotContain("jean", text, StringComparison.Ordinal);
+        Assert.DoesNotContain("serveur", text, StringComparison.Ordinal);
+        Assert.DoesNotContain("C:", text, StringComparison.Ordinal);
+    }
+
+    [Fact]
     public void LinkMessage_IsTruncatedCleanlyTo400Characters()
     {
         var names = Enumerable.Range(1, 40).Select(i => $"Modele_lie_numero_{i:00}.rvt").ToList();

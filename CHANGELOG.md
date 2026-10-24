@@ -21,6 +21,10 @@ Le format s'inspire de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/).
 
 ### Modifié
 
+- **Journal : `roomsExported` exact** : en sortie `generic`, `roomsExported` (événement `EXTRACTION_SUMMARY`) compte les pièces présentes dans le
+  résultat, sans celles des options de conception secondaires exclues ; `roomsCollected` garde le total lu. Même noms, schéma inchangé.
+- **Liens : nom de fichier seul** : `details.linkPath` (et `linkName`) de `LINK_MISSING` / `LINK_NOT_LOADED` ne gardent que le nom du fichier,
+  jamais un chemin de la machine d'origine (`result.json` et sortie `generic`) ; le message d'information `LINK_MISSING` ne contient que des noms.
 - **Sortie `generic` : `LINK_MISSING` sans objet** : les liens Revit absents ne produisent plus d'objet « Anomalie » (`anomaly-N`) ;
   ils ne sont dits que par l'information unique `LINK_MISSING` de `warnings[]`. Le résultat reste `done` ; les autres anomalies sont inchangées.
 - **Sortie `generic` : pas d'image pour les pièces exclues** : une pièce d'option de conception secondaire exclue
