@@ -27,7 +27,7 @@ public sealed class OpeningMeasureTests
 
     [Fact]
     public void Width_IsIndependentOfTheOrderOfTheCrossings() =>
-        Assert.Equal(0.90, OpeningMeasure.ClearWidth(SingleLeafWithFrame.Reverse())!.Value, 6);
+        Assert.Equal(0.90, OpeningMeasure.ClearWidth(Enumerable.Reverse(SingleLeafWithFrame))!.Value, 6);
 
     [Fact]
     public void Coincident_faces_count_once()
