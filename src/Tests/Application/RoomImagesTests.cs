@@ -78,6 +78,60 @@ public sealed class RoomImagesTests
     }
 
     [Fact]
+    public void Excluded_secondary_design_option_rooms_get_no_image_file_and_no_image_reference()
+    {
+        var output = Path.Combine(Path.GetTempPath(), "rtb-img-" + Guid.NewGuid().ToString("N"));
+        var imagesDir = Path.Combine(output, "Images");
+        try
+        {
+            var images = new FakeImages(rooms =>
+            {
+                Directory.CreateDirectory(imagesDir);
+                foreach (var room in rooms)
+                {
+                    File.WriteAllText(Path.Combine(imagesDir, TrcNaming.RoomImageFileName(room.UniqueId, "A", room.ElementId)), "jpg");
+                }
+
+                return new ImageExportResult(rooms.Count, []);
+            });
+            var pipeline = new Pipeline
+            {
+                LoadSettings = () => new ExtractionSettings { SchemaVersion = "1.0", RoomImages = true, OutputFormat = OutputFormat.Generic },
+                ImageService = images,
+                GenericExport = new EgRoomTracker.Application.Generic.GenericExportService(),
+            };
+            pipeline.ReadRoom = room => new RoomReadResult(
+                new RoomDto
+                {
+                    ElementId = room.ElementId.ToString(),
+                    UniqueId = room.UniqueId,
+                    VolumeStatus = VolumeStatus.NotComputed,
+                    DesignOption = room.ElementId == 415002 ? new ElementRef("701", "Occupied") : new ElementRef("700", "Unoccupied  <principal>"),
+                    DesignOptionIsPrimary = room.ElementId != 415002,
+                },
+                []);
+            var request = Pipeline.Request with { OutputPath = Path.Combine(output, "result.json"), ImagesDirectory = imagesDir };
+
+            var result = pipeline.CreateService().Run(request);
+
+            Assert.Equal(["u-412345"], images.Rooms!.Select(r => r.UniqueId));
+            Assert.Equal(new ImagesSummary(1, 1, 0), result.Summary.Images);
+            Assert.Equal([TrcNaming.RoomImageFileName("u-412345", "A", 412345)], Directory.GetFiles(imagesDir).Select(Path.GetFileName));
+            var json = File.ReadAllText(Path.Combine(output, "result.generic.json"));
+            Assert.Contains("u-412345_A_412345", json, StringComparison.Ordinal);
+            Assert.DoesNotContain("415002", json, StringComparison.Ordinal);
+            Assert.DoesNotContain("u-415002", json, StringComparison.Ordinal);
+        }
+        finally
+        {
+            if (Directory.Exists(output))
+            {
+                Directory.Delete(output, true);
+            }
+        }
+    }
+
+    [Fact]
     public void Partial_failure_is_a_warning_and_rooms_are_still_exported()
     {
         var images = new FakeImages(rooms => new ImageExportResult(1, [rooms[0].ElementId], "export impossible"));

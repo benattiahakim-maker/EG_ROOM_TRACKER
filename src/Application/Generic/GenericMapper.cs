@@ -372,7 +372,7 @@ public static class GenericMapper
     }
 
     /// <summary>Pièce d'une option de conception secondaire : option connue et non principale (option inconnue : conservée, par prudence).</summary>
-    private static bool IsSecondaryDesignOption(RoomDto room) => room.DesignOption is not null && room.DesignOptionIsPrimary == false;
+    internal static bool IsSecondaryDesignOption(RoomDto room) => room.DesignOption is not null && room.DesignOptionIsPrimary == false;
 
     private static readonly Regex PrimaryMarker = new(@"<\s*(principale?|primary)\s*>", RegexOptions.IgnoreCase | RegexOptions.CultureInvariant, TimeSpan.FromSeconds(1));
     private static readonly Regex Spaces = new(@"\s+", RegexOptions.CultureInvariant, TimeSpan.FromSeconds(1));
