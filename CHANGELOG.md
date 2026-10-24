@@ -21,6 +21,8 @@ Le format s'inspire de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/).
 
 ### Modifié
 
+- **Sortie `generic` : `LINK_MISSING` sans objet** : les liens Revit absents ne produisent plus d'objet « Anomalie » (`anomaly-N`) ;
+  ils ne sont dits que par l'information unique `LINK_MISSING` de `warnings[]`. Le résultat reste `done` ; les autres anomalies sont inchangées.
 - **Sortie `generic` : pas d'image pour les pièces exclues** : une pièce d'option de conception secondaire exclue
   (`includeSecondaryDesignOptions` : `false`) n'est plus photographiée : aucun fichier dans `Images/`, aucune propriété `image`, et
   `summary.images` ne compte que les pièces conservées. L'image d'une pièce conservée ne change pas. Pas de nouveau réglage.

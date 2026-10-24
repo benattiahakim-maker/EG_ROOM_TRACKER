@@ -41,7 +41,7 @@ Racine : `contractVersion` (`1.0`), `serviceId` (`pieces-roomtracker`), `status`
   d'extraction, d'image, d'éléments…, écrits comme des textes). Une **information** ne rend jamais l'enveloppe `partial`.
   **`LINK_MISSING`** : les liens Revit absents de l'envoi sont nommés **tous dans une seule information**
   `{ "severity": "info", "code": "LINK_MISSING", "message": "5 lien(s) absent(s) : A.rvt, B.rvt…" }`, placée après les avertissements :
-  un projet envoyé sans ses liens est `done`. Au-delà de 400 caractères, la liste est coupée sur un nom entier et finit par « … et K autre(s) ». Les objets d'anomalie `LINK_MISSING` restent dans `objects[]` (gravité `warning`).
+  un projet envoyé sans ses liens est `done`. Au-delà de 400 caractères, la liste est coupée sur un nom entier et finit par « … et K autre(s) ». Les liens absents ne produisent **aucun** objet « Anomalie » (`anomaly-N`) : seule cette information les dit. Les autres anomalies (par exemple `LINK_NOT_LOADED`) restent des objets.
   Ce format demande que la plateforme (validation) et le site acceptent les objets dans `warnings[]` ; un texte seul reste valide.
 - **`models[]`** : `main` (le RVT principal, titre = nom du fichier sans extension) et `link-1`, `link-2`… pour les modèles liés dont un
   élément est exporté. `urn` est **vide** : le plugin ne connaît pas l'URN de conversion (voir « Écarts »).
@@ -109,7 +109,7 @@ changent ni `result.json` ni le TRC.
 ### Anomalies
 
 Une anomalie est un objet `anomaly-{n}` (`Category` = `Anomaly`) avec `code`, `severity`, `message`, `details` (texte JSON). Portée pièce :
-enfant de la pièce ; portée document : objet racine.
+enfant de la pièce ; portée document : objet racine. **Exception : `LINK_MISSING`** n'est jamais un objet (voir `warnings[]`).
 
 ### Fichiers
 
