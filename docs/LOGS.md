@@ -5,7 +5,8 @@ Implémentation : `EgRoomTracker.Logging.JsonConsoleLogService` (EGR-04, spécif
 ## Format
 
 Une ligne JSON par événement sur la **sortie standard** (console), récupérée dans le rapport APS du WorkItem.
-Aucun fichier de log n'est produit et les logs ne font pas partie de `result.json`.
+Les **mêmes lignes** sont aussi écrites dans `log.jsonl` (voir « Fichier `log.jsonl` »). Les logs ne font pas partie de
+`result.json` ni de `result.generic.json`.
 
 | Champ | Présence | Contenu |
 | --- | --- | --- |
@@ -97,8 +98,21 @@ Le masquage est un filet de sécurité : le code ne doit pas transmettre de secr
 `Flush()` est appelé en fin de `RoomExtractionService.Run` et dans le bloc `finally` du gestionnaire
 `DesignAutomationReadyEvent` (`AutomationApplication`) ; `Dispose()` vide également le journal.
 
-## Décision D8 — tranchée
+## Fichier `log.jsonl`
 
-Console uniquement : aucun fichier de log de débogage dans le MVP. Le rapport APS conserve la sortie standard en
-succès comme en échec. Un fichier facultatif ne pourra être ajouté que comme évolution explicite, sortie distincte
-de l'Activity, sans modifier `result.json` (spécifications, section 11).
+L'AppBundle copie son journal dans `result/log.jsonl`, donc à la racine du ZIP de sortie (à côté de `result.json`,
+`result.generic.json` et `Images/`) : le Testeur ou la plateforme peuvent le lire sans passer par le rapport APS.
+
+- Mêmes lignes, mêmes champs, même masquage des secrets que sur la console : JSON Lines en ASCII pur, une ligne par
+  événement, sans BOM, fin de ligne `\n`. Même plafond d'événements par pièce, même résumé `LOG_EVENTS_SUPPRESSED`.
+- Fichier annexe : il n'est ni dans `result.json` ni dans l'enveloppe `generic`, dont le format ne change pas.
+- Le fichier est créé à la première ligne et vidé à chaque flush, puis fermé (`Dispose`) avant le zip de l'Activity,
+  y compris en cas d'échec de l'extraction, tant que le dossier `result/` existe (il est créé au démarrage).
+- Une erreur d'écriture ne fait jamais échouer l'extraction : un seul avertissement `LOG_FILE_UNAVAILABLE` (étape
+  `logging`, `data.reason` = type de l'erreur) est écrit sur la console, le fichier est abandonné et la console continue.
+- Le backend de la plateforme n'est pas modifié ; il n'expose pas ce fichier aujourd'hui.
+
+## Décision D8 — révisée
+
+Décision initiale : console uniquement. Sur demande du chef de projet, le journal est aussi copié dans `log.jsonl`
+dans le ZIP de sortie (ci-dessus). Le rapport APS conserve toujours la sortie standard en succès comme en échec.

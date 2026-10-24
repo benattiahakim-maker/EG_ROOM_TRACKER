@@ -7,7 +7,8 @@ namespace EgRoomTracker.EntryPoint;
 /// Adaptation du contexte APS vers <see cref="ExtractionRequest"/>.
 /// Les noms locaux sont ceux de la définition de l'Activity (<c>src/Packaging/definitions</c>) : le paramètre de sortie
 /// <c>result</c> est le dossier <c>result/</c>, zippé par Design Automation (<c>zip: true</c>) ; il contient
-/// <c>result.json</c> et, avec <c>roomImages</c>, le dossier <c>Images/</c> (vues 3D des pièces).
+/// <c>result.json</c> (ou <c>result.generic.json</c>), <c>log.jsonl</c> (journal JSON Lines, fichier annexe) et, avec
+/// <c>roomImages</c>, le dossier <c>Images/</c> (vues 3D des pièces).
 /// </summary>
 internal static class ActivityContract
 {
@@ -16,6 +17,12 @@ internal static class ActivityContract
     public const string ResultDirectoryName = "result";
     public const string ResultFileName = "result.json";
     public const string ImagesDirectoryName = "Images";
+
+    /// <summary>Journal JSON Lines copié dans le ZIP de sortie (fichier annexe : hors <c>result.json</c> et hors enveloppe generic).</summary>
+    public const string LogFileName = "log.jsonl";
+
+    public static string LogFilePath(string workingDirectory) =>
+        Path.Combine(workingDirectory, ResultDirectoryName, LogFileName);
 
     public static ExtractionRequest CreateRequest(DesignAutomationData data)
     {

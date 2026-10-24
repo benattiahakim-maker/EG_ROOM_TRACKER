@@ -8,6 +8,10 @@ Le format s'inspire de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/).
 
 ### Ajouté
 
+- **Journal dans le ZIP de sortie** : l'AppBundle copie son journal JSON Lines (mêmes lignes que sur la console, ASCII, secrets masqués,
+  même plafond par pièce) dans `log.jsonl`, à la racine du ZIP de sortie. Fichier annexe : ni `result.json` ni l'enveloppe `generic` ne
+  changent. Une erreur d'écriture ne fait jamais échouer l'extraction (avertissement console `LOG_FILE_UNAVAILABLE`). Voir
+  [`docs/LOGS.md`](docs/LOGS.md). Non validé dans Design Automation.
 - **Sortie `generic`** (`outputFormat: "generic"`) : écrit `result.generic.json`, l'enveloppe commune des résultats de la plateforme
   (`contractVersion` `1.0`, `serviceId` `pieces-roomtracker`, `models[]`, arbre `objects[]` de propriétés typées : `box`, `ref`, `file`,
   `group`). Une pièce est un objet racine ; portes, équipements et terminaux sont des objets rangés une fois sous leur première pièce, les

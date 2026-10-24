@@ -8,8 +8,11 @@ namespace EgRoomTracker.Logging;
 
 /// <summary>
 /// Journal JSON Lines sur la console (section 5) : une ligne JSON par événement, récupérée via le rapport
-/// APS du WorkItem. Aucun fichier de log (décision D8). Secrets masqués par <see cref="SecretRedactor"/>.
-/// Les événements liés à une pièce sont limités par code ; le surplus est compté et résumé au flush.
+/// APS du WorkItem. Si un <c>filePath</c> est fourni, les mêmes lignes sont aussi écrites dans ce fichier
+/// (<c>log.jsonl</c> du dossier de sortie, zippé par l'Activity) ; une erreur d'écriture du fichier ne fait jamais
+/// échouer le traitement (un seul avertissement sur la console, le fichier est abandonné). Secrets masqués par
+/// <see cref="SecretRedactor"/>. Les événements liés à une pièce sont limités par code ; le surplus est compté et
+/// résumé au flush.
 /// </summary>
 public sealed class JsonConsoleLogService : ILogService, IDisposable
 {
@@ -17,6 +20,9 @@ public sealed class JsonConsoleLogService : ILogService, IDisposable
     public const int DefaultRoomEventLimit = 20;
 
     public const string SuppressedEventCode = "LOG_EVENTS_SUPPRESSED";
+
+    /// <summary>Avertissement console : le fichier journal n'a pas pu être écrit (le traitement continue).</summary>
+    public const string FileUnavailableEventCode = "LOG_FILE_UNAVAILABLE";
 
     private const int MaxExceptionDepth = 5;
 
@@ -32,10 +38,14 @@ public sealed class JsonConsoleLogService : ILogService, IDisposable
     private readonly TimeProvider _time;
     private readonly int _roomEventLimit;
     private readonly Dictionary<string, int> _roomEventCounts = new(StringComparer.Ordinal);
+    private readonly string? _filePath;
+    private StreamWriter? _fileWriter;
+    private bool _fileFailed;
     private bool _disposed;
 
-    public JsonConsoleLogService(string correlationId, TextWriter? writer = null, TimeProvider? time = null, int roomEventLimit = DefaultRoomEventLimit)
+    public JsonConsoleLogService(string correlationId, TextWriter? writer = null, TimeProvider? time = null, int roomEventLimit = DefaultRoomEventLimit, string? filePath = null)
     {
+        _filePath = string.IsNullOrWhiteSpace(filePath) ? null : filePath;
         CorrelationId = string.IsNullOrWhiteSpace(correlationId) ? "unknown" : correlationId;
         _writer = writer ?? Console.Out;
         _time = time ?? TimeProvider.System;
@@ -70,6 +80,7 @@ public sealed class JsonConsoleLogService : ILogService, IDisposable
 
             WriteSuppressedSummary();
             _writer.Flush();
+            FlushFile();
         }
     }
 
@@ -79,6 +90,7 @@ public sealed class JsonConsoleLogService : ILogService, IDisposable
         lock (_sync)
         {
             _disposed = true;
+            CloseFile();
         }
     }
 
@@ -121,6 +133,73 @@ public sealed class JsonConsoleLogService : ILogService, IDisposable
     {
         _writer.Write(line);
         _writer.Write('\n');
+        WriteFileLine(line);
+    }
+
+    // Le fichier est ouvert à la première ligne (le dossier de sortie est créé s'il manque). Toute erreur d'E/S
+    // abandonne le fichier avec un seul avertissement sur la console : le journal console et l'extraction continuent.
+    private void WriteFileLine(string line)
+    {
+        if (_filePath is null || _fileFailed)
+        {
+            return;
+        }
+
+        try
+        {
+            if (_fileWriter is null)
+            {
+                var directory = Path.GetDirectoryName(_filePath);
+                if (!string.IsNullOrEmpty(directory))
+                {
+                    Directory.CreateDirectory(directory);
+                }
+
+                var stream = new FileStream(_filePath, FileMode.Create, FileAccess.Write, FileShare.Read);
+                _fileWriter = new StreamWriter(stream, new UTF8Encoding(false)) { AutoFlush = true, NewLine = "\n" };
+            }
+
+            _fileWriter.Write(line);
+            _fileWriter.Write('\n');
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or NotSupportedException or ArgumentException or System.Security.SecurityException)
+        {
+            _fileFailed = true;
+            CloseFile();
+            _writer.Write(Serialize(new LogEvent(LogLevel.Warning, FileUnavailableEventCode, "logging", "Fichier journal log.jsonl non écrit ; le journal console continue.")
+            {
+                Data = new Dictionary<string, object?> { ["reason"] = ex.GetType().Name },
+            }));
+            _writer.Write('\n');
+        }
+    }
+
+    private void FlushFile()
+    {
+        try
+        {
+            _fileWriter?.Flush();
+        }
+        catch (Exception ex) when (ex is IOException or ObjectDisposedException)
+        {
+            _fileFailed = true;
+        }
+    }
+
+    private void CloseFile()
+    {
+        try
+        {
+            _fileWriter?.Dispose();
+        }
+        catch (Exception ex) when (ex is IOException or ObjectDisposedException)
+        {
+            // Rien à faire : le journal console reste la source de secours.
+        }
+        finally
+        {
+            _fileWriter = null;
+        }
     }
 
     private string Serialize(LogEvent logEvent)
