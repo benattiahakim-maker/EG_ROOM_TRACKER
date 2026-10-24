@@ -57,6 +57,13 @@
               "group": "Identification"
             },
             {
+              "key": "categorie_libelle",
+              "label": "Catégorie (libellé)",
+              "type": "text",
+              "value": "Porte",
+              "group": "Identification"
+            },
+            {
               "key": "modelKey",
               "label": "Maquette",
               "type": "text",
@@ -227,6 +234,13 @@
               "group": "Identification"
             },
             {
+              "key": "categorie_libelle",
+              "label": "Catégorie (libellé)",
+              "type": "text",
+              "value": "Équipement CVC",
+              "group": "Identification"
+            },
+            {
               "key": "modelKey",
               "label": "Maquette",
               "type": "text",
@@ -340,6 +354,13 @@
           "label": "Catégorie",
           "type": "text",
           "value": "Space",
+          "group": "Identification"
+        },
+        {
+          "key": "categorie_libelle",
+          "label": "Catégorie (libellé)",
+          "type": "text",
+          "value": "Pièce",
           "group": "Identification"
         },
         {
@@ -457,6 +478,13 @@
           "group": "Identification"
         },
         {
+          "key": "categorie_libelle",
+          "label": "Catégorie (libellé)",
+          "type": "text",
+          "value": "Pièce",
+          "group": "Identification"
+        },
+        {
           "key": "modelKey",
           "label": "Maquette",
           "type": "text",
@@ -550,6 +578,13 @@
               "group": "Anomalie"
             },
             {
+              "key": "categorie_libelle",
+              "label": "Catégorie (libellé)",
+              "type": "text",
+              "value": "Anomalie",
+              "group": "Anomalie"
+            },
+            {
               "key": "code",
               "label": "Code",
               "type": "text",
@@ -607,6 +642,13 @@
           "label": "Catégorie",
           "type": "text",
           "value": "Space",
+          "group": "Identification"
+        },
+        {
+          "key": "categorie_libelle",
+          "label": "Catégorie (libellé)",
+          "type": "text",
+          "value": "Pièce",
           "group": "Identification"
         },
         {
@@ -674,6 +716,13 @@
           "group": "Anomalie"
         },
         {
+          "key": "categorie_libelle",
+          "label": "Catégorie (libellé)",
+          "type": "text",
+          "value": "Anomalie",
+          "group": "Anomalie"
+        },
+        {
           "key": "code",
           "label": "Code",
           "type": "text",
@@ -720,6 +769,13 @@
           "label": "Catégorie",
           "type": "text",
           "value": "Files",
+          "group": "Fichiers"
+        },
+        {
+          "key": "categorie_libelle",
+          "label": "Catégorie (libellé)",
+          "type": "text",
+          "value": "Fichiers",
           "group": "Fichiers"
         },
         {

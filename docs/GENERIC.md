@@ -59,12 +59,25 @@ Racine : `contractVersion` (`1.0`), `serviceId` (`pieces-roomtracker`), `status`
 | `id` | `room-{ElementId}` |
 | `name` | `{numéro} {nom}` |
 | `viewerId` | `UniqueId` Revit de la pièce (propriété `text` réservée) |
-| `id_revit`, `unique_id`, `Category` (`Space`), `modelKey` (`main`) | propriétés ordinaires |
+| `id_revit`, `unique_id`, `Category` (`Space`), `categorie_libelle` (`Pièce`), `modelKey` (`main`) | propriétés ordinaires |
 | `box` | boîte englobante (mm, repère du modèle principal) ; omise avec un avertissement si la pièce n'est pas placée |
 | `image` (type `file`) | vue 3D `/Images/{nom TRC}.jpg`, seulement si le fichier existe réellement |
 | surface, volume, hauteur, finitions, paramètres | nombres et textes typés, groupés (`group`) |
 | `contains` (`ref`, répétable) | éléments rangés sous une autre pièce mais contenus aussi dans celle-ci |
 | enfants | éléments rangés ici, puis anomalies de la pièce |
+
+**`Category` et `categorie_libelle`.** `Category` garde la valeur technique (`Space`, `Door`, `cvc equipement`, `Anomaly`, `Files`, comme le
+TRC). `categorie_libelle` (texte, groupe `Identification`) donne le libellé lisible : `Pièce`, `Porte`, `Équipement CVC`, `Terminal electricite`
+(discipline telle que dans la valeur technique, `cvc` en `CVC`), `Anomalie`, `Fichiers`. Présent sur tous les objets.
+
+**Arrondis.** Nombres avec unité (surface, volume, hauteurs : `m`, `m²`, `m³`) : 3 décimales. Coordonnées de la `box` (mm) : 1 décimale. Paramètres
+Revit (unité inconnue du plugin) : 12 chiffres significatifs, ce qui retire seulement le bruit de virgule flottante (`2.6999999999999997` devient
+`2.7`) ; les valeurs entières et zéro ne changent pas. Une valeur inconnue reste omise, jamais mise à zéro.
+
+**Unité de la `box`.** La `box` est toujours en **millimètres**, repère du modèle principal (contrat de la plateforme). Elle n'a **pas** de clé
+`unit` : le validateur de la plateforme (`validateEnvelope`) n'accepte `unit` que sur le type `number` et refuserait l'enveloppe (`RESULT_INVALID`).
+Le libellé de la propriété dit « (mm) ». Si PM veut une `unit` sur la boîte, il faut d'abord que la plateforme l'autorise pour `box` (« `unit` :
+permis pour `number` et `box` ») ; le plugin pourra alors écrire `"unit": "mm"`.
 
 La `box` vient de `Room.get_BoundingBox(null)`, convertie en millimètres (`CollectedRoom.BoundingBox`, lue à la collecte, y compris pour une
 pièce en `EXTRACTION_ERROR`). Elle est alignée sur les axes : fidèle pour une pièce rectangulaire, englobante pour une pièce en L.
