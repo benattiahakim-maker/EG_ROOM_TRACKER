@@ -21,6 +21,9 @@ Le format s'inspire de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/).
 
 ### Modifié
 
+- **Design Automation : `outputFormat` vaut `generic` par défaut** quand `settings.json` ne le précise pas (absent ou `null`). La plateforme
+  n'envoie que `schemaVersion` et `mainModelPath` et attend `result.generic.json` (sinon `RESULT_MISSING`). Un `outputFormat` explicite est
+  toujours respecté ; `SettingsReader` sans option, les tests et l'outil local gardent `contract`. Voir [`docs/GENERIC.md`](docs/GENERIC.md).
 - **Format TRC : portes, équipements et terminaux deviennent des objets BIM** (`trc.bimobject`) avec leurs propres propriétés, au lieu
   d'être listés sur la pièce (`b:porte_*`, `b:equipements_*` retirés de la pièce). Chaque objet porte `Category` (`Space`, `Door`,
   `<discipline> equipement`, `<discipline> terminal`) ; chaque élément porte `ListeSpaces`, une seule valeur : la liste JSON des `pk` des

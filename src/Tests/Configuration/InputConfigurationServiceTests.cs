@@ -53,6 +53,62 @@ public sealed class InputConfigurationServiceTests : IDisposable
     }
 
     [Fact]
+    public void DefaultService_WithoutOutputFormat_KeepsContract()
+    {
+        _fixture.AddFile("A.rvt").WriteSettings("""{ "schemaVersion": "1.0" }""");
+
+        Assert.Equal(OutputFormat.Contract, Load().OutputFormat);
+    }
+
+    [Fact]
+    public void DesignAutomationService_WithoutOutputFormat_DefaultsToGeneric()
+    {
+        // La plateforme n'envoie que schemaVersion et mainModelPath : result.generic.json doit être écrit.
+        _fixture.AddFile("A.rvt").WriteSettings("""{ "schemaVersion": "1.0", "mainModelPath": "A.rvt" }""");
+
+        var settings = InputConfigurationService.ForDesignAutomation().Load(_fixture.InputDirectory, _fixture.SettingsPath);
+
+        Assert.Equal(OutputFormat.Generic, settings.OutputFormat);
+        Assert.Equal("A.rvt", settings.ResolvedMainModelPath);
+    }
+
+    [Fact]
+    public void DesignAutomationService_WithNullOutputFormat_DefaultsToGeneric()
+    {
+        _fixture.AddFile("A.rvt").WriteSettings("""{ "schemaVersion": "1.0", "outputFormat": null }""");
+
+        var settings = InputConfigurationServiceDa().Load(_fixture.InputDirectory, _fixture.SettingsPath);
+
+        Assert.Equal(OutputFormat.Generic, settings.OutputFormat);
+    }
+
+    [Theory]
+    [InlineData("contract", OutputFormat.Contract)]
+    [InlineData("trc", OutputFormat.Trc)]
+    [InlineData("both", OutputFormat.Both)]
+    [InlineData("generic", OutputFormat.Generic)]
+    public void DesignAutomationService_ExplicitOutputFormat_IsRespected(string name, OutputFormat expected)
+    {
+        _fixture.AddFile("A.rvt").WriteSettings($$"""{ "schemaVersion": "1.0", "outputFormat": "{{name}}" }""");
+
+        var settings = InputConfigurationServiceDa().Load(_fixture.InputDirectory, _fixture.SettingsPath);
+
+        Assert.Equal(expected, settings.OutputFormat);
+    }
+
+    [Fact]
+    public void DesignAutomationService_UnknownOutputFormat_StillFails()
+    {
+        _fixture.AddFile("A.rvt").WriteSettings("""{ "schemaVersion": "1.0", "outputFormat": "xml" }""");
+
+        var ex = Assert.Throws<ExtractionFailedException>(() => InputConfigurationServiceDa().Load(_fixture.InputDirectory, _fixture.SettingsPath));
+
+        Assert.Equal(ErrorCodes.ConfigInvalid, ex.Error.Code);
+    }
+
+    private static InputConfigurationService InputConfigurationServiceDa() => InputConfigurationService.ForDesignAutomation();
+
+    [Fact]
     public void SeveralRvtWithoutPath_IsRvtAmbiguous()
     {
         _fixture.AddFiles("A.rvt", "B.rvt").WriteSettings("""{ "schemaVersion": "1.0" }""");

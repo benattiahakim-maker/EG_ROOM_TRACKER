@@ -19,7 +19,7 @@ internal static class CompositionRoot
         var units = new RevitUnitConversionService();
 
         return new RoomExtractionService(
-            new InputConfigurationService(),
+            InputConfigurationService.ForDesignAutomation(),
             new RevitDocumentService(context, log),
             new VolumeCalculationService(context),
             new RoomCollectionService(context, log),

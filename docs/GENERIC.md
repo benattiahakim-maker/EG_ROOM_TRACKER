@@ -20,6 +20,10 @@ Exemples : `docs/examples/generic.example.json` (sortie), `docs/examples/setting
 | --- | --- |
 | `generic` | `result.generic.json` seul ; avec `roomImages`, le dossier `Images/` l'accompagne |
 
+- **Défaut dans Design Automation** : quand `settings.json` n'a pas `outputFormat` (absent ou `null`), l'AppBundle utilise `generic`, car la
+  plateforme n'envoie que `schemaVersion` et `mainModelPath` et attend `result.generic.json` (sinon `RESULT_MISSING`). Un `outputFormat`
+  explicite (`contract`, `trc`, `both`, `generic`) est toujours respecté. Hors Design Automation (`SettingsReader` sans option, tests, outil
+  local), le défaut reste `contract`. Code : `InputConfigurationService.ForDesignAutomation()`, appelé par `CompositionRoot`.
 - Pas de `result.json` ni de TRC avec `generic` (comme `trc`). Le journal de l'extracteur reste dans le rapport APS.
 - Une extraction **en échec** écrit `result.json` (statut `failed`, erreurs) et **pas** `result.generic.json` : l'enveloppe n'a que les statuts
   `done` et `partial`. La plateforme voit alors un résultat absent (`RESULT_UNAVAILABLE`).
