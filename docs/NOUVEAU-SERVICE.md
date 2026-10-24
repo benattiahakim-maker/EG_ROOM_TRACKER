@@ -9,7 +9,8 @@ Règles de ce guide :
 - **Aucun secret** ici ni dans vos messages : pas de jeton, pas de `clientSecret`, pas de `clientId`, pas de nom d'owner APS (« nickname »).
   On écrit toujours `<owner>.<Activite>+<alias>`.
 - **N'inventez rien.** Une étape qui n'est pas dans le code ou dans les docs est marquée **« à confirmer »** (liste en section 10).
-- État des travaux relevé le **25 octobre 2026** (`gh pr list` des dépôts). Les mentions « en cours » sont à relire à la date de lecture.
+- État des travaux relevé le **25 octobre 2026** (`gh pr list` des dépôts). Relire l'état des PR à la date de lecture.
+- Le guide côté site (page Réglages, routes, affichage) est dans `docs/creer-un-service.md` du dépôt `CVCD-Systems-Inventory-Viewer`.
 
 ## 1. Vue d'ensemble
 
@@ -132,16 +133,22 @@ Un seul comportement pour tous les services (`src/activity-contract.ts` du backe
 Tout le reste vient de `body.settings` de la requête `POST /services/{id}/jobs` : un objet JSON libre (≤ 64 Kio, ≤ 10 niveaux), transmis
 tel quel. **Le backend ne valide pas ces réglages : c'est le plugin qui valide les siens** (`SettingsReader`, erreur `CONFIG_INVALID`).
 
-Où se règlent-ils ? **Par l'utilisateur, sur la page « Réglages » du site** (`body.settings`). **Jamais** dans l'admin du service, **jamais**
-en dur dans le backend. La page Réglages d'un nouveau service est à faire côté site (demander au bot front).
+Où se règlent-ils ? **Pas dans l'admin du service, pas en dur dans le backend.** L'utilisateur les saisit sur la page **« Réglages »
+du service** du site (route `/services/:serviceId/reglages`, `ServiceSettingsPage`). Cette page est **générique** : un objet JSON libre
+(≤ 64 Kio, ≤ 10 niveaux ; `schemaVersion` et `mainModelPath` réservés) gardé dans le **navigateur** (un jeu par service, perdu si on vide
+le stockage local) et **envoyé en `body.settings` à chaque import**. Le site ne connaît aucun schéma de réglages : ajouter un service ne
+demande donc aucun code pour cette page (un formulaire généré à partir d'un schéma de réglages est « à venir » côté site).
 
-Clés lues par `SettingsReader` (RoomTracker, `src/Application/Configuration/SettingsReader.cs`) :
+Clés connues de `SettingsReader` (RoomTracker, `src/Application/Configuration/SettingsReader.cs`), dans l'ordre du code : `schemaVersion`, `mainModelPath`
+(réservées à la plateforme, ci-dessus), `phaseIds`, `volumeMode`, `sharedParameters` (entrées `key` + `guid` seulement), `roomParameters`, `elements`,
+`elementCategories`, `roomImages`, `imageWidthPx`, `roomHeights`, `heightStepM`, `linkedElements`, `includeSecondaryDesignOptions`, `outputFormat`.
+Détail des clés qui ne sont pas des réservées :
 
 | Clé | Valeurs | Défaut (clé absente ou `null`) | Erreur si invalide |
 | --- | --- | --- | --- |
 | `phaseIds` | tableau **non vide** de chaînes d'entiers positifs (`"86961"`), sans doublon | toutes les phases | `CONFIG_INVALID` |
 | `volumeMode` | `"preserve"` ou `"compute"` (casse exacte) | `preserve` | `CONFIG_INVALID` |
-| `sharedParameters` | tableau de `{ key, guid }` : `key` non vide, unique ; `guid` au format GUID, non nul | aucun | `CONFIG_INVALID` |
+| `sharedParameters` | tableau d'entrées `{ key, guid }` **seulement** : `key` non vide, unique ; `guid` au format GUID, non nul | aucun | `CONFIG_INVALID` |
 | `roomParameters` | `"none"` ou `"all"` | `none` | `CONFIG_INVALID` |
 | `elements` | tableau sans doublon de `"doors"`, `"equipment"`, `"terminals"` | aucun | `CONFIG_INVALID` |
 | `elementCategories` | objet `{ famille : [OST_…] }` (familles `doors`, `equipment`, `terminals`), tableaux non vides sans doublon | catégories par défaut | `CONFIG_INVALID` |
@@ -150,6 +157,7 @@ Clés lues par `SettingsReader` (RoomTracker, `src/Application/Configuration/Set
 | `roomHeights` | `true` ou `false` | `false` | `CONFIG_INVALID` |
 | `heightStepM` | nombre de 0,1 à 2 (mètres) | 0,5 | `CONFIG_INVALID` |
 | `linkedElements` | `true` ou `false` | `true` | `CONFIG_INVALID` |
+| `includeSecondaryDesignOptions` | `true` ou `false` : exporter aussi les pièces des options de conception secondaires (voir section 8) | `false` | `CONFIG_INVALID` |
 | `outputFormat` | `"contract"`, `"trc"`, `"both"`, `"generic"` | **`generic` sur le chemin Design Automation** ; `contract` hors DA (outil local, tests) | `CONFIG_INVALID` |
 
 Règles générales du lecteur :
@@ -188,7 +196,8 @@ suit `^[a-z0-9](?:[a-z0-9-]{0,62}[a-z0-9])?$` (RoomTracker : `pieces-roomtracker
 - Tout se saisit dans l'admin du site ; **jamais dans Railway** ni dans des variables d'environnement du backend (elles ne sont qu'un repli
   champ par champ). `resultFile` est figé dans chaque traitement à sa création.
 - Au démarrage du backend en mode APS : `SF_APS_ENABLED=1` et `SF_JOBS_DIR`. Sans `SF_APS_ENABLED`, la plateforme est en **simulation**.
-- Nouvelle ligne de config = rien à coder dans le backend ni le site (hors page Réglages, voir section 3).
+- Les **réglages du plugin ne sont pas dans cette config** : ils sont saisis par l'utilisateur sur la page « Réglages » du service (section 3).
+- Nouvelle ligne de config = rien à coder dans le backend ni le site.
 
 ## 5. Format de sortie `result.generic.json`
 
@@ -221,11 +230,11 @@ Source de vérité : `docs/frontend-contract.md` du backend (en cas d'écart, la
   métier côté plateforme. `output.zip` : ≤ 20 000 entrées, ≤ 1 Gio. Les évolutions sont des **ajouts**, jamais un changement de sens.
 - Une valeur inconnue est **omise**, jamais mise à zéro. Valeurs typées, jamais du texte arrondi.
 
-## 6. Contrat d'avertissements — **DÉCIDÉ, en cours de déploiement**
+## 6. Contrat d'avertissements — **EN PRODUCTION** (backend et site, au 25 octobre 2026)
 
-> **État au 25 octobre 2026 : décidé, pas encore en production.** Backend : PR `system-filter-backend` #74 (ouverte). Site : PR
-> `CVCD-Systems-Inventory-Viewer` #74 (ouverte). Plugin RoomTracker : PR `EG_ROOM_TRACKER` #62 (ouverte, **à ne pas fusionner avant**
-> les deux autres). Voir le CHANGELOG et `gh pr list` pour l'état courant.
+> **État au 25 octobre 2026.** Backend : `system-filter-backend` #74 **fusionnée** (main `375a37a`). Site : `CVCD-Systems-Inventory-Viewer`
+> #74 **fusionnée** (`8e0d22d`). Plugin RoomTracker : `EG_ROOM_TRACKER` #62 **fusionnée** (`c2e7bda`, `LINK_MISSING` en un seul `info`).
+> Le contrat est donc accepté par le backend et affiché par le site.
 
 Format :
 
@@ -239,9 +248,10 @@ Format :
 - `contractVersion` **reste `1.0`** : changement additif.
 - Un `info` s'affiche discrètement sur le site (ligne grise) ; un `warning` et « Résultat partiel » donnent le bandeau orange.
 
-**Règle de déploiement : un plugin n'émet pas d'objet dans `warnings[]` tant que le backend ET le site ne les acceptent pas.** Sinon le
-backend refuse l'enveloppe (`RESULT_INVALID`). Ordre : validation backend → affichage site → plugins. Un plugin ancien qui n'écrit que des
-textes reste valide.
+**Règle (reste valable pour tout nouveau plugin ou toute évolution du contrat) : un plugin n'émet pas d'objet dans `warnings[]` tant que le
+backend ET le site ne les acceptent pas.** Sinon le backend refuse l'enveloppe (`RESULT_INVALID`). Ordre : validation backend → affichage
+site → plugins. C'est fait pour ce contrat. Un plugin ancien qui n'écrit que des textes reste valide.
+Exemples réels côté RoomTracker : `LINK_MISSING` (un `info` groupé) et `DESIGN_OPTIONS_EXCLUDED` (un `info` chiffré).
 
 ## 7. Règle d'or : aucun hack côté backend ou site
 
@@ -257,10 +267,10 @@ textes reste valide.
 | Piège | Cause et correction | État |
 | --- | --- | --- |
 | `RESULT_MISSING` au premier test | Le plugin n'avait pas de `outputFormat` dans `settings.json` (la plateforme ne l'envoie pas) : il écrivait seulement `result.json`. Défaut `generic` sur le chemin Design Automation | corrigé, PR #61 (fusionnée) |
-| Liens Revit absents (`LINK_MISSING`) | Un message par lien et résultat `partial` : bruyant et trompeur (un lien absent est normal : liens en chemin absolu, absents du ZIP). À regrouper en **un seul `info`** nommant tous les liens ; les objets d'anomalie `LINK_MISSING` restent | **en cours**, PR #62 (ouverte, dépend du contrat section 6) |
-| Options de conception secondaires | Les pièces des options secondaires sont dans le collecteur du document : elles sortent **en double** avec le principal (`COLLECTE.md` : pièces « dans toutes les variantes »). Prévu : les exclure par défaut, propriété `option_conception`, réglage `includeSecondaryDesignOptions` | **en cours**, pas encore de PR ouverte au 25/10 |
-| Unités | La `box` est en mm **sans `unit`** ; les paramètres Revit sont des nombres **sans unité** ; des flottants non arrondis (bruit numérique). Prévu : unités et arrondis cohérents | **en cours**, pas encore de PR ouverte au 25/10 |
-| `Category` : valeur technique ou libellé | `Category` est une propriété ordinaire dont la **valeur est technique** (`Space`, `Door`, `cvc equipement`…, comme le TRC) ; le **libellé** (`label`) est « Catégorie ». La catégorie Revit lisible est dans `categorie_revit`. Ne pas confondre valeur et affichage | voir « à confirmer » |
+| Liens Revit absents (`LINK_MISSING`) | Un message par lien et résultat `partial` : bruyant et trompeur (un lien absent est normal : liens en chemin absolu, absents du ZIP). Maintenant : **un seul `info`** `{code: LINK_MISSING}` nommant tous les liens (liste coupée à 400 caractères) ; un projet sans ses liens est `done` ; les objets d'anomalie `LINK_MISSING` restent | **fait**, PR #62 (fusionnée, `c2e7bda`) |
+| Options de conception secondaires | Les pièces des options secondaires sont dans le collecteur du document : elles sortent **en double** avec le principal (`COLLECTE.md` : pièces « dans toutes les variantes »). Maintenant : elles sont **exclues par défaut** (seules les pièces hors option et de l'option principale sortent), propriété `option_conception` sur chaque pièce, réglage booléen `includeSecondaryDesignOptions` (`false` par défaut), information `DESIGN_OPTIONS_EXCLUDED` | **fait**, PR #63 (fusionnée, `8b1dc52`). Limite connue : les **images** (`Images/`) des pièces exclues peuvent encore sortir dans le ZIP |
+| Unités et arrondis | Flottants non arrondis (bruit numérique) et libellé de catégorie peu lisible. Maintenant : 3 décimales pour les nombres avec unité (`m`, `m²`, `m³`), 1 décimale pour la `box` (mm), 12 chiffres significatifs pour les paramètres Revit ; `categorie_libelle` lisible. **Limite connue : la `box` reste en mm SANS `unit`**, car le validateur du backend n'accepte `unit` que sur le type `number` (sinon `RESULT_INVALID`). Les paramètres Revit restent des nombres sans unité (unité inconnue du plugin). Une unité sur la `box` demande d'abord une évolution du contrat de la plateforme | **fait**, PR #65 (fusionnée, `edd0b98`) ; unité de la `box` : limite connue |
+| `Category` : valeur technique ou libellé | `Category` est une propriété ordinaire dont la **valeur est technique** (`Space`, `Door`, `cvc equipement`…, comme le TRC) ; le `label` de la propriété est « Catégorie ». `categorie_libelle` (texte) donne le libellé lisible (`Pièce`, `Porte`, `Équipement CVC`…) ; la catégorie Revit est dans `categorie_revit`. Ne pas confondre valeur et affichage | **fait**, PR #65 (`edd0b98`) |
 | Modèle lourd | Un modèle de **183 Mo** s'ouvre en **~16 s** dans le WorkItem (relevé d'un test, non mesuré dans ce dépôt) : pas besoin de supprimer des fonctions pour ça | relevé du Testeur, à confirmer |
 | Sondage APS | Le backend interroge APS toutes les **10 s** par défaut (`simulation.ts`, `apsPollIntervalMs`) : un job court peut sembler durer jusqu'à 10 s de plus | relevé backend |
 | Conversion Model Derivative | **Réutilisée** si le même ZIP et le même fichier principal ont déjà été convertis (clé par contenu `sha256` : un URN = une conversion) ; pas de coût de plus. Une annulation n'arrête pas une conversion déjà lancée | documenté (backend) |
@@ -286,7 +296,8 @@ textes reste valide.
    (journal de publication). Alias **`test`** seulement. Ne rien nommer avec un owner dans un doc ou un message.
 7. **Config admin du service** (section 4) : `name`, `description`, `status`, `clientId`/`clientSecret`/`bucketKey`/`region` (saisis
    dans l'admin par la personne qui les possède), `activityId` = `<owner>.<Activite>+test`, `resultFile` = nom du fichier résultat.
-8. **Réglages côté site** : page « Réglages » du nouveau service (`body.settings`), qui reprend le tableau de la section 3.
+8. **Réglages côté site** : rien à coder. La page « Réglages » du service existe déjà (générique) ; l'utilisateur y saisit le JSON des réglages
+   du plugin (tableau de la section 3), envoyé en `body.settings` à chaque import. Documenter les clés du plugin pour lui.
 9. **Test gratuit en simulation** : plateforme lancée **sans** `SF_APS_ENABLED`. Elle fabrique un `output.zip` d'exemple avec le fichier
    `resultFile` ; vérifier que le site affiche l'arbre, le tableau et les avertissements (`warnings`, `failedWithResult`, `invalid`
    sont des scénarios de simulation). Aucun coût.
@@ -314,11 +325,10 @@ Points que ce guide ne peut pas affirmer avec le code et les docs des dépôts :
 4. **Liens relatifs** : comment RevitCoreConsole résout les liens après décompression ; comportement avec noms accentués (D4).
 5. **`pathInZip`** : le runbook du backend mentionne `pathInZip = mainModelPath` pour `inputZip` ; le plugin lit `mainModelPath` dans
    `settings.json`. Pas vérifié que les deux sont toujours identiques pour un ZIP à plat.
-6. **Page Réglages** : ce guide ne décrit pas le code du site pour une nouvelle page Réglages (hors de ce dépôt).
-7. **Options de conception secondaires et unités** (section 8) : aucune PR ouverte au 25/10 ; clés et formats définitifs
-   (`includeSecondaryDesignOptions`, `option_conception`, arrondis) à relire après fusion.
-8. **`Category`** : la règle exacte « valeur technique, libellé lisible » est déduite du code (`GenericMapper`), pas d'une décision écrite.
+6. **Unité de la `box`** : reste en mm sans `unit` tant que le contrat de la plateforme n'autorise pas `unit` sur `box` (limite connue, section 8).
+7. **Images des pièces exclues** (options de conception secondaires) : elles peuvent encore sortir dans `Images/` (limite connue, non corrigée).
+8. **« En production »** : désigne le code fusionné sur `main` du backend et du site. Le déploiement réel (migrations, hébergement) n'est pas vérifié ici.
 9. **Mesures** : 183 Mo en ~16 s (relevé de test) et anciens traitements sans `conversions[]` → `RESULT_INVALID` : non retrouvés dans le code
    ou les docs de ces dépôts.
-10. **État des PR** (section 6 et 8) : relevé du 25/10/2026, à relire avant de s'y fier.
-11. **Modèle des quatre pages** et page Réglages d'un futur service : non décrits ici (démarrent après le test RoomTracker).
+10. **État des PR** (sections 6 et 8) : relevé du 25/10/2026, à relire avant de s'y fier.
+11. **Modèle des quatre pages** : non décrit ici (démarre après le test RoomTracker). Le formulaire de réglages généré à partir d'un schéma est « à venir » côté site.
