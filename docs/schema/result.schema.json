@@ -159,7 +159,7 @@
             "imageWidthPx": { "type": "integer", "minimum": 400, "maximum": 8000, "description": "Largeur des images ; présent avec roomImages." },
             "roomHeights": { "const": true, "description": "Présent seulement si les hauteurs des pièces sont mesurées par lancer de rayons (rooms[].hauteurs)." },
             "heightStepM": { "type": "number", "minimum": 0.1, "maximum": 2, "description": "Pas de la grille de rayons (m) ; présent avec roomHeights." },
-            "outputFormat": { "enum": ["trc", "both"], "description": "Présent seulement si le format de sortie n'est pas contract : trc (TRCValidationDict.json) ou both (les deux fichiers)." },
+            "outputFormat": { "enum": ["trc", "both", "generic"], "description": "Présent seulement si le format de sortie n'est pas contract : trc (TRCValidationDict.json), both (les deux fichiers) ou generic (result.generic.json, enveloppe commune de la plateforme)." },
             "linkedElements": { "const": false, "description": "Présent seulement si les modèles liés ne sont pas parcourus pour les équipements et terminaux (linkedElements: false)." }
           }
         },

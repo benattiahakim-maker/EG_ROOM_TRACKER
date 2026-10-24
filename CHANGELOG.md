@@ -6,6 +6,15 @@ Le format s'inspire de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/).
 
 ## [Non publié]
 
+### Ajouté
+
+- **Sortie `generic`** (`outputFormat: "generic"`) : écrit `result.generic.json`, l'enveloppe commune des résultats de la plateforme
+  (`contractVersion` `1.0`, `serviceId` `pieces-roomtracker`, `models[]`, arbre `objects[]` de propriétés typées : `box`, `ref`, `file`,
+  `group`). Une pièce est un objet racine ; portes, équipements et terminaux sont des objets rangés une fois sous leur première pièce, les
+  autres pièces les pointent par `ref`. Le TRC reste un export à part, inchangé. Schéma `docs/schema/generic.schema.json`, exemple
+  `docs/examples/generic.example.json`, voir [`docs/GENERIC.md`](docs/GENERIC.md). Non validé dans Design Automation.
+- `summary.options.outputFormat` peut valoir `generic` (`result.schema.json`).
+
 ### Modifié
 
 - **Format TRC : portes, équipements et terminaux deviennent des objets BIM** (`trc.bimobject`) avec leurs propres propriétés, au lieu

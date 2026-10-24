@@ -1,5 +1,6 @@
 using EgRoomTracker.Application;
 using EgRoomTracker.Application.Configuration;
+using EgRoomTracker.Application.Generic;
 using EgRoomTracker.Application.Quality;
 using EgRoomTracker.Application.Revit;
 using EgRoomTracker.Application.Trc;
@@ -42,6 +43,7 @@ internal sealed class Pipeline
     public IRoomImageService? ImageService { get; set; }
     public IRoomHeightService? HeightService { get; set; }
     public ITrcExportService? TrcExport { get; set; }
+    public IGenericExportService? GenericExport { get; set; }
     public Func<long, IReadOnlyList<string>, IReadOnlyDictionary<string, string?>?>? NamedParameters { get; set; }
 
     public static ExtractionRequest Request => new()
@@ -58,7 +60,7 @@ internal sealed class Pipeline
     public RoomExtractionService CreateService()
     {
         var services = new Services(this);
-        return new RoomExtractionService(services, services, services, services, services, services, services, services, elementServices: ElementServices, imageService: ImageService, heightService: HeightService, trcExport: TrcExport);
+        return new RoomExtractionService(services, services, services, services, services, services, services, services, elementServices: ElementServices, imageService: ImageService, heightService: HeightService, trcExport: TrcExport, genericExport: GenericExport);
     }
 
     private sealed class Services(Pipeline p) :

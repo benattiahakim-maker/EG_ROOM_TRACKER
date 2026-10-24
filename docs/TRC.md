@@ -11,6 +11,7 @@ réelles de l'application TRC (`EG_Automation_TRC`) et de la plateforme (`TRCVal
 | `contract` (défaut du code) | `result.json` : contrat versionné, bilan, statut et anomalies |
 | `trc` (**réglage du livrable**, celui de `docs/examples/settings.example.json`) | `TRCValidationDict.json` seul : **données seules**, sans statut ni conformité |
 | `both` | les deux |
+| `generic` | `result.generic.json` seul : enveloppe commune de la plateforme, **sans TRC** (voir [`GENERIC.md`](GENERIC.md)) |
 
 Avec `roomImages`, le dossier `Images/` accompagne dans tous les cas. Une extraction **en échec** écrit toujours `result.json` (sans pièces, il
 n'y a pas de données TRC, et le fichier explique l'échec). Le journal de l'extracteur reste dans le rapport APS.

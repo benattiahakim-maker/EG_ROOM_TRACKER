@@ -70,7 +70,8 @@ public sealed record ExtractionSettings
 
     /// <summary>
     /// Format du fichier de sortie : <c>contract</c> (<c>result.json</c>, défaut), <c>trc</c> (<c>TRCValidationDict.json</c>, fiches de
-    /// l'application TRC, données seules, sans statut) ou <c>both</c>.
+    /// l'application TRC, données seules, sans statut), <c>both</c> (les deux) ou <c>generic</c> (<c>result.generic.json</c>, enveloppe
+    /// commune des résultats de la plateforme ; le TRC reste un export à part).
     /// </summary>
     public OutputFormat OutputFormat { get; init; } = OutputFormat.Contract;
 
@@ -98,6 +99,24 @@ public enum OutputFormat
 
     /// <summary>Les deux fichiers.</summary>
     Both,
+
+    /// <summary>
+    /// <c>result.generic.json</c> : enveloppe commune des résultats de la plateforme (objets, propriétés typées, <c>box</c>, <c>ref</c>,
+    /// <c>file</c>), avec <c>Images/</c> si <c>roomImages</c> est actif. Sans <c>result.json</c> ni TRC (sauf échec : <c>result.json</c>).
+    /// </summary>
+    Generic,
+}
+
+/// <summary>Noms de <see cref="OutputFormat"/> dans <c>settings.json</c> et <c>summary.options.outputFormat</c>.</summary>
+public static class OutputFormatNames
+{
+    public static string Of(OutputFormat format) => format switch
+    {
+        OutputFormat.Trc => "trc",
+        OutputFormat.Both => "both",
+        OutputFormat.Generic => "generic",
+        _ => "contract",
+    };
 }
 
 /// <summary>Paramètres de la pièce exportés dans <c>rooms[].parameters</c>.</summary>

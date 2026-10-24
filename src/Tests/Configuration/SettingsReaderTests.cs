@@ -16,6 +16,15 @@ public sealed class SettingsReaderTests : IDisposable
     public void Dispose() => _fixture.Dispose();
 
     [Fact]
+    public void GenericExample_AsksForTheGenericOutputWithImages()
+    {
+        var settings = SettingsReader.Read(Path.Combine(AppContext.BaseDirectory, "Data", "settings.generic.example.json"));
+
+        Assert.Equal(OutputFormat.Generic, settings.OutputFormat);
+        Assert.True(settings.RoomImages);
+    }
+
+    [Fact]
     public void Example_IsReadAsTyped()
     {
         var settings = SettingsReader.Read(Path.Combine(AppContext.BaseDirectory, "Data", "settings.example.json"));

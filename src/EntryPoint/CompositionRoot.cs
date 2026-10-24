@@ -1,6 +1,7 @@
 using DesignAutomationFramework;
 using EgRoomTracker.Application;
 using EgRoomTracker.Application.Configuration;
+using EgRoomTracker.Application.Generic;
 using EgRoomTracker.Application.Quality;
 using EgRoomTracker.Application.Trc;
 using EgRoomTracker.Export;
@@ -29,6 +30,7 @@ internal static class CompositionRoot
             elementServices: [new DoorService(context, units), new EquipmentService(context, units), new TerminalService(context, units)],
             imageService: new RoomImageService(context),
             heightService: new RoomHeightService(context, units),
-            trcExport: new TrcExportService());
+            trcExport: new TrcExportService(),
+            genericExport: new GenericExportService());
     }
 }

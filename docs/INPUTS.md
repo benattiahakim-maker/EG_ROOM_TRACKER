@@ -50,7 +50,7 @@ Le service retourne la configuration **telle que lue**, complétée par deux cha
 
 | `linkedElements` | null / absent / `true` (défaut) : les équipements et terminaux des modèles liés sont aussi collectés (`false` : modèle principal seulement) | `CONFIG_INVALID` |
 
-| `outputFormat` | null / absent / `"contract"` (défaut : `result.json`), `"trc"` (`TRCValidationDict.json`, données seules) ou `"both"` (voir `docs/TRC.md`) | `CONFIG_INVALID` |
+| `outputFormat` | null / absent / `"contract"` (défaut : `result.json`), `"trc"` (`TRCValidationDict.json`, données seules, voir `docs/TRC.md`), `"both"` (les deux) ou `"generic"` (`result.generic.json`, enveloppe commune de la plateforme, voir `docs/GENERIC.md`) | `CONFIG_INVALID` |
 
 Les messages d'erreur nomment la propriété en cause (ex. `settings.json : sharedParameters[1].key « a » en double…`)
 et ne contiennent aucun chemin absolu du WorkItem.
