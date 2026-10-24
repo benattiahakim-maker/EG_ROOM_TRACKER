@@ -59,6 +59,10 @@ public class GenericSchemaTests
         { "propriété racine inconnue", e => e["kind"] = "x" },
         { "status failed", e => e["status"] = "failed" },
         { "partial sans avertissement", e => { e["status"] = "partial"; e["warnings"] = new JsonArray(); } },
+        { "partial avec seulement des informations", e => { e["status"] = "partial"; e["warnings"] = new JsonArray(new JsonObject { ["severity"] = "info", ["message"] = "x", ["code"] = "A" }); } },
+        { "information sans message", e => e["warnings"] = new JsonArray(new JsonObject { ["severity"] = "info", ["code"] = "A" }) },
+        { "gravité inconnue", e => e["warnings"] = new JsonArray(new JsonObject { ["severity"] = "error", ["message"] = "x" }) },
+        { "code d'information invalide", e => e["warnings"] = new JsonArray(new JsonObject { ["severity"] = "info", ["message"] = "x", ["code"] = "a b" }) },
         { "urn absent", e => e["models"]![0]!.AsObject().Remove("urn") },
         { "champ kind sur un objet", e => e["objects"]![0]!["kind"] = "room" },
         { "champ category sur un objet", e => e["objects"]![0]!["category"] = "Space" },
@@ -91,6 +95,27 @@ public class GenericSchemaTests
         mutate(envelope);
 
         Assert.True(GenericEnvelopeChecks.SchemaErrors(envelope).Count > 0, $"{name} : instance acceptée à tort.");
+    }
+
+    [Fact]
+    public void Schema_AcceptsInformationObjects_AndPartialNeedsAWarning()
+    {
+        var info = new JsonObject { ["severity"] = "info", ["message"] = "2 lien(s) absent(s) : a, b", ["code"] = "LINK_MISSING" };
+
+        var done = Example();
+        done["status"] = "done";
+        done["warnings"] = new JsonArray(info.DeepClone());
+        Assert.Empty(GenericEnvelopeChecks.SchemaErrors(done));
+
+        var partialWithText = Example();
+        partialWithText["status"] = "partial";
+        partialWithText["warnings"] = new JsonArray("Pièce sans boîte", info.DeepClone());
+        Assert.Empty(GenericEnvelopeChecks.SchemaErrors(partialWithText));
+
+        var partialWithObjectWarning = Example();
+        partialWithObjectWarning["status"] = "partial";
+        partialWithObjectWarning["warnings"] = new JsonArray(new JsonObject { ["severity"] = "warning", ["message"] = "x" });
+        Assert.Empty(GenericEnvelopeChecks.SchemaErrors(partialWithObjectWarning));
     }
 
     [Fact]

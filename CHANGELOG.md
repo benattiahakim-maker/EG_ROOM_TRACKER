@@ -21,9 +21,11 @@ Le format s'inspire de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/).
 
 ### Modifié
 
-- **Sortie `generic` : `LINK_MISSING`** : un seul texte dans `warnings[]` nomme tous les liens Revit absents (avant, seul le premier
-  était nommé) et il ne rend plus l'enveloppe `partial` (un lien absent seul donne `done`). Les objets d'anomalie `LINK_MISSING`
-  restent. Aucun changement du contrat ni du backend. Voir [`docs/GENERIC.md`](docs/GENERIC.md).
+- **Sortie `generic` : `warnings[]` accepte des informations** : un élément est un texte (avertissement) ou un objet
+  `{ severity: "info"|"warning", message, code? }`. `LINK_MISSING` devient une seule information
+  `{ severity: "info", code: "LINK_MISSING", message: "N lien(s) absent(s) : a, b, c" }` qui nomme tous les liens (avant, seul le premier
+  était nommé) et ne rend plus l'enveloppe `partial`. Les objets d'anomalie restent. `contractVersion` reste `1.0` ; schéma
+  `generic.schema.json` mis à jour. Demande la validation côté plateforme et l'affichage côté site. Voir [`docs/GENERIC.md`](docs/GENERIC.md).
 - **Design Automation : `outputFormat` vaut `generic` par défaut** quand `settings.json` ne le précise pas (absent ou `null`). La plateforme
   n'envoie que `schemaVersion` et `mainModelPath` et attend `result.generic.json` (sinon `RESULT_MISSING`). Un `outputFormat` explicite est
   toujours respecté ; `SettingsReader` sans option, les tests et l'outil local gardent `contract`. Voir [`docs/GENERIC.md`](docs/GENERIC.md).

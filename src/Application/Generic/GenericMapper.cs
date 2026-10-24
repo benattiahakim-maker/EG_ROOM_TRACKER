@@ -95,7 +95,7 @@ public static class GenericMapper
         }
 
         var codeFile = TrcNaming.CodeFile(source.FileName);
-        var warnings = new List<string>();
+        var warnings = new List<GenericWarning>();
         var used = new HashSet<string>(StringComparer.Ordinal);
 
         var elements = Elements(result.Rooms);
@@ -172,18 +172,17 @@ public static class GenericMapper
 
         if (withoutBox > 0)
         {
-            warnings.Add($"{withoutBox.ToString(CultureInfo.InvariantCulture)} pièce(s) sans boîte englobante (pièce non placée ou boîte illisible) : propriété box omise.");
+            warnings.Add(GenericWarning.Warning($"{withoutBox.ToString(CultureInfo.InvariantCulture)} pièce(s) sans boîte englobante (pièce non placée ou boîte illisible) : propriété box omise."));
         }
 
-        warnings.AddRange(AnomalyWarnings(result.Anomalies));
+        warnings.AddRange(AnomalyWarnings(result.Anomalies).Select(GenericWarning.Warning));
         var linkNote = MissingLinksNote(result.Anomalies);
         if (warnings.Count == 0 && linkNote is null && result.Summary.Status == ExtractionStatus.SucceededWithWarnings)
         {
-            warnings.Add("Extraction terminée avec avertissements ; voir les anomalies.");
+            warnings.Add(GenericWarning.Warning("Extraction terminée avec avertissements ; voir les anomalies."));
         }
 
-        // Liens absents : un seul texte qui les nomme tous. Information seule : elle n'est pas un défaut du résultat, donc elle ne
-        // rend pas l'enveloppe « partial » (le contrat accepte « done » avec des textes dans warnings).
+        // Informations (gravité info) : après les avertissements ; elles ne rendent jamais l'enveloppe « partial ».
         var status = warnings.Count > 0 ? GenericStatuses.Partial : GenericStatuses.Done;
         if (linkNote is not null)
         {
@@ -437,8 +436,8 @@ public static class GenericMapper
                 ? $"{g.Key} : {g.First().Message}"
                 : $"{g.Key} : {g.Count().ToString(CultureInfo.InvariantCulture)} anomalies (ex. {g.First().Message})");
 
-    /// <summary>Texte unique qui nomme tous les liens Revit absents (<c>LINK_MISSING</c>, sans doublon, dans l'ordre) ; null s'il n'y en a pas.</summary>
-    private static string? MissingLinksNote(IReadOnlyList<AnomalyDto> anomalies)
+    /// <summary>Information unique <c>LINK_MISSING</c> qui nomme tous les liens Revit absents (sans doublon, dans l'ordre) ; null s'il n'y en a pas.</summary>
+    private static GenericWarning? MissingLinksNote(IReadOnlyList<AnomalyDto> anomalies)
     {
         var names = anomalies
             .Where(a => a.Code == DocumentAnomalyCodes.LinkMissing)
@@ -448,8 +447,7 @@ public static class GenericMapper
             .ToList();
         return names.Count == 0
             ? null
-            : $"{DocumentAnomalyCodes.LinkMissing} (information) : {names.Count.ToString(CultureInfo.InvariantCulture)} lien(s) Revit absent(s) de l'envoi : {string.Join(", ", names)}. "
-              + "Leurs éléments ne sont pas exportés ; le résultat reste complet pour la maquette principale.";
+            : GenericWarning.Info(DocumentAnomalyCodes.LinkMissing, $"{names.Count.ToString(CultureInfo.InvariantCulture)} lien(s) absent(s) : {string.Join(", ", names)}");
     }
 
     private static GenericObject FilesObject(IReadOnlyList<GenericFile> files, string id)

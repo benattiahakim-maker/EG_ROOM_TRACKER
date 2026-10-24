@@ -1,3 +1,4 @@
+using System.Text.Json;
 using System.Text.Json.Serialization;
 
 namespace EgRoomTracker.Contracts.Generic;
@@ -18,11 +19,57 @@ public static class GenericContract
     public const string ViewerIdKey = "viewerId";
 }
 
-/// <summary>Statuts de l'enveloppe : <c>done</c>, ou <c>partial</c> avec au moins un texte dans <c>warnings</c>.</summary>
+/// <summary>Statuts de l'enveloppe : <c>done</c>, ou <c>partial</c> avec au moins un avertissement (gravité <c>warning</c>) dans <c>warnings</c>.</summary>
 public static class GenericStatuses
 {
     public const string Done = "done";
     public const string Partial = "partial";
+}
+
+/// <summary>Gravités d'un élément de <c>warnings[]</c>.</summary>
+public static class GenericSeverities
+{
+    public const string Info = "info";
+    public const string Warning = "warning";
+}
+
+/// <summary>
+/// Élément de <c>warnings[]</c> : un texte (= avertissement) ou un objet <c>{ severity, message, code? }</c>. <see cref="Code"/> : lettres,
+/// chiffres, <c>-</c> et <c>_</c>, 64 au plus. Un avertissement sans code s'écrit comme un simple texte ; une information
+/// (<see cref="GenericSeverities.Info"/>) ne rend jamais l'enveloppe <c>partial</c> (un seul message info par code, 20 au plus).
+/// </summary>
+[JsonConverter(typeof(GenericWarningConverter))]
+public sealed record GenericWarning(string Severity, string Message, string? Code = null)
+{
+    public static GenericWarning Warning(string message) => new(GenericSeverities.Warning, message);
+
+    public static GenericWarning Info(string code, string message) => new(GenericSeverities.Info, message, code);
+}
+
+/// <summary>Écrit un avertissement sans code comme un texte, tout autre cas comme un objet.</summary>
+public sealed class GenericWarningConverter : JsonConverter<GenericWarning>
+{
+    public override GenericWarning Read(ref System.Text.Json.Utf8JsonReader reader, Type typeToConvert, JsonSerializerOptions options) =>
+        throw new NotSupportedException("Lecture d'une enveloppe non prise en charge.");
+
+    public override void Write(System.Text.Json.Utf8JsonWriter writer, GenericWarning value, JsonSerializerOptions options)
+    {
+        if (value.Severity == GenericSeverities.Warning && value.Code is null)
+        {
+            writer.WriteStringValue(value.Message);
+            return;
+        }
+
+        writer.WriteStartObject();
+        writer.WriteString("severity", value.Severity);
+        writer.WriteString("message", value.Message);
+        if (value.Code is not null)
+        {
+            writer.WriteString("code", value.Code);
+        }
+
+        writer.WriteEndObject();
+    }
 }
 
 /// <summary>Types de propriété de l'enveloppe commune.</summary>
@@ -53,8 +100,9 @@ public sealed record GenericEnvelope
     [JsonPropertyName("status")]
     public required string Status { get; init; }
 
+    /// <summary>Avertissements et informations (voir <see cref="GenericWarning"/>) ; <c>partial</c> exige au moins un avertissement.</summary>
     [JsonPropertyName("warnings")]
-    public IReadOnlyList<string> Warnings { get; init; } = [];
+    public IReadOnlyList<GenericWarning> Warnings { get; init; } = [];
 
     [JsonPropertyName("models")]
     public IReadOnlyList<GenericModel> Models { get; init; } = [];

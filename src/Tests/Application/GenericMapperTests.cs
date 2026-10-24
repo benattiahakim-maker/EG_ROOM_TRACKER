@@ -212,7 +212,7 @@ public sealed class GenericMapperTests
             var envelope = GenericMapper.Map(input);
 
             Assert.Equal("partial", envelope.Status);
-            Assert.Contains(envelope.Warnings, w => w.StartsWith($"{expected} pièce(s) sans boîte englobante", StringComparison.Ordinal));
+            Assert.Contains(envelope.Warnings, w => w.Message.StartsWith($"{expected} pièce(s) sans boîte englobante", StringComparison.Ordinal));
             Assert.All(envelope.Objects, o => Assert.DoesNotContain(o.Properties, p => p.Key == "box"));
         }
     }
@@ -298,7 +298,7 @@ public sealed class GenericMapperTests
 
         var warned = GenericMapper.Map(complete with { Anomalies = [Rooms.RoomAnomaly(QualityFlagCodes.ExtractionError, "102", AnomalySeverity.Error), Rooms.RoomAnomaly(QualityFlagCodes.ExtractionError, "101", AnomalySeverity.Error)] });
         Assert.Equal("partial", warned.Status);
-        Assert.Contains(warned.Warnings, w => w.StartsWith($"{QualityFlagCodes.ExtractionError} : 2 anomalies", StringComparison.Ordinal));
+        Assert.Contains(warned.Warnings, w => w.Message.StartsWith($"{QualityFlagCodes.ExtractionError} : 2 anomalies", StringComparison.Ordinal));
     }
 
     [Fact]
@@ -327,10 +327,23 @@ public sealed class GenericMapperTests
         var envelope = GenericMapper.Map(complete);
 
         Assert.Equal("done", envelope.Status);
-        var text = Assert.Single(envelope.Warnings);
-        Assert.StartsWith("LINK_MISSING (information) : 5 lien(s)", text, StringComparison.Ordinal);
-        Assert.All(links, name => Assert.Contains(name, text, StringComparison.Ordinal));
+        var note = Assert.Single(envelope.Warnings);
+        Assert.Equal(GenericSeverities.Info, note.Severity);
+        Assert.Equal("LINK_MISSING", note.Code);
+        Assert.StartsWith("5 lien(s) absent(s) : Structural.rvt, Plumbing.rvt", note.Message, StringComparison.Ordinal);
+        Assert.All(links, name => Assert.Contains(name, note.Message, StringComparison.Ordinal));
+        var json = Envelope(complete)["warnings"]!.AsArray();
+        Assert.Equal("info", json[0]!["severity"]!.GetValue<string>()); // écrit comme objet {severity, message, code}
+        Assert.Empty(GenericEnvelopeChecks.SchemaErrors(Envelope(complete)));
         Assert.Equal(5, envelope.Objects.Count(o => o.Name == "LINK_MISSING")); // les anomalies restent des objets
+    }
+
+    [Fact]
+    public void AWarningWithoutCode_IsWrittenAsAPlainText()
+    {
+        var envelope = Envelope(GenericFixtures.Result(anomalies: [Rooms.VolumeNotComputed(3)]));
+
+        Assert.Equal(JsonValueKind.String, envelope["warnings"]![0]!.GetValueKind());
     }
 
     [Fact]
@@ -352,8 +365,8 @@ public sealed class GenericMapperTests
 
         Assert.Equal("partial", envelope.Status);
         Assert.Equal(2, envelope.Warnings.Count);
-        Assert.Contains(envelope.Warnings, w => w.StartsWith($"{QualityFlagCodes.ExtractionError} :", StringComparison.Ordinal));
-        Assert.Contains(envelope.Warnings, w => w.StartsWith("LINK_MISSING (information) : 1 lien(s)", StringComparison.Ordinal) && w.Contains("A.rvt", StringComparison.Ordinal));
+        Assert.Contains(envelope.Warnings, w => w.Message.StartsWith($"{QualityFlagCodes.ExtractionError} :", StringComparison.Ordinal));
+        Assert.Contains(envelope.Warnings, w => w.Severity == GenericSeverities.Info && w.Message.StartsWith("1 lien(s) absent(s)", StringComparison.Ordinal) && w.Message.Contains("A.rvt", StringComparison.Ordinal));
     }
 
     [Fact]
