@@ -21,6 +21,9 @@ Le format s'inspire de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/).
 
 ### Modifié
 
+- **Sortie `generic` : pas d'image pour les pièces exclues** : une pièce d'option de conception secondaire exclue
+  (`includeSecondaryDesignOptions` : `false`) n'est plus photographiée : aucun fichier dans `Images/`, aucune propriété `image`, et
+  `summary.images` ne compte que les pièces conservées. L'image d'une pièce conservée ne change pas. Pas de nouveau réglage.
 - **Sortie `generic` : options de conception** : par défaut, seules les pièces hors option et de l'option principale sont exportées ;
   les pièces des options secondaires sont exclues avec une information chiffrée `DESIGN_OPTIONS_EXCLUDED`. Nouveau réglage
   `includeSecondaryDesignOptions` (`false` par défaut, `true` = tout exporter). Nouvelle propriété `option_conception` sur chaque pièce ;

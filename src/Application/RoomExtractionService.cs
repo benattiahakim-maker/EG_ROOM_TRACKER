@@ -586,8 +586,10 @@ public sealed class RoomExtractionService
             return null;
         }
 
+        // Sortie generic sans options secondaires : ces pièces sont exclues du résultat, elles n'ont donc pas d'image non plus.
+        var skipSecondary = settings.OutputFormat == OutputFormat.Generic && !settings.IncludeSecondaryDesignOptions;
         var targets = rooms
-            .Where(r => !r.QualityFlags.Contains(QualityFlagCodes.Unplaced))
+            .Where(r => !r.QualityFlags.Contains(QualityFlagCodes.Unplaced) && !(skipSecondary && GenericMapper.IsSecondaryDesignOption(r)))
             .Select(r => long.TryParse(r.ElementId, NumberStyles.AllowLeadingSign, CultureInfo.InvariantCulture, out var id) ? new RoomImageRequest(id, r.UniqueId) : null)
             .OfType<RoomImageRequest>()
             .ToList();
