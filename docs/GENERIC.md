@@ -88,7 +88,8 @@ n'exporte que les pièces **hors option** et celles de l'**option principale** d
 options secondaires sont exclues avec leurs éléments et leurs anomalies de pièce, ce qui évite les surfaces comptées deux fois et les
 emprises qui se chevauchent. Une information `{ severity: "info", code: "DESIGN_OPTIONS_EXCLUDED", message: "N pièce(s)… exclues" }`
 donne le nombre ; elle ne rend pas l'enveloppe `partial`. Si Revit ne dit pas si l'option est principale, la pièce est conservée.
-Avec `true`, toutes les pièces sont exportées.
+Une pièce exclue n'a ni fichier dans `Images/` ni propriété image, et `summary.images` ne compte que les pièces conservées (PR #67).
+Avec `true`, toutes les pièces sont exportées. Avec `contract`, `trc` ou `both`, les pièces restent dans le résultat avec leur image.
 
 Chaque pièce porte `option_conception` (texte) : `Principal` hors option, le nom de l'option suivi de `(principale)` pour l'option principale
 (ex. `Unoccupied (principale)`), le nom de l'option sinon. `variante` est nettoyée : le repère `<principal>` que Revit ajoute au nom
