@@ -33,8 +33,13 @@ Exemples : `docs/examples/generic.example.json` (sortie), `docs/examples/setting
 
 Racine : `contractVersion` (`1.0`), `serviceId` (`pieces-roomtracker`), `status`, `warnings[]`, `models[]`, `objects[]`.
 
-- **`status`** : `done` ; `partial` dès qu'il y a au moins un avertissement (pièce sans boîte, anomalie d'extraction, d'image, d'éléments…).
-  `warnings[]` résume ces points en texte.
+- **`status`** : `done` ; `partial` dès qu'il y a au moins un avertissement de résultat (pièce sans boîte, anomalie d'extraction, d'image,
+  d'éléments…). `warnings[]` résume ces points en texte. **Exception : `LINK_MISSING`.** Les liens Revit absents de l'envoi sont nommés
+  **tous dans un seul texte** (`LINK_MISSING (information) : 5 lien(s) Revit absent(s) de l'envoi : A.rvt, B.rvt…`), ajouté à la fin de
+  `warnings[]`, et **ne rendent pas** l'enveloppe `partial` : un projet envoyé sans ses liens est `done`. Le contrat n'a pas de gravité
+  par texte ; il accepte `done` avec des textes dans `warnings` (le validateur de la plateforme ne vérifie que leur type). Les objets
+  d'anomalie `LINK_MISSING` restent dans `objects[]` (gravité `warning`). Aucun changement côté backend ; le site doit seulement
+  afficher les `warnings` aussi pour `done` s'il veut montrer cette information.
 - **`models[]`** : `main` (le RVT principal, titre = nom du fichier sans extension) et `link-1`, `link-2`… pour les modèles liés dont un
   élément est exporté. `urn` est **vide** : le plugin ne connaît pas l'URN de conversion (voir « Écarts »).
 - **Objet** : `{ id, name, children[], properties[] }`, `id` unique dans tout le fichier.

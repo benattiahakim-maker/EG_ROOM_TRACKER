@@ -2,6 +2,7 @@ using System.Text.Json;
 using System.Text.Json.Nodes;
 using EgRoomTracker.Application;
 using EgRoomTracker.Application.Generic;
+using EgRoomTracker.Application.Revit;
 using EgRoomTracker.Contracts.Codes;
 using EgRoomTracker.Contracts.Generic;
 using EgRoomTracker.Contracts.Results;
@@ -310,6 +311,49 @@ public sealed class GenericMapperTests
 
         Assert.Equal("partial", envelope.Status);
         Assert.NotEmpty(envelope.Warnings);
+    }
+
+    [Fact]
+    public void MissingLinks_AreNamedInOneInformationText_AndDoNotMakeTheEnvelopePartial()
+    {
+        var result = GenericFixtures.Result(ExtractionStatus.SucceededWithWarnings);
+        var links = new[] { "Structural.rvt", "Plumbing.rvt", "HVAC.rvt", "Site.rvt", "Electrical.rvt" };
+        var complete = result with
+        {
+            Rooms = [result.Rooms[0], result.Rooms[1], result.Rooms[2] with { BoundingBox = GenericFixtures.Box(9000) }],
+            Anomalies = [.. links.Select(name => DocumentAnomalies.LinkMissing(name, "Liens/" + name))],
+        };
+
+        var envelope = GenericMapper.Map(complete);
+
+        Assert.Equal("done", envelope.Status);
+        var text = Assert.Single(envelope.Warnings);
+        Assert.StartsWith("LINK_MISSING (information) : 5 lien(s)", text, StringComparison.Ordinal);
+        Assert.All(links, name => Assert.Contains(name, text, StringComparison.Ordinal));
+        Assert.Equal(5, envelope.Objects.Count(o => o.Name == "LINK_MISSING")); // les anomalies restent des objets
+    }
+
+    [Fact]
+    public void MissingLinks_WithAnotherWarning_StayPartial_AndDuplicatesAreNamedOnce()
+    {
+        var result = GenericFixtures.Result();
+        var complete = result with
+        {
+            Rooms = [result.Rooms[0], result.Rooms[1], result.Rooms[2] with { BoundingBox = GenericFixtures.Box(9000) }],
+            Anomalies =
+            [
+                DocumentAnomalies.LinkMissing("A.rvt", null),
+                DocumentAnomalies.LinkMissing("A.rvt", "autre"),
+                Rooms.RoomAnomaly(QualityFlagCodes.ExtractionError, "102", AnomalySeverity.Error),
+            ],
+        };
+
+        var envelope = GenericMapper.Map(complete);
+
+        Assert.Equal("partial", envelope.Status);
+        Assert.Equal(2, envelope.Warnings.Count);
+        Assert.Contains(envelope.Warnings, w => w.StartsWith($"{QualityFlagCodes.ExtractionError} :", StringComparison.Ordinal));
+        Assert.Contains(envelope.Warnings, w => w.StartsWith("LINK_MISSING (information) : 1 lien(s)", StringComparison.Ordinal) && w.Contains("A.rvt", StringComparison.Ordinal));
     }
 
     [Fact]
