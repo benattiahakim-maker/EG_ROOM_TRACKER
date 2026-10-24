@@ -33,7 +33,8 @@ public sealed class AutomationApplication : IExternalDBApplication
         // Identifiant du WorkItem (DAS_WORKITEM_ID) sur APS, sinon run-<guid> (exécution locale).
         var workItem = WorkItemContext.Read(Environment.GetEnvironmentVariable, Directory.GetCurrentDirectory());
         var correlationId = workItem.CorrelationId(Guid.NewGuid);
-        using var log = new JsonConsoleLogService(correlationId);
+        // Même journal sur la console (rapport APS) et dans result/log.jsonl (ZIP de sortie), vidé et fermé avant le zip.
+        using var log = new JsonConsoleLogService(correlationId, filePath: ActivityContract.LogFilePath(Directory.GetCurrentDirectory()));
         try
         {
             // Le dossier de sortie (zippé par l'Activity) doit exister même si l'extraction échoue avant d'y écrire.

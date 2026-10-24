@@ -2,7 +2,7 @@ namespace EgRoomTracker.Logging;
 
 /// <summary>
 /// Journal structuré (spécifications, section 5) : une ligne JSON par événement sur la console,
-/// récupérée via le rapport APS du WorkItem. Toute information d'exécution passe par ce service
+/// récupérée via le rapport APS du WorkItem (et copiée dans <c>log.jsonl</c> du ZIP de sortie). Toute information d'exécution passe par ce service
 /// (aucun dialogue). Ne jamais journaliser tokens, secrets ni URL signées.
 /// </summary>
 public interface ILogService
