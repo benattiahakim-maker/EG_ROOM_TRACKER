@@ -35,22 +35,24 @@ public sealed class GenericMapperTests
     }
 
     [Fact]
-    public void DoorBetweenTwoRooms_IsOneObjectUnderTheFirstRoom_WithRefsToBothRooms()
+    public void DoorBetweenTwoRooms_IsRepeatedIdenticalUnderEachRoom_WithRefsToBothRooms()
     {
         var envelope = Envelope(GenericFixtures.Result());
 
         var doors = GenericEnvelopeChecks.AllObjects(envelope).Where(o => o["id"]!.GetValue<string>().StartsWith("element-door-uid-", StringComparison.Ordinal)).ToList();
-        var door = Assert.Single(doors);
+        Assert.Equal(2, doors.Count);
+        Assert.Equal(doors[0].ToJsonString(), doors[1].ToJsonString());
+        var door = doors[0];
         var first = Find(envelope, "room-100")!;
         var second = Find(envelope, "room-101")!;
 
         Assert.Contains(Find(envelope, "room-100-portes")!["children"]!.AsArray(), c => c!["id"]!.GetValue<string>() == "element-door-uid-5001");
-        Assert.Null(Find(envelope, "room-101-portes"));
+        Assert.Contains(Find(envelope, "room-101-portes")!["children"]!.AsArray(), c => c!["id"]!.GetValue<string>() == "element-door-uid-5001");
         Assert.Equal(["room-100", "room-101"], RefsOf(door!, "room"));
         Assert.Equal(["room-100"], RefsOf(door!, "room_from"));
         Assert.Equal(["room-101"], RefsOf(door!, "room_to"));
-        Assert.Equal(["element-door-uid-5001"], RefsOf(second, "contains"));
-        Assert.Empty(RefsOf(first, "contains"));
+        Assert.Contains("element-door-uid-5001", RefsOf(second, "contains"));
+        Assert.Contains("element-door-uid-5001", RefsOf(first, "contains"));
     }
 
     [Fact]
@@ -59,7 +61,8 @@ public sealed class GenericMapperTests
         var envelope = Envelope(GenericFixtures.Result(anomalies: [Rooms.RoomAnomaly(QualityFlagCodes.ExtractionError, "102"), Rooms.VolumeNotComputed(3)]));
 
         var ids = GenericEnvelopeChecks.AllObjects(envelope).Select(o => o["id"]!.GetValue<string>()).ToList();
-        Assert.Equal(ids.Count, ids.Distinct().Count());
+        var repeated = ids.GroupBy(id => id).Where(g => g.Count() > 1).Select(g => g.Key).ToList();
+        Assert.All(repeated, id => Assert.StartsWith("element-", id, StringComparison.Ordinal)); // seuls les éléments sont partagés
         Assert.Empty(GenericEnvelopeChecks.StructureErrors(envelope));
     }
 
@@ -585,8 +588,10 @@ public sealed class GenericMapperTests
         var result = GenericFixtures.Result();
         var changed = result with { Rooms = [result.Rooms[0] with { Equipment = [shared] }, result.Rooms[1] with { Equipment = [shared] }, result.Rooms[2]] };
 
-        var obj = Find(Envelope(changed), "element-equip-uid-6002")!;
+        var envelope = Envelope(changed);
+        var obj = Find(envelope, "element-equip-uid-6002")!;
 
+        Assert.Equal(2, GenericEnvelopeChecks.AllObjects(envelope).Count(o => o["id"]!.GetValue<string>() == "element-equip-uid-6002"));
         Assert.Equal(["room-100", "room-101"], RefsOf(obj, "room"));
         Assert.Empty(RefsOf(obj, "room_from"));
     }

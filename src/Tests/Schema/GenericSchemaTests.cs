@@ -131,6 +131,19 @@ public class GenericSchemaTests
     }
 
     [Fact]
+    public void Structure_AcceptsARepeatedId_OnlyWhenTheSharedObjectIsIdentical()
+    {
+        var shared = Example();
+        var copies = GenericEnvelopeChecks.AllObjects(shared).Where(o => o["id"]!.GetValue<string>() == "element-door-uid-5001").ToList();
+        Assert.Equal(2, copies.Count);
+        Assert.Empty(GenericEnvelopeChecks.StructureErrors(shared));
+
+        ((JsonArray)copies[1]["properties"]!).Add(JsonNode.Parse("""{"key":"extra","label":"E","type":"text","value":"x"}"""));
+
+        Assert.Contains(GenericEnvelopeChecks.StructureErrors(shared), e => e.Contains("contenu différent", StringComparison.Ordinal));
+    }
+
+    [Fact]
     public void Structure_RejectsDuplicateIds_UnresolvedRefs_DuplicateKeys_AndUnknownModelKeys()
     {
         var duplicateId = Example();

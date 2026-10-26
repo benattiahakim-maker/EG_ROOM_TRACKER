@@ -21,6 +21,11 @@ Le format s'inspire de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/).
 
 ### Modifié
 
+- **Sortie `generic` : éléments sous chaque local qui les contient** : une porte entre deux locaux, ou un élément contenu dans plusieurs
+  locaux, est répété sous chacun (même `id`, contenu identique : objet partagé accepté par le validateur de la plateforme) au lieu
+  d'être rangé sous le premier seul ; les `ref` `room`, `room_from`, `room_to` restent identiques et chaque local pointe tous ses
+  éléments par `contains`. Les contrôles `GenericEnvelopeChecks` et `validate_examples.py` suivent la règle de la plateforme (id répété
+  accepté seulement si identique).
 - **Sortie `generic` : groupes dans chaque local** : les enfants d'un local sont les groupes « Portes », « Équipements » puis « Terminaux »
   (`Category` = `Group`, `categorie_libelle` = libellé du groupe ; un groupe vide est omis), puis les anomalies du local. Enfants d'un
   groupe triés par nom (casse ignorée) puis UniqueId. Terminaux dans un 3e groupe distinct. Autres formats inchangés.

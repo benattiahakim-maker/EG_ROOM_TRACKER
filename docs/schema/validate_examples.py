@@ -38,16 +38,19 @@ def envelope_structure_errors(envelope):
     model_keys = [m["key"] for m in envelope.get("models", [])]
     if len(model_keys) != len(set(model_keys)):
         errors.append("models : clés en double")
-    ids = set()
+    ids = {}  # id -> contenu canonique : un id répété doit être le même objet partagé (identique)
     refs = []
 
     def walk(node, path, depth):
         if depth > MAX_DEPTH:
             errors.append(f"{path} : profondeur maximale dépassée")
             return
+        shape = json.dumps(node, sort_keys=True, ensure_ascii=False)
         if node["id"] in ids:
-            errors.append(f"{path} : id en double « {node['id']} »")
-        ids.add(node["id"])
+            if ids[node["id"]] != shape:
+                errors.append(f"{path} : id en double « {node['id']} » avec un contenu différent (un objet partagé doit être identique)")
+            return  # objet partagé déjà parcouru : sous-arbre identique
+        ids[node["id"]] = shape
         keys = set()
         for prop in node["properties"]:
             key, kind, value = prop["key"], prop["type"], prop["value"]
