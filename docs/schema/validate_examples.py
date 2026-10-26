@@ -2,18 +2,23 @@
 
 - docs/examples/result.example.json et docs/recette/expected/** contre docs/schema/result.schema.json ;
 - docs/examples/generic.example.json contre docs/schema/generic.schema.json, puis les règles croisées de l'enveloppe commune de la
-  plateforme (ids uniques, ref résolues, clé unique par objet hors ref, viewerId texte, modelKey connue, boîtes min <= max,
+  plateforme (ids uniques, sauf un objet partagé identique répété sous plusieurs parents ; warnings[] : 20 éléments au plus, message de
+  400 caractères au plus, code valide, une seule information par code ; ref résolues, clé unique par objet hors ref, viewerId texte, modelKey connue, boîtes min <= max,
   profondeur 64 au plus), que le schéma ne peut pas exprimer.
 
-Usage : python docs/schema/validate_examples.py  (nécessite le paquet jsonschema)
+Usage : python docs/schema/validate_examples.py  (nécessite le paquet jsonschema ; python3 sur certains systèmes)
 """
 import json
 import pathlib
+import re
 import sys
 
 from jsonschema import Draft202012Validator, FormatChecker
 
 MAX_DEPTH = 64
+MAX_WARNINGS = 20
+MAX_WARNING_MESSAGE = 400
+WARNING_CODE = re.compile(r"^[A-Za-z0-9][A-Za-z0-9_-]{0,63}$")
 
 root = pathlib.Path(__file__).resolve().parents[1]
 
@@ -38,6 +43,22 @@ def envelope_structure_errors(envelope):
     model_keys = [m["key"] for m in envelope.get("models", [])]
     if len(model_keys) != len(set(model_keys)):
         errors.append("models : clés en double")
+    warnings = envelope.get("warnings", [])
+    if len(warnings) > MAX_WARNINGS:
+        errors.append(f"warnings : {len(warnings)} éléments, {MAX_WARNINGS} au plus")
+    info_codes = set()
+    for index, warning in enumerate(warnings):
+        if isinstance(warning, str):
+            continue  # un texte seul est un avertissement
+        if len(warning["message"]) > MAX_WARNING_MESSAGE:
+            errors.append(f"warnings[{index}] : message de plus de {MAX_WARNING_MESSAGE} caractères")
+        code = warning.get("code")
+        if code is not None and not WARNING_CODE.match(code):
+            errors.append(f"warnings[{index}] : code « {code} » invalide")
+        if warning["severity"] == "info" and code is not None:
+            if code in info_codes:
+                errors.append(f"warnings[{index}] : plus d'une information pour le code « {code} »")
+            info_codes.add(code)
     ids = {}  # id -> contenu canonique : un id répété doit être le même objet partagé (identique)
     refs = []
 
@@ -78,7 +99,6 @@ def envelope_structure_errors(envelope):
 
 
 failed = False
-checked = 0
 
 result_validator = validator_for("result.schema.json")
 result_files = [root / "examples" / "result.example.json", *sorted((root / "recette" / "expected").rglob("*.json"))]
@@ -86,7 +106,6 @@ for path in result_files:
     for error in schema_errors(result_validator, load(path)):
         print(f"{path.relative_to(root)} : {'/'.join(map(str, error.path)) or '<racine>'} : {error.message}")
         failed = True
-    checked += 1
 print(f"{len(result_files)} fichier(s) result.json conforme(s) au schéma" if not failed else "result.json : erreurs ci-dessus")
 
 generic_validator = validator_for("generic.schema.json")
