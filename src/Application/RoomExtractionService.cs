@@ -154,7 +154,7 @@ public sealed class RoomExtractionService
                 var sortedRooms = SortByElementId(report.Rooms);
                 if (report.Anomalies.Count > 0)
                 {
-                    LogAnomalySummary(report.Anomalies);
+                    LogAnomalySummary(report.Anomalies, settings?.OutputFormat ?? OutputFormat.Contract);
                 }
 
                 LogDuplicatesWithUnknownOptionSet(report.Anomalies, stage);
@@ -774,15 +774,26 @@ public sealed class RoomExtractionService
         }
     }
 
+    /// <summary>
+    /// Où lire le détail des anomalies selon <c>outputFormat</c> : <c>result.json</c> (contract, both), <c>result.generic.json</c> (generic) ; le
+    /// format trc n'écrit aucun fichier d'anomalies (TRCValidationDict.json ne contient que les données).
+    /// </summary>
+    internal static string AnomalyDetailLocation(OutputFormat format) => format switch
+    {
+        OutputFormat.Generic => "détail dans result.generic.json.",
+        OutputFormat.Trc => "aucun fichier de détail avec le format trc.",
+        _ => "détail dans result.json.",
+    };
+
     /// <summary>Compteur agrégé par code : pas un message par pièce (section 5).</summary>
-    private void LogAnomalySummary(IReadOnlyList<AnomalyDto> anomalies)
+    private void LogAnomalySummary(IReadOnlyList<AnomalyDto> anomalies, OutputFormat format)
     {
         var byCode = anomalies
             .GroupBy(a => a.Code, StringComparer.Ordinal)
             .OrderBy(g => g.Key, StringComparer.Ordinal)
             .ToDictionary(g => g.Key, g => (object?)g.Count(), StringComparer.Ordinal);
         var level = anomalies.Any(a => a.Severity != AnomalySeverity.Info) ? LogLevel.Warning : LogLevel.Info;
-        _log.Log(new LogEvent(level, LogEventCodes.AnomaliesDetected, Stages.Quality, $"{anomalies.Count} anomalie(s) ; détail dans result.json.")
+        _log.Log(new LogEvent(level, LogEventCodes.AnomaliesDetected, Stages.Quality, $"{anomalies.Count} anomalie(s) ; {AnomalyDetailLocation(format)}")
         {
             Data = byCode,
         });

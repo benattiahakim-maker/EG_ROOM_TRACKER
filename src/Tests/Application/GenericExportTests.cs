@@ -198,6 +198,22 @@ public sealed class GenericExportTests
         Assert.Equal(0, generic.Calls);
     }
 
+    [Theory]
+    [InlineData(OutputFormat.Contract, "détail dans result.json.")]
+    [InlineData(OutputFormat.Both, "détail dans result.json.")]
+    [InlineData(OutputFormat.Generic, "détail dans result.generic.json.")]
+    [InlineData(OutputFormat.Trc, "aucun fichier de détail avec le format trc.")]
+    public void The_anomalies_log_line_names_the_file_of_the_output_format(OutputFormat format, string expectedEnd)
+    {
+        var pipeline = Create(format, new FakeGeneric());
+
+        pipeline.CreateService().Run(Pipeline.Request);
+
+        var log = Assert.Single(pipeline.Logs, l => l.EventCode == LogEventCodes.AnomaliesDetected);
+        Assert.EndsWith(expectedEnd, log.Message, StringComparison.Ordinal);
+        Assert.StartsWith("1 anomalie(s) ; ", log.Message, StringComparison.Ordinal);
+    }
+
     [Fact]
     public void Generic_format_without_the_service_falls_back_to_a_failed_contract_result()
     {
