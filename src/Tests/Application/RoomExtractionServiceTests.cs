@@ -39,7 +39,7 @@ public class RoomExtractionServiceTests
         Assert.Equal(
             [
                 LogEventCodes.ExtractionStarted, LogEventCodes.ConfigurationValidated, LogEventCodes.DocumentAccessible,
-                LogEventCodes.VolumeComputation, LogEventCodes.CollectionCompleted, LogEventCodes.AnomaliesDetected, LogEventCodes.ExportCompleted,
+                LogEventCodes.VolumeComputation, LogEventCodes.CollectionCompleted, LogEventCodes.AnomaliesDetected, LogEventCodes.VolumeNotComputed, LogEventCodes.ExportCompleted,
                 LogEventCodes.ExtractionSummary,
             ],
             pipeline.Logs.Select(l => l.EventCode));

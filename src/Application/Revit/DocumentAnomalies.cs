@@ -9,6 +9,10 @@ public static class DocumentAnomalies
     /// <summary>Nombre maximal de descriptions distinctes détaillées par anomalie agrégée.</summary>
     public const int MaxDetailedMessages = 20;
 
+    /// <summary>Texte de l'information <c>VOLUME_NOT_COMPUTED</c> (sortie generic et journal) ; reste très en dessous de 400 caractères.</summary>
+    public static string VolumeNotComputedMessage(int rooms) =>
+        $"{rooms.ToString(System.Globalization.CultureInfo.InvariantCulture)} pièce(s) sans volume calculé : calcul des volumes désactivé dans le document (volumeM3 exporté à null ; mode preserve).";
+
     /// <summary>
     /// Nom de fichier seul (après le dernier <c>/</c> ou <c>\</c>) : un chemin de lien n'est jamais écrit dans un résultat, il vient
     /// de la machine d'origine. Null ou vide : null.

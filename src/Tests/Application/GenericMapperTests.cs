@@ -13,6 +13,8 @@ namespace EgRoomTracker.Tests.Application;
 /// <summary>Sortie generic : conversion pure de l'extraction en enveloppe commune de la plateforme.</summary>
 public sealed class GenericMapperTests
 {
+    private const string QualityFlagCodes_LinkNotLoaded = DocumentAnomalyCodes.LinkNotLoaded;
+
     private static JsonNode Envelope(ExtractionResult result, GenericMapContext? context = null) =>
         JsonNode.Parse(GenericJson.Serialize(GenericMapper.Map(result, context)))!;
 
@@ -69,7 +71,7 @@ public sealed class GenericMapperTests
     [Fact]
     public void Objects_HaveNoKindNorCategoryField_CategoryIsAnOrdinaryProperty()
     {
-        var envelope = Envelope(GenericFixtures.Result(anomalies: [Rooms.VolumeNotComputed(3)]));
+        var envelope = Envelope(GenericFixtures.Result(anomalies: [DocumentAnomalies.LinkNotLoaded("Lien.rvt", null, "NotLoaded")]));
 
         foreach (var obj in GenericEnvelopeChecks.AllObjects(envelope))
         {
@@ -272,7 +274,7 @@ public sealed class GenericMapperTests
     public void Anomalies_RoomScopeAreChildrenOfTheRoom_DocumentScopeAreRootObjects()
     {
         var roomAnomaly = Rooms.RoomAnomaly(QualityFlagCodes.ExtractionError, "102", AnomalySeverity.Error);
-        var envelope = Envelope(GenericFixtures.Result(anomalies: [roomAnomaly, Rooms.VolumeNotComputed(3)]));
+        var envelope = Envelope(GenericFixtures.Result(anomalies: [roomAnomaly, DocumentAnomalies.LinkNotLoaded("Lien.rvt", null, "NotLoaded")]));
 
         var inRoom = Assert.Single(Find(envelope, "room-102")!["children"]!.AsArray());
         Assert.Equal(QualityFlagCodes.ExtractionError, Property(inRoom!, "code")!["value"]!.GetValue<string>());
@@ -283,7 +285,7 @@ public sealed class GenericMapperTests
         var root = envelope["objects"]!.AsArray().Single(o => o!["id"]!.GetValue<string>() == "anomaly-2")!;
         Assert.Equal("document", Property(root, "scope")!["value"]!.GetValue<string>());
         Assert.Equal("info", Property(root, "severity")!["value"]!.GetValue<string>());
-        Assert.Contains("roomsAffected", Property(root, "details")!["value"]!.GetValue<string>());
+        Assert.Equal(QualityFlagCodes_LinkNotLoaded, Property(root, "code")!["value"]!.GetValue<string>());
         GenericEnvelopeChecks.AssertValid(envelope);
     }
 
@@ -298,7 +300,8 @@ public sealed class GenericMapperTests
 
         var info = GenericMapper.Map(complete);
         Assert.Equal("done", info.Status); // une anomalie info n'est pas un avertissement
-        Assert.Empty(info.Warnings);
+        Assert.Equal(["VOLUME_NOT_COMPUTED"], info.Warnings.Select(w => w.Code));
+        Assert.All(info.Warnings, w => Assert.Equal("info", w.Severity));
 
         var warned = GenericMapper.Map(complete with { Anomalies = [Rooms.RoomAnomaly(QualityFlagCodes.ExtractionError, "102", AnomalySeverity.Error), Rooms.RoomAnomaly(QualityFlagCodes.ExtractionError, "101", AnomalySeverity.Error)] });
         Assert.Equal("partial", warned.Status);
@@ -519,7 +522,7 @@ public sealed class GenericMapperTests
     [Fact]
     public void Category_KeepsTheTechnicalValue_AndAddsAReadableLabel()
     {
-        var json = Envelope(GenericFixtures.Result(anomalies: [Rooms.VolumeNotComputed(3)]), new GenericMapContext { ResultFiles = [new GenericFile("a.json", "application/json", "/a.json")] });
+        var json = Envelope(GenericFixtures.Result(anomalies: [DocumentAnomalies.LinkNotLoaded("Lien.rvt", null, "NotLoaded")]), new GenericMapContext { ResultFiles = [new GenericFile("a.json", "application/json", "/a.json")] });
 
         Assert.Equal("Space", Text(json, "room-100", "Category"));
         Assert.Equal("Pièce", Text(json, "room-100", "categorie_libelle"));

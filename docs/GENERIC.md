@@ -42,6 +42,10 @@ Racine : `contractVersion` (`1.0`), `serviceId` (`pieces-roomtracker`), `status`
   **`LINK_MISSING`** : les liens Revit absents de l'envoi sont nommés **tous dans une seule information**
   `{ "severity": "info", "code": "LINK_MISSING", "message": "5 lien(s) absent(s) : A.rvt, B.rvt…" }`, placée après les avertissements :
   un projet envoyé sans ses liens est `done`. Au-delà de 400 caractères, la liste est coupée sur un nom entier et finit par « … et K autre(s) ». Les liens absents ne produisent **aucun** objet « Anomalie » (`anomaly-N`) : seule cette information les dit. Les autres anomalies (par exemple `LINK_NOT_LOADED`) restent des objets.
+  **`VOLUME_NOT_COMPUTED`** (document dont le calcul des volumes est désactivé) suit la même règle : **une seule information**
+  `{ "severity": "info", "code": "VOLUME_NOT_COMPUTED", "message": "N pièce(s) sans volume calculé : calcul des volumes désactivé dans le document (volumeM3 exporté à null ; mode preserve)." }`
+  (N = pièces exportées sans volume), jamais `partial`, aucun objet « Anomalie » ; le même texte est écrit dans `log.jsonl` (événement `VOLUME_NOT_COMPUTED`, après `ANOMALIES_DETECTED`).
+  `warnings[]` ne dépasse jamais 20 éléments : les informations sont toujours gardées, les avertissements en trop sont remplacés par un dernier avertissement « N autre(s) avertissement(s) non détaillé(s) ».
   Ce format demande que la plateforme (validation) et le site acceptent les objets dans `warnings[]` ; un texte seul reste valide.
 - **`models[]`** : `main` (le RVT principal, titre = nom du fichier sans extension) et `link-1`, `link-2`… pour les modèles liés dont un
   élément est exporté. `urn` est **vide** : le plugin ne connaît pas l'URN de conversion (voir « Écarts »).
@@ -111,7 +115,7 @@ changent ni `result.json` ni le TRC.
 ### Anomalies
 
 Une anomalie est un objet `anomaly-{n}` (`Category` = `Anomaly`) avec `code`, `severity`, `message`, `details` (texte JSON). Portée pièce :
-enfant de la pièce ; portée document : objet racine. **Exception : `LINK_MISSING`** n'est jamais un objet (voir `warnings[]`).
+enfant de la pièce ; portée document : objet racine. **Exceptions : `LINK_MISSING` et `VOLUME_NOT_COMPUTED`** ne sont jamais des objets (une information chacune dans `warnings[]`). Les anomalies de portée document restantes (par exemple `LINK_NOT_LOADED`) sont des objets racines, placés après les objets « Niveau ».
 
 ### Fichiers
 

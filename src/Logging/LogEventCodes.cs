@@ -21,6 +21,9 @@ public static class LogEventCodes
     /// <summary>Préparation des volumes (EGR-16) : mode, réglage du document, activation temporaire, annulation.</summary>
     public const string VolumeComputation = "VOLUME_COMPUTATION";
 
+    /// <summary>Pièces exportées sans volume parce que le calcul est désactivé dans le document (étape <c>quality</c>) ; même texte que l'information de result.generic.json.</summary>
+    public const string VolumeNotComputed = "VOLUME_NOT_COMPUTED";
+
     /// <summary>volumeMode compute : activation temporaire du calcul impossible ; volumes non disponibles.</summary>
     public const string VolumeComputeFailed = "VOLUME_COMPUTE_FAILED";
 

@@ -1,6 +1,7 @@
 using System.Globalization;
 using System.Text.Json;
 using System.Text.RegularExpressions;
+using EgRoomTracker.Application.Revit;
 using EgRoomTracker.Application.Trc;
 using EgRoomTracker.Contracts.Codes;
 using EgRoomTracker.Contracts.Generic;
@@ -168,9 +169,9 @@ public static class GenericMapper
         var anomalyNumber = 0;
         foreach (var anomaly in result.Anomalies)
         {
-            if (anomaly.Code == DocumentAnomalyCodes.LinkMissing)
+            if (anomaly.Code is DocumentAnomalyCodes.LinkMissing or DocumentAnomalyCodes.VolumeNotComputed)
             {
-                continue; // Les liens absents ne sont dits que par l'information unique LINK_MISSING (MissingLinksNote).
+                continue; // Dits seulement par une information unique dans warnings[] (MissingLinksNote, VolumeNotComputedNote).
             }
 
             var obj = AnomalyObject(anomaly, Unique($"anomaly-{(++anomalyNumber).ToString(CultureInfo.InvariantCulture)}", used));
@@ -216,6 +217,7 @@ public static class GenericMapper
 
         warnings.AddRange(AnomalyWarnings(result.Anomalies).Select(GenericWarning.Warning));
         var linkNote = MissingLinksNote(result.Anomalies);
+        var volumeNote = VolumeNotComputedNote(result);
         if (warnings.Count == 0 && linkNote is null && result.Summary.Status == ExtractionStatus.SucceededWithWarnings)
         {
             warnings.Add(GenericWarning.Warning("Extraction terminée avec avertissements ; voir les anomalies."));
@@ -223,17 +225,25 @@ public static class GenericMapper
 
         // Informations (gravité info) : après les avertissements ; elles ne rendent jamais l'enveloppe « partial » (statut calculé avant).
         var status = warnings.Count > 0 ? GenericStatuses.Partial : GenericStatuses.Done;
+        var infos = new List<GenericWarning>();
         if (linkNote is not null)
         {
-            warnings.Add(linkNote);
+            infos.Add(linkNote);
+        }
+
+        if (volumeNote is not null)
+        {
+            infos.Add(volumeNote);
         }
 
         if (excludedRooms > 0)
         {
-            warnings.Add(GenericWarning.Info(
+            infos.Add(GenericWarning.Info(
                 "DESIGN_OPTIONS_EXCLUDED",
                 $"{excludedRooms.ToString(CultureInfo.InvariantCulture)} pièce(s) d'options de conception secondaires exclues (réglage includeSecondaryDesignOptions : false)."));
         }
+
+        warnings = CapWarnings(warnings, infos);
 
         return new GenericEnvelope
         {
@@ -603,6 +613,37 @@ public static class GenericMapper
             .Select(g => g.Count() == 1
                 ? $"{g.Key} : {g.First().Message}"
                 : $"{g.Key} : {g.Count().ToString(CultureInfo.InvariantCulture)} anomalies (ex. {g.First().Message})");
+
+    /// <summary>
+    /// Information unique <c>VOLUME_NOT_COMPUTED</c> (document sans calcul des volumes) : nombre de pièces exportées sans volume ; null si
+    /// l'anomalie est absente ou si aucune pièce exportée n'est concernée. Aucun objet anomalie : seulement cette information.
+    /// </summary>
+    private static GenericWarning? VolumeNotComputedNote(ExtractionResult result)
+    {
+        if (!result.Anomalies.Any(a => a.Code == DocumentAnomalyCodes.VolumeNotComputed))
+        {
+            return null;
+        }
+
+        var rooms = result.Rooms.Count(r => r.VolumeStatus == VolumeStatus.NotComputed);
+        return rooms == 0 ? null : GenericWarning.Info(DocumentAnomalyCodes.VolumeNotComputed, DocumentAnomalies.VolumeNotComputedMessage(rooms));
+    }
+
+    /// <summary>
+    /// Avertissements puis informations, au plus <see cref="GenericWarning.MaxItems"/> éléments (limite de la plateforme) : les
+    /// informations sont gardées, les avertissements en trop sont remplacés par un dernier avertissement qui les compte.
+    /// </summary>
+    private static List<GenericWarning> CapWarnings(List<GenericWarning> warnings, List<GenericWarning> infos)
+    {
+        var room = Math.Max(GenericWarning.MaxItems - infos.Count, 0);
+        var kept = warnings.Count <= room ? warnings : [.. warnings.Take(Math.Max(room - 1, 0))];
+        if (warnings.Count > room && room > 0)
+        {
+            kept.Add(GenericWarning.Warning($"{(warnings.Count - kept.Count).ToString(CultureInfo.InvariantCulture)} autre(s) avertissement(s) non détaillé(s) ; voir result.json."));
+        }
+
+        return [.. kept, .. infos];
+    }
 
     /// <summary>Information unique <c>LINK_MISSING</c> qui nomme tous les liens Revit absents (sans doublon, dans l'ordre) ; null s'il n'y en a pas.</summary>
     private static GenericWarning? MissingLinksNote(IReadOnlyList<AnomalyDto> anomalies)

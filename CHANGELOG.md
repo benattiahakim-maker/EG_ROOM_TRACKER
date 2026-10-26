@@ -21,6 +21,11 @@ Le format s'inspire de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/).
 
 ### Modifié
 
+- **Sortie `generic` : `VOLUME_NOT_COMPUTED` en une information** : l'anomalie (info, portée document) n'est plus un objet « Anomalie » ;
+  elle devient une seule information `{severity: info, code: VOLUME_NOT_COMPUTED, message: "N pièce(s) sans volume calculé…"}` dans
+  `warnings[]` (jamais `partial`), comme `LINK_MISSING`. Même message dans `log.jsonl` (événement `VOLUME_NOT_COMPUTED`). `warnings[]` est
+  plafonné à 20 éléments (informations gardées). Les autres anomalies document (ex. `LINK_NOT_LOADED`) restent des objets racines, après
+  les objets « Niveau ». `result.json` (TRC) inchangé.
 - **Sortie `generic` : éléments sous chaque local qui les contient** : une porte entre deux locaux, ou un élément contenu dans plusieurs
   locaux, est répété sous chacun (même `id`, contenu identique : objet partagé accepté par le validateur de la plateforme) au lieu
   d'être rangé sous le premier seul ; les `ref` `room`, `room_from`, `room_to` restent identiques et chaque local pointe tous ses

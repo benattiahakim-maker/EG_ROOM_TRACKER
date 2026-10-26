@@ -10,7 +10,7 @@ Implémentation : `EgRoomTracker.Application.Quality.QualityCheckService`, sans 
 | `EXTRACTION_ERROR` | orchestration (filet de sécurité par pièce) | Conservé ; pièce exportée avec son identité |
 | `ZERO_AREA` | qualité | `areaM2 == 0` (pas `null`) et pas `UNPLACED` |
 | `DUPLICATE_NUMBER` | qualité | Même `number` (comparaison exacte : `"001"` ≠ `"1"`), même phase (`phase.elementId`) et pièces pouvant coexister selon les variantes (voir ci-dessous) ; les pièces sans phase (`phase: null`) forment un même groupe entre elles ; numéros `""` ou `null` ignorés ; posé sur chaque pièce en conflit avec au moins une autre, détails `number` et `elementIds` (la pièce et celles avec lesquelles elle est en conflit, tri numérique) |
-| `VOLUME_NOT_COMPUTED` | qualité | Calcul des volumes désactivé (`VolumeComputationState.VolumesComputed` faux, sans échec du mode compute) : une anomalie document info, détails `volumeMode` et `roomsAffected` (pièces en `notComputed`) |
+| `VOLUME_NOT_COMPUTED` | qualité | Calcul des volumes désactivé (`VolumeComputationState.VolumesComputed` faux, sans échec du mode compute) : une anomalie document info, détails `volumeMode` et `roomsAffected` (pièces en `notComputed`) ; en sortie `generic` elle n'est pas un objet mais une information unique dans `warnings[]`, et son message est aussi écrit dans `log.jsonl` |
 | `VOLUME_COMPUTE_FAILED` | qualité | Mode `compute`, activation temporaire impossible (`VolumeComputationState.ComputeFailure`) : une anomalie document warning (au lieu de `VOLUME_NOT_COMPUTED`), détails `volumeMode`, `reason` et `roomsAffected` (pièces en `notAvailable`) ; statut `succeededWithWarnings` (EGR-16) |
 
 ### `DUPLICATE_NUMBER` et variantes (design options)
