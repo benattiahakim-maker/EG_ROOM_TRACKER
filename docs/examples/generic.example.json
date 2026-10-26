@@ -4,7 +4,12 @@
   "status": "partial",
   "warnings": [
     "1 pièce(s) sans boîte englobante (pièce non placée ou boîte illisible) : propriété box omise.",
-    "EXTRACTION_ERROR : EXTRACTION_ERROR sur la pièce 102."
+    "EXTRACTION_ERROR : EXTRACTION_ERROR sur la pièce 102.",
+    {
+      "severity": "info",
+      "message": "3 pièce(s) sans volume calculé : calcul des volumes désactivé dans le document (volumeM3 exporté à null ; mode preserve).",
+      "code": "VOLUME_NOT_COMPUTED"
+    }
   ],
   "models": [
     {
@@ -994,62 +999,6 @@
           "type": "text",
           "value": "311",
           "group": "Identification"
-        }
-      ]
-    },
-    {
-      "id": "anomaly-2",
-      "name": "VOLUME_NOT_COMPUTED",
-      "children": [],
-      "properties": [
-        {
-          "key": "Category",
-          "label": "Catégorie",
-          "type": "text",
-          "value": "Anomaly",
-          "group": "Anomalie"
-        },
-        {
-          "key": "categorie_libelle",
-          "label": "Catégorie (libellé)",
-          "type": "text",
-          "value": "Anomalie",
-          "group": "Anomalie"
-        },
-        {
-          "key": "code",
-          "label": "Code",
-          "type": "text",
-          "value": "VOLUME_NOT_COMPUTED",
-          "group": "Anomalie"
-        },
-        {
-          "key": "severity",
-          "label": "Gravité",
-          "type": "text",
-          "value": "info",
-          "group": "Anomalie"
-        },
-        {
-          "key": "scope",
-          "label": "Portée",
-          "type": "text",
-          "value": "document",
-          "group": "Anomalie"
-        },
-        {
-          "key": "message",
-          "label": "Message",
-          "type": "text",
-          "value": "Calcul des volumes désactivé dans le document ; volumeM3 exporté à null (mode preserve).",
-          "group": "Anomalie"
-        },
-        {
-          "key": "details",
-          "label": "Détails (JSON)",
-          "type": "text",
-          "value": "{\"volumeMode\":\"preserve\",\"roomsAffected\":3}",
-          "group": "Anomalie"
         }
       ]
     },

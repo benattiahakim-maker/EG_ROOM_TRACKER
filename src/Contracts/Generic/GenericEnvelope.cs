@@ -44,6 +44,9 @@ public sealed record GenericWarning(string Severity, string Message, string? Cod
     /// <summary>Longueur maximale d'un message (limite de la validation de la plateforme).</summary>
     public const int MaxMessageLength = 400;
 
+    /// <summary>Nombre maximal d'éléments de <c>warnings[]</c> (limite de la validation de la plateforme).</summary>
+    public const int MaxItems = 20;
+
     public static GenericWarning Warning(string message) => new(GenericSeverities.Warning, message);
 
     public static GenericWarning Info(string code, string message) => new(GenericSeverities.Info, message, code);
