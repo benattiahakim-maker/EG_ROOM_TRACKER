@@ -77,4 +77,57 @@ public sealed class GenericVolumeInfoTests
         Assert.Contains(envelope.Warnings, w => w.Message.Contains("autre(s) avertissement(s) non détaillé(s)", StringComparison.Ordinal));
         Assert.Equal("partial", envelope.Status);
     }
+
+    [Fact]
+    public void RoomCount_IsComputedOnce_ForTheLogAndTheEnvelope()
+    {
+        // L'anomalie dit 7 pièces alors que la fixture en contient 3 : les deux sorties lisent le même nombre (celui de l'anomalie).
+        var anomalies = new[] { Rooms.VolumeNotComputed(7) };
+
+        var count = DocumentAnomalies.VolumeNotComputedRooms(anomalies);
+        var info = Assert.Single(GenericMapper.Map(GenericFixtures.Result(anomalies: anomalies)).Warnings, w => w.Code == "VOLUME_NOT_COMPUTED");
+
+        Assert.Equal(7, count);
+        Assert.Equal(DocumentAnomalies.VolumeNotComputedMessage(7), info.Message);
+        Assert.Null(DocumentAnomalies.VolumeNotComputedRooms([]));
+    }
+
+    [Fact]
+    public void Warnings_WithBothInfosOfTheGuards_StayAtTwenty_AndKeepBothInfos()
+    {
+        var anomalies = Enumerable.Range(1, 30)
+            .Select(i => Rooms.RoomAnomaly($"CODE_{i:00}", "101", AnomalySeverity.Warning))
+            .Append(Rooms.VolumeNotComputed(3))
+            .ToList();
+        var rooms = Enumerable.Range(1, 21)
+            .Select(i => GenericFixtures.Room(i, i.ToString(System.Globalization.CultureInfo.InvariantCulture), GenericFixtures.Box(i * 5000.0), null, [GenericFixtures.Equipment("1")]))
+            .ToList();
+        var result = GenericFixtures.Result(anomalies: anomalies);
+
+        var envelope = GenericMapper.Map(result with { Rooms = rooms, Summary = result.Summary with { Counts = new RoomCounts(21, 21, 0) } });
+
+        Assert.Equal(GenericWarning.MaxItems, envelope.Warnings.Count);
+        Assert.Contains(envelope.Warnings, w => w.Code == "VOLUME_NOT_COMPUTED");
+        Assert.Contains(envelope.Warnings, w => w.Code == "SHARED_ELEMENT_MANY_ROOMS");
+        Assert.Equal(["info", "info"], envelope.Warnings.TakeLast(2).Select(w => w.Severity));
+    }
+
+    [Theory]
+    [InlineData(18, false)] // 18 avertissements + 2 informations = 20 : rien n'est coupé
+    [InlineData(19, true)] // 19 + 2 = 21 : un avertissement de moins, remplacé par un résumé
+    public void Cap_IsExactlyTwenty_WithoutLosingInfos(int warnings, bool summarized)
+    {
+        var anomalies = Enumerable.Range(1, warnings)
+            .Select(i => Rooms.RoomAnomaly($"CODE_{i:00}", "101", AnomalySeverity.Warning))
+            .Append(Rooms.VolumeNotComputed(3))
+            .Append(Rooms.RoomAnomaly("LINK_MISSING_X", "101", AnomalySeverity.Info))
+            .ToList();
+        var result = GenericFixtures.Result(anomalies: anomalies);
+
+        var envelope = GenericMapper.Map(result);
+
+        Assert.True(envelope.Warnings.Count <= GenericWarning.MaxItems);
+        Assert.Equal(summarized, envelope.Warnings.Any(w => w.Message.Contains("autre(s) avertissement(s) non détaillé(s)", StringComparison.Ordinal)));
+        Assert.Contains(envelope.Warnings, w => w.Code == "VOLUME_NOT_COMPUTED");
+    }
 }

@@ -44,7 +44,7 @@ Racine : `contractVersion` (`1.0`), `serviceId` (`pieces-roomtracker`), `status`
   un projet envoyé sans ses liens est `done`. Au-delà de 400 caractères, la liste est coupée sur un nom entier et finit par « … et K autre(s) ». Les liens absents ne produisent **aucun** objet « Anomalie » (`anomaly-N`) : seule cette information les dit. Les autres anomalies (par exemple `LINK_NOT_LOADED`) restent des objets.
   **`VOLUME_NOT_COMPUTED`** (document dont le calcul des volumes est désactivé) suit la même règle : **une seule information**
   `{ "severity": "info", "code": "VOLUME_NOT_COMPUTED", "message": "N pièce(s) sans volume calculé : calcul des volumes désactivé dans le document (volumeM3 exporté à null ; mode preserve)." }`
-  (N = pièces exportées sans volume), jamais `partial`, aucun objet « Anomalie » ; le même texte est écrit dans `log.jsonl` (événement `VOLUME_NOT_COMPUTED`, après `ANOMALIES_DETECTED`).
+  (N = pièces sans volume, `roomsAffected` de l'anomalie, le même nombre que le journal), jamais `partial`, aucun objet « Anomalie » ; le même texte est écrit dans `log.jsonl` (événement `VOLUME_NOT_COMPUTED`, après `ANOMALIES_DETECTED`).
   `warnings[]` ne dépasse jamais 20 éléments : les informations sont toujours gardées, les avertissements en trop sont remplacés par un dernier avertissement « N autre(s) avertissement(s) non détaillé(s) ».
   Ce format demande que la plateforme (validation) et le site acceptent les objets dans `warnings[]` ; un texte seul reste valide.
 - **`models[]`** : `main` (le RVT principal, titre = nom du fichier sans extension) et `link-1`, `link-2`… pour les modèles liés dont un

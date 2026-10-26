@@ -236,7 +236,7 @@ public sealed class RoomParameterReader(RevitExecutionContext context, IUnitConv
     }
 
     /// <summary>Altitude du niveau en mètres ; null si la valeur n'est pas finie.</summary>
-    private double? ElevationM(Level level) => double.IsFinite(level.Elevation) ? units.ToMeters(level.Elevation) : null;
+    private double? ElevationM(Level level) => RoomQuantities.LevelElevationM(level.Elevation, units);
 
     private static string Id(ElementId id) => id.Value.ToString(System.Globalization.CultureInfo.InvariantCulture);
 

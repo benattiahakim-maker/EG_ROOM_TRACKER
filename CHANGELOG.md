@@ -27,8 +27,14 @@ Le format s'inspire de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/).
 - **Sortie `generic` : `VOLUME_NOT_COMPUTED` en une information** : l'anomalie (info, portée document) n'est plus un objet « Anomalie » ;
   elle devient une seule information `{severity: info, code: VOLUME_NOT_COMPUTED, message: "N pièce(s) sans volume calculé…"}` dans
   `warnings[]` (jamais `partial`), comme `LINK_MISSING`. Même message dans `log.jsonl` (événement `VOLUME_NOT_COMPUTED`). `warnings[]` est
-  plafonné à 20 éléments (informations gardées). Les autres anomalies document (ex. `LINK_NOT_LOADED`) restent des objets racines, après
+  plafonné à 20 éléments au total (limite de la plateforme) : les informations (`VOLUME_NOT_COMPUTED`, `LINK_MISSING`,
+  `DESIGN_OPTIONS_EXCLUDED`, `SHARED_ELEMENT_MANY_ROOMS`) comptent dans les 20 et sont toujours gardées ; les avertissements en trop sont
+  remplacés par un dernier avertissement qui les compte. Le nombre de pièces est calculé une seule fois (journal et enveloppe identiques). Les autres anomalies document (ex. `LINK_NOT_LOADED`) restent des objets racines, après
   les objets « Niveau ». `result.json` (TRC) inchangé.
+- **Sortie `generic` : garde-fou sur les éléments très partagés** : un élément étant répété sous chacune de ses pièces, un élément contenu
+  dans plus de 20 pièces alourdit le fichier. Une **seule** information `SHARED_ELEMENT_MANY_ROOMS` dans `warnings[]` (code, nombre
+  d'éléments concernés, seuil de 20 pièces par élément), jamais `partial` ; les répétitions ne sont pas limitées. Les `ref` `room`
+  (et `room_from`, `room_to`) d'un élément partagé sont triés de façon explicite et stable (id de pièce en tri naturel).
 - **Sortie `generic` : éléments sous chaque local qui les contient** : une porte entre deux locaux, ou un élément contenu dans plusieurs
   locaux, est répété sous chacun (même `id`, contenu identique : objet partagé accepté par le validateur de la plateforme) au lieu
   d'être rangé sous le premier seul ; les `ref` `room`, `room_from`, `room_to` restent identiques et chaque local pointe tous ses

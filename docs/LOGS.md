@@ -76,6 +76,12 @@ par le filtre de phase, filtre appliqué). Une phase demandée absente du docume
 - `VOLUME_COMPUTE_FAILED` (Warning) : activation temporaire impossible en mode `compute` ; message = motif. Les volumes
   sont exportés en `notAvailable` et l'anomalie document `VOLUME_COMPUTE_FAILED` figure dans `result.json`.
 
+Événement `VOLUME_NOT_COMPUTED` (Info, étape `quality`, au plus une ligne, juste après `ANOMALIES_DETECTED`) : le document a le calcul
+des volumes désactivé (mode `preserve`). Le message est `N pièce(s) sans volume calculé : calcul des volumes désactivé dans le document
+(volumeM3 exporté à null ; mode preserve).` ; il est **identique** à l'information `VOLUME_NOT_COMPUTED` de `warnings[]` dans
+`result.generic.json` (même nombre N, lu une seule fois dans `roomsAffected` de l'anomalie document `VOLUME_NOT_COMPUTED`). Aucune ligne
+si le calcul est actif ou si le mode `compute` a échoué (c'est alors `VOLUME_COMPUTE_FAILED`). `result.json` garde l'anomalie document.
+
 En échec, `EXTRACTION_FAILED` puis `EXTRACTION_SUMMARY` restent écrits et le
 journal est vidé : le rapport APS reste exploitable.
 
