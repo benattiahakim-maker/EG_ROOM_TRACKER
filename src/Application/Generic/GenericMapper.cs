@@ -87,10 +87,12 @@ public sealed record GenericMapContext
 /// <summary>
 /// Conversion pure de l'extraction en enveloppe commune de la plateforme (<c>result.generic.json</c>), sans Revit ni fichier.
 /// <list type="bullet">
-/// <item>Une pièce = un objet racine (<c>id</c> <c>room-{ElementId}</c>), ses anomalies de portée pièce en enfants.</item>
-/// <item>Une porte, un équipement ou un terminal = un objet (<c>id</c> <c>element-{UniqueId}</c>) rangé <b>une seule fois</b>, sous la
-/// première pièce qui le contient ; il pointe toutes ses pièces par des <c>ref</c> <c>room</c> (portes : aussi <c>room_from</c> et
-/// <c>room_to</c>), et chaque autre pièce le pointe par un <c>ref</c> <c>contains</c>.</item>
+/// <item>Racine : un objet « Niveau » par niveau (altitude croissante), puis « Sans niveau » ; ses enfants : les pièces (<c>id</c>
+/// <c>room-{ElementId}</c>) en tri naturel du numéro. Enfants d'une pièce : groupes « Portes », « Équipements », « Terminaux » (non vides),
+/// puis ses anomalies de portée pièce.</item>
+/// <item>Une porte, un équipement ou un terminal = un objet (<c>id</c> <c>element-{UniqueId}</c>) <b>répété, identique,</b> sous chaque
+/// pièce qui le contient (objet partagé accepté par la plateforme) ; il pointe toutes ses pièces par des <c>ref</c> <c>room</c> (portes :
+/// aussi <c>room_from</c> et <c>room_to</c>), et chaque pièce pointe ses éléments par des <c>ref</c> <c>contains</c>.</item>
 /// <item>Aucun champ de type de contenu : <c>Category</c> (<c>Space</c>, <c>Door</c>, <c>cvc equipement</c>…) est une propriété normale.</item>
 /// <item>Valeurs typées : nombres avec unité (m, m², m³), jamais de texte arrondi ; une valeur inconnue est omise, jamais mise à zéro.</item>
 /// </list>
@@ -148,16 +150,15 @@ public static class GenericMapper
             elementIds[element.Item.UniqueId] = Unique($"element-{element.Item.UniqueId}", used);
         }
 
-        // Éléments rangés sous leur première pièce ; les autres pièces les pointent par « contains ».
+        // Objet partagé : un élément contenu dans plusieurs pièces est répété, identique (même id, même contenu, mêmes refs), sous
+        // chacune ; le validateur de la plateforme l'accepte et ne parcourt son sous-arbre qu'une fois.
         var childrenOf = new Dictionary<string, List<(GenericElement Element, GenericObject Object)>>(StringComparer.Ordinal);
-        var containsOf = new Dictionary<string, List<string>>(StringComparer.Ordinal);
         foreach (var element in elements)
         {
-            var id = elementIds[element.Item.UniqueId];
-            Add(childrenOf, element.Rooms[0].Space, (element, ElementObject(element, id, roomIds, linkKeys)));
-            foreach (var other in element.Spaces.Skip(1))
+            var shared = ElementObject(element, elementIds[element.Item.UniqueId], roomIds, linkKeys);
+            foreach (var space in element.Spaces)
             {
-                Add(containsOf, other, id);
+                Add(childrenOf, space, (element, shared));
             }
         }
 
@@ -188,13 +189,14 @@ public static class GenericMapper
         foreach (var room in result.Rooms)
         {
             var properties = RoomProperties(room, codeFile, context, ref withoutBox);
-            foreach (var contained in containsOf.GetValueOrDefault(room.UniqueId) ?? [])
+            var groups = ElementGroups(childrenOf.GetValueOrDefault(room.UniqueId) ?? [], roomIds[room.UniqueId], used).ToList();
+            foreach (var contained in groups.SelectMany(g => g.Children))
             {
-                properties.Add(Ref(GenericKeys.Contains, "Contient", contained, GenericGroups.Relations));
+                properties.Add(Ref(GenericKeys.Contains, "Contient", contained.Id, GenericGroups.Relations));
             }
 
             var children = new List<GenericObject>();
-            children.AddRange(ElementGroups(childrenOf.GetValueOrDefault(room.UniqueId) ?? [], roomIds[room.UniqueId], used));
+            children.AddRange(groups);
             children.AddRange(roomAnomalies.GetValueOrDefault(room.ElementId) ?? []);
             roomObjects.Add((room, new GenericObject { Id = roomIds[room.UniqueId], Name = RoomName(room), Children = children, Properties = properties }));
         }
@@ -214,6 +216,7 @@ public static class GenericMapper
 
         warnings.AddRange(AnomalyWarnings(result.Anomalies).Select(GenericWarning.Warning));
         var linkNote = MissingLinksNote(result.Anomalies);
+        var manyRoomsNote = SharedElementsNote(elements);
         if (warnings.Count == 0 && linkNote is null && result.Summary.Status == ExtractionStatus.SucceededWithWarnings)
         {
             warnings.Add(GenericWarning.Warning("Extraction terminée avec avertissements ; voir les anomalies."));
@@ -224,6 +227,11 @@ public static class GenericMapper
         if (linkNote is not null)
         {
             warnings.Add(linkNote);
+        }
+
+        if (manyRoomsNote is not null)
+        {
+            warnings.Add(manyRoomsNote);
         }
 
         if (excludedRooms > 0)
@@ -247,7 +255,7 @@ public static class GenericMapper
 
     /// <summary>
     /// Porte, équipement ou terminal, une seule fois (clé : UniqueId), avec ses pièces dans l'ordre des pièces du résultat et la
-    /// relation (<c>from</c>, <c>to</c>, <c>in</c>) de chacune. <see cref="Spaces"/> : UniqueId des pièces ; la première le range.
+    /// relation (<c>from</c>, <c>to</c>, <c>in</c>) de chacune. <see cref="Spaces"/> : UniqueId des pièces ; l'objet est répété sous chacune.
     /// </summary>
     private sealed record GenericElement(RoomElementDto Item, string Category, ElementKind Kind, List<(string Space, string Relation)> Rooms)
     {
@@ -534,15 +542,20 @@ public static class GenericMapper
         AddNumber(p, "hauteur", "Hauteur de passage libre", item.HeightM, "m", GenericGroups.Dimensions);
         AddText(p, "source_dimensions", "Source des dimensions", item.DimensionSource, GenericGroups.Dimensions);
 
-        // Pièces : « room » pour chacune ; une porte précise aussi son côté (relation from / to de result.json).
-        foreach (var space in element.Spaces)
+        // Pièces : « room » pour chacune ; une porte précise aussi son côté (relation from / to de result.json). Ordre explicite et stable,
+        // indépendant de l'ordre des pièces dans l'entrée : id de pièce en tri naturel (room-2 avant room-10), puis UniqueId.
+        var orderedRooms = element.Rooms
+            .OrderBy(r => roomIds[r.Space], NaturalOrder.Instance)
+            .ThenBy(r => r.Space, StringComparer.Ordinal)
+            .ToList();
+        foreach (var (space, _) in orderedRooms)
         {
             p.Add(Ref(GenericKeys.Room, "Pièce", roomIds[space], GenericGroups.Relations));
         }
 
         if (element.Category == TrcCategories.Door)
         {
-            foreach (var (space, relation) in element.Rooms)
+            foreach (var (space, relation) in orderedRooms)
             {
                 if (RelationKey(relation) is { } key)
                 {
@@ -603,6 +616,27 @@ public static class GenericMapper
             .Select(g => g.Count() == 1
                 ? $"{g.Key} : {g.First().Message}"
                 : $"{g.Key} : {g.Count().ToString(CultureInfo.InvariantCulture)} anomalies (ex. {g.First().Message})");
+
+    /// <summary>
+    /// Garde-fou de taille : un élément est répété sous chacune de ses pièces, donc un élément partagé par très nombreuses pièces alourdit le
+    /// fichier. Au-delà de <see cref="SharedElementRoomThreshold"/> pièces pour un élément, UNE seule information (code, nombre d'éléments
+    /// concernés, seuil) ; les répétitions ne sont jamais limitées. Null s'il n'y en a aucun.
+    /// </summary>
+    private static GenericWarning? SharedElementsNote(IReadOnlyList<GenericElement> elements)
+    {
+        var many = elements.Count(e => e.Rooms.Count > SharedElementRoomThreshold);
+        return many == 0
+            ? null
+            : GenericWarning.Info(
+                SharedElementManyRoomsCode,
+                $"{SharedElementManyRoomsCode} : {many.ToString(CultureInfo.InvariantCulture)} élément(s) répété(s) sous plus de {SharedElementRoomThreshold.ToString(CultureInfo.InvariantCulture)} pièces (seuil : {SharedElementRoomThreshold.ToString(CultureInfo.InvariantCulture)} pièces par élément) ; chaque pièce garde son exemplaire, le fichier est plus volumineux.");
+    }
+
+    /// <summary>Nombre de pièces par élément au-delà duquel l'information <see cref="SharedElementManyRoomsCode"/> est écrite.</summary>
+    internal const int SharedElementRoomThreshold = 20;
+
+    /// <summary>Code de l'information de garde-fou sur les éléments répétés sous beaucoup de pièces.</summary>
+    internal const string SharedElementManyRoomsCode = "SHARED_ELEMENT_MANY_ROOMS";
 
     /// <summary>Information unique <c>LINK_MISSING</c> qui nomme tous les liens Revit absents (sans doublon, dans l'ordre) ; null s'il n'y en a pas.</summary>
     private static GenericWarning? MissingLinksNote(IReadOnlyList<AnomalyDto> anomalies)

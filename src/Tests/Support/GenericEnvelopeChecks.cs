@@ -1,3 +1,4 @@
+using System.Text.Json;
 using System.Text.Json.Nodes;
 using Json.Schema;
 
@@ -5,7 +6,7 @@ namespace EgRoomTracker.Tests.Support;
 
 /// <summary>
 /// Contrôles de l'enveloppe commune : le schéma <c>docs/schema/generic.schema.json</c> (forme) et les règles croisées du validateur de
-/// la plateforme (<c>validateEnvelope</c> de system-filter-backend) : ids uniques, ref résolues, clé unique par objet hors ref,
+/// la plateforme (<c>validateEnvelope</c> de system-filter-backend) : ids uniques (un id répété doit être le même objet partagé, identique), ref résolues, clé unique par objet hors ref,
 /// <c>viewerId</c> texte, profondeur 64 au plus ; plus, pour cette sortie, <c>modelKey</c> connue de <c>models[]</c> et boîtes min ≤ max.
 /// </summary>
 internal static class GenericEnvelopeChecks
@@ -44,7 +45,7 @@ internal static class GenericEnvelopeChecks
             errors.Add("models[] : clés en double.");
         }
 
-        var ids = new HashSet<string>(StringComparer.Ordinal);
+        var ids = new Dictionary<string, string>(StringComparer.Ordinal); // id -> contenu canonique (un objet partagé doit être identique)
         var refs = new List<(string From, string To)>();
 
         void Walk(JsonNode node, string path, int depth)
@@ -56,10 +57,18 @@ internal static class GenericEnvelopeChecks
             }
 
             var id = node["id"]!.GetValue<string>();
-            if (!ids.Add(id))
+            var shape = Canonical(node);
+            if (ids.TryGetValue(id, out var known))
             {
-                errors.Add($"{path} : id en double « {id} ».");
+                if (known != shape)
+                {
+                    errors.Add($"{path} : id en double « {id} » avec un contenu différent (un objet partagé doit être identique).");
+                }
+
+                return; // objet partagé déjà parcouru : sous-arbre identique
             }
+
+            ids[id] = shape;
 
             var keys = new HashSet<string>(StringComparer.Ordinal);
             foreach (var property in (JsonArray)node["properties"]!)
@@ -111,9 +120,18 @@ internal static class GenericEnvelopeChecks
             Walk(node!, "objects", 0);
         }
 
-        errors.AddRange(refs.Where(r => !ids.Contains(r.To)).Select(r => $"{r.From} : la référence « {r.To} » ne désigne aucun objet."));
+        errors.AddRange(refs.Where(r => !ids.ContainsKey(r.To)).Select(r => $"{r.From} : la référence « {r.To} » ne désigne aucun objet."));
         return errors;
     }
+
+    /// <summary>Forme canonique d'un nœud (clés triées), comme <c>canonical</c> de la plateforme : sert à comparer deux objets de même id.</summary>
+    private static string Canonical(JsonNode? node) => node switch
+    {
+        JsonObject o => "{" + string.Join(",", o.OrderBy(p => p.Key, StringComparer.Ordinal).Select(p => $"{JsonSerializer.Serialize(p.Key)}:{Canonical(p.Value)}")) + "}",
+        JsonArray a => "[" + string.Join(",", a.Select(Canonical)) + "]",
+        null => "null",
+        _ => node.ToJsonString(),
+    };
 
     /// <summary>Valeur numérique d'un nœud JSON, entier ou décimal.</summary>
     private static double Number(JsonNode node) =>

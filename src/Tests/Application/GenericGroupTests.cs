@@ -119,4 +119,41 @@ public sealed class GenericGroupTests
         GenericEnvelopeChecks.AssertValid(envelope);
         Assert.Equal("Group", Prop(Find(envelope, "room-100-portes"), "Category"));
     }
+
+    [Fact]
+    public void ElementInThreeRooms_IsRepeatedIdenticalUnderEach_AndEveryRoomContainsIt()
+    {
+        var shared = Item("7", "Gaine", ElementRoomRelation.In);
+        var result = GenericFixtures.Result();
+        var rooms = result.Rooms.Select(r => r with { Doors = null, Equipment = [shared], Terminals = null }).ToList();
+        var envelope = Envelope(result with { Rooms = rooms });
+
+        var copies = GenericEnvelopeChecks.AllObjects(envelope).Where(o => Id(o) == "element-equip-uid-7").ToList();
+
+        Assert.Equal(3, copies.Count);
+        Assert.All(copies, c => Assert.Equal(copies[0].ToJsonString(), c.ToJsonString()));
+        Assert.Equal(["room-100", "room-101", "room-102"], copies[0]["properties"]!.AsArray().Where(p => p!["key"]!.GetValue<string>() == "room").Select(p => p!["value"]!.GetValue<string>()));
+        foreach (var room in new[] { "room-100", "room-101", "room-102" })
+        {
+            Assert.Contains("element-equip-uid-7", ChildIds(Find(envelope, room + "-equipements")));
+            Assert.Equal(["element-equip-uid-7"], Find(envelope, room)["properties"]!.AsArray().Where(p => p!["key"]!.GetValue<string>() == "contains").Select(p => p!["value"]!.GetValue<string>()));
+        }
+
+        GenericEnvelopeChecks.AssertValid(envelope);
+    }
+
+    [Fact]
+    public void DoorBetweenTwoRooms_KeepsRoomFromAndRoomToOnEveryCopy()
+    {
+        var envelope = Envelope(GenericFixtures.Result());
+
+        var copies = GenericEnvelopeChecks.AllObjects(envelope).Where(o => Id(o) == "element-door-uid-5001").ToList();
+
+        Assert.Equal(2, copies.Count);
+        Assert.All(copies, c =>
+        {
+            Assert.Equal("room-100", c["properties"]!.AsArray().Single(p => p!["key"]!.GetValue<string>() == "room_from")!["value"]!.GetValue<string>());
+            Assert.Equal("room-101", c["properties"]!.AsArray().Single(p => p!["key"]!.GetValue<string>() == "room_to")!["value"]!.GetValue<string>());
+        });
+    }
 }
