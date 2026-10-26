@@ -94,7 +94,7 @@ public sealed class RoomParameterReader(RevitExecutionContext context, IUnitConv
         var levelId = element.LevelId;
         var level = levelId is not null && levelId != ElementId.InvalidElementId ? document.GetElement(levelId) as Level : null;
         builder.Level(
-            level is null ? null : new LevelRef(Id(level.Id), level.UniqueId, level.Name),
+            level is null ? null : new LevelRef(Id(level.Id), level.UniqueId, level.Name) { ElevationM = ElevationM(level) },
             levelId is null || levelId == ElementId.InvalidElementId ? null : levelId.Value);
 
         var isPlaced = element.Location is not null;
@@ -234,6 +234,9 @@ public sealed class RoomParameterReader(RevitExecutionContext context, IUnitConv
 
         return document.GetElement(phaseId) is Phase phase ? new ElementRef(Id(phase.Id), phase.Name) : null;
     }
+
+    /// <summary>Altitude du niveau en mètres ; null si la valeur n'est pas finie.</summary>
+    private double? ElevationM(Level level) => double.IsFinite(level.Elevation) ? units.ToMeters(level.Elevation) : null;
 
     private static string Id(ElementId id) => id.Value.ToString(System.Globalization.CultureInfo.InvariantCulture);
 

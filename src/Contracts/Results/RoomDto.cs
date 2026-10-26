@@ -125,7 +125,12 @@ public sealed record BoundingBoxMm(double MinX, double MinY, double MinZ, double
 public sealed record LevelRef(
     [property: JsonPropertyName("id_revit")] string ElementId,
     [property: JsonPropertyName("unique_id")] string UniqueId,
-    [property: JsonPropertyName("nom")] string Name);
+    [property: JsonPropertyName("nom")] string Name)
+{
+    /// <summary>Altitude du niveau (<c>Level.Elevation</c>) en mètres ; null si illisible. Jamais écrite dans <c>result.json</c> (sortie generic seulement).</summary>
+    [JsonIgnore]
+    public double? ElevationM { get; init; }
+}
 
 /// <summary>Référence de phase ou de variante.</summary>
 public sealed record ElementRef(

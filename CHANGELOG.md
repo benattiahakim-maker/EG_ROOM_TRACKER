@@ -21,6 +21,10 @@ Le format s'inspire de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/).
 
 ### Modifié
 
+- **Sortie `generic` : niveaux à la racine** : l'arbre commence par un objet « Niveau » par niveau Revit ayant au moins un local exporté,
+  trié par altitude croissante (propriété `altitude`, en m ; altitude inconnue après les autres, puis « Sans niveau » en dernier). Les locaux
+  sont les enfants du niveau, en tri naturel du numéro (2 avant 10, casse ignorée, numéro vide en dernier, départage par ElementId).
+  `Category` = `Level`, `categorie_libelle` = `Niveau`. Autres formats inchangés. Documentation dans la PR suivante de la série.
 - **Journal : `roomsExported` exact** : en sortie `generic`, `roomsExported` (événement `EXTRACTION_SUMMARY`) compte les pièces présentes dans le
   résultat, sans celles des options de conception secondaires exclues ; `roomsCollected` garde le total lu. Même noms, schéma inchangé.
 - **Liens : nom de fichier seul** : `details.linkPath` (et `linkName`) de `LINK_MISSING` / `LINK_NOT_LOADED` ne gardent que le nom du fichier,

@@ -134,7 +134,8 @@ public class GenericSchemaTests
     public void Structure_RejectsDuplicateIds_UnresolvedRefs_DuplicateKeys_AndUnknownModelKeys()
     {
         var duplicateId = Example();
-        duplicateId["objects"]![1]!["id"] = duplicateId["objects"]![0]!["id"]!.GetValue<string>();
+        var rooms = GenericEnvelopeChecks.AllObjects(duplicateId).Where(o => o["id"]!.GetValue<string>().StartsWith("room-", StringComparison.Ordinal)).ToList();
+        rooms[1]["id"] = rooms[0]["id"]!.GetValue<string>();
         Assert.NotEmpty(GenericEnvelopeChecks.StructureErrors(duplicateId));
 
         var unresolved = Example();
@@ -142,7 +143,7 @@ public class GenericSchemaTests
         Assert.NotEmpty(GenericEnvelopeChecks.StructureErrors(unresolved));
 
         var duplicateKey = Example();
-        ((JsonArray)duplicateKey["objects"]![0]!["properties"]!).Add(JsonNode.Parse("""{"key":"numero","label":"N","type":"text","value":"x"}"""));
+        ((JsonArray)GenericEnvelopeChecks.AllObjects(duplicateKey).First(o => o["id"]!.GetValue<string>() == "room-100")["properties"]!).Add(JsonNode.Parse("""{"key":"numero","label":"N","type":"text","value":"x"}"""));
         Assert.NotEmpty(GenericEnvelopeChecks.StructureErrors(duplicateKey));
 
         var unknownModel = Example();
