@@ -58,6 +58,22 @@ public sealed class GenericGroupTests
     }
 
     [Fact]
+    public void GroupIds_GoThroughUnique_WhenAnIdAlreadyExists()
+    {
+        // Une pièce d'ElementId « 100-portes » prend l'id « room-100-portes » : le groupe Portes de la pièce 100 reçoit le suffixe -2.
+        var colliding = GenericFixtures.Room(7, "2", null) with { ElementId = "100-portes", UniqueId = "room-uid-colliding" };
+        var result = GenericFixtures.Result();
+        var rooms = new[] { colliding, GenericFixtures.Room(100, "1", null, [Item("1", "Porte", ElementRoomRelation.From)], [Item("2", "CTA")]) with { Terminals = [Item("3", "Diffuseur")] } };
+
+        var envelope = Envelope(result with { Rooms = rooms, Summary = result.Summary with { Counts = new RoomCounts(2, 2, 0) } });
+
+        var ids = GenericEnvelopeChecks.AllObjects(envelope).Select(Id).ToList();
+        Assert.Equal(["room-100-portes-2", "room-100-equipements", "room-100-terminaux"], ChildIds(Find(envelope, "room-100")));
+        Assert.Equal(ids.Count, ids.Distinct().Count());
+        GenericEnvelopeChecks.AssertValid(envelope);
+    }
+
+    [Fact]
     public void EmptyGroups_AreOmitted()
     {
         var envelope = Envelope(With(Room(null, [Item("2", "CTA")], null)));
