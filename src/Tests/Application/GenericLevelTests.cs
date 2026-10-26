@@ -58,6 +58,38 @@ public sealed class GenericLevelTests
     }
 
     [Fact]
+    public void LevelsWithTheSameElevation_AreTiedByNaturalName_ThenByElementId()
+    {
+        var result = With(
+            Room(1, "1", Level("12", "Étage", 3.0)),
+            Room(2, "2", Level("11", "Étage", 3.0)),
+            Room(3, "3", Level("90", "R+10", 3.0)),
+            Room(4, "4", Level("91", "R+2", 3.0)),
+            Room(5, "5", Level("92", "Sous-sol", -3.0)));
+
+        var roots = Envelope(result)["objects"]!.AsArray();
+
+        // Même altitude : « R+2 » avant « R+10 » (tri naturel), puis « Étage » ; deux « Étage » : ElementId 11 avant 12.
+        Assert.Equal(["Sous-sol", "R+2", "R+10", "Étage", "Étage"], roots.Select(o => o!["name"]!.GetValue<string>()));
+        Assert.Equal(["room-2", "room-1"], roots.Skip(3).Select(o => ChildIds(o!).Single()));
+    }
+
+    [Fact]
+    public void LevelsWithoutAFiniteElevation_ComeAfterTheOthers_AndBeforeNoLevel()
+    {
+        var result = With(
+            Room(1, "1", null),
+            Room(2, "2", Level("1", "A sans altitude", null)),
+            Room(3, "3", Level("2", "B NaN", double.NaN)),
+            Room(4, "4", Level("3", "Z haut", 100.0)));
+
+        var roots = Envelope(result)["objects"]!.AsArray();
+
+        Assert.Equal(["Z haut", "A sans altitude", "B NaN", "Sans niveau"], roots.Select(o => o!["name"]!.GetValue<string>()));
+        Assert.DoesNotContain(roots[2]!["properties"]!.AsArray(), p => p!["key"]!.GetValue<string>() == "altitude");
+    }
+
+    [Fact]
     public void Rooms_UnderALevel_AreInNaturalNumberOrder_TiedByElementId()
     {
         var level = Level("10", "RDC", 0.0);

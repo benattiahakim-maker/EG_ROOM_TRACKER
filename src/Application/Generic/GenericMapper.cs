@@ -218,6 +218,7 @@ public static class GenericMapper
         warnings.AddRange(AnomalyWarnings(result.Anomalies).Select(GenericWarning.Warning));
         var linkNote = MissingLinksNote(result.Anomalies);
         var volumeNote = VolumeNotComputedNote(result);
+        var manyRoomsNote = SharedElementsNote(elements);
         if (warnings.Count == 0 && linkNote is null && result.Summary.Status == ExtractionStatus.SucceededWithWarnings)
         {
             warnings.Add(GenericWarning.Warning("Extraction terminée avec avertissements ; voir les anomalies."));
@@ -234,6 +235,11 @@ public static class GenericMapper
         if (volumeNote is not null)
         {
             infos.Add(volumeNote);
+        }
+
+        if (manyRoomsNote is not null)
+        {
+            infos.Add(manyRoomsNote);
         }
 
         if (excludedRooms > 0)
@@ -259,7 +265,7 @@ public static class GenericMapper
 
     /// <summary>
     /// Porte, équipement ou terminal, une seule fois (clé : UniqueId), avec ses pièces dans l'ordre des pièces du résultat et la
-    /// relation (<c>from</c>, <c>to</c>, <c>in</c>) de chacune. <see cref="Spaces"/> : UniqueId des pièces ; la première le range.
+    /// relation (<c>from</c>, <c>to</c>, <c>in</c>) de chacune. <see cref="Spaces"/> : UniqueId des pièces ; l'objet est répété sous chacune.
     /// </summary>
     private sealed record GenericElement(RoomElementDto Item, string Category, ElementKind Kind, List<(string Space, string Relation)> Rooms)
     {
@@ -367,10 +373,12 @@ public static class GenericMapper
             .Select(g => (Level: g.First().Room.Level, Rooms: g.OrderBy(r => r.Room.Number, NaturalOrder.Instance)
                 .ThenBy(r => r.Room.ElementId, Comparer<string>.Create(NaturalOrder.CompareElementIds)).Select(r => r.Object).ToList()))
             .ToList();
+        // Ordre des niveaux : altitude croissante ; à altitude égale, nom (tri naturel) puis ElementId. Un niveau sans altitude lisible
+        // (null ou non finie) vient après tous ceux qui en ont une, mais avant « Sans niveau » (ajouté en dernier plus bas).
         var levels = groups
             .Where(g => g.Level is not null)
             .OrderBy(g => g.Level!.ElevationM is { } e && double.IsFinite(e) ? 0 : 1)
-            .ThenBy(g => g.Level!.ElevationM ?? 0)
+            .ThenBy(g => g.Level!.ElevationM is { } e && double.IsFinite(e) ? e : 0)
             .ThenBy(g => g.Level!.Name, NaturalOrder.Instance)
             .ThenBy(g => g.Level!.ElementId, Comparer<string>.Create(NaturalOrder.CompareElementIds))
             .Select(g => LevelObject(g.Level, g.Rooms, used))
@@ -544,15 +552,20 @@ public static class GenericMapper
         AddNumber(p, "hauteur", "Hauteur de passage libre", item.HeightM, "m", GenericGroups.Dimensions);
         AddText(p, "source_dimensions", "Source des dimensions", item.DimensionSource, GenericGroups.Dimensions);
 
-        // Pièces : « room » pour chacune ; une porte précise aussi son côté (relation from / to de result.json).
-        foreach (var space in element.Spaces)
+        // Pièces : « room » pour chacune ; une porte précise aussi son côté (relation from / to de result.json). Ordre explicite et stable,
+        // indépendant de l'ordre des pièces dans l'entrée : id de pièce en tri naturel (room-2 avant room-10), puis UniqueId.
+        var orderedRooms = element.Rooms
+            .OrderBy(r => roomIds[r.Space], NaturalOrder.Instance)
+            .ThenBy(r => r.Space, StringComparer.Ordinal)
+            .ToList();
+        foreach (var (space, _) in orderedRooms)
         {
             p.Add(Ref(GenericKeys.Room, "Pièce", roomIds[space], GenericGroups.Relations));
         }
 
         if (element.Category == TrcCategories.Door)
         {
-            foreach (var (space, relation) in element.Rooms)
+            foreach (var (space, relation) in orderedRooms)
             {
                 if (RelationKey(relation) is { } key)
                 {
@@ -615,17 +628,12 @@ public static class GenericMapper
                 : $"{g.Key} : {g.Count().ToString(CultureInfo.InvariantCulture)} anomalies (ex. {g.First().Message})");
 
     /// <summary>
-    /// Information unique <c>VOLUME_NOT_COMPUTED</c> (document sans calcul des volumes) : nombre de pièces exportées sans volume ; null si
-    /// l'anomalie est absente ou si aucune pièce exportée n'est concernée. Aucun objet anomalie : seulement cette information.
+    /// Information unique <c>VOLUME_NOT_COMPUTED</c> (document sans calcul des volumes) : nombre de pièces sans volume (celui de
+    /// l'anomalie, lu par <see cref="DocumentAnomalies.VolumeNotComputedRooms"/>) ; null si l'anomalie est absente ou si aucune pièce n'est concernée. Aucun objet anomalie : seulement cette information.
     /// </summary>
     private static GenericWarning? VolumeNotComputedNote(ExtractionResult result)
     {
-        if (!result.Anomalies.Any(a => a.Code == DocumentAnomalyCodes.VolumeNotComputed))
-        {
-            return null;
-        }
-
-        var rooms = result.Rooms.Count(r => r.VolumeStatus == VolumeStatus.NotComputed);
+        var rooms = DocumentAnomalies.VolumeNotComputedRooms(result.Anomalies) ?? 0; // même nombre que le journal (un seul calcul)
         return rooms == 0 ? null : GenericWarning.Info(DocumentAnomalyCodes.VolumeNotComputed, DocumentAnomalies.VolumeNotComputedMessage(rooms));
     }
 
@@ -644,6 +652,27 @@ public static class GenericMapper
 
         return [.. kept, .. infos];
     }
+
+    /// <summary>
+    /// Garde-fou de taille : un élément est répété sous chacune de ses pièces, donc un élément partagé par très nombreuses pièces alourdit le
+    /// fichier. Au-delà de <see cref="SharedElementRoomThreshold"/> pièces pour un élément, UNE seule information (code, nombre d'éléments
+    /// concernés, seuil) ; les répétitions ne sont jamais limitées. Null s'il n'y en a aucun.
+    /// </summary>
+    private static GenericWarning? SharedElementsNote(IReadOnlyList<GenericElement> elements)
+    {
+        var many = elements.Count(e => e.Rooms.Count > SharedElementRoomThreshold);
+        return many == 0
+            ? null
+            : GenericWarning.Info(
+                SharedElementManyRoomsCode,
+                $"{SharedElementManyRoomsCode} : {many.ToString(CultureInfo.InvariantCulture)} élément(s) répété(s) sous plus de {SharedElementRoomThreshold.ToString(CultureInfo.InvariantCulture)} pièces (seuil : {SharedElementRoomThreshold.ToString(CultureInfo.InvariantCulture)} pièces par élément) ; chaque pièce garde son exemplaire, le fichier est plus volumineux.");
+    }
+
+    /// <summary>Nombre de pièces par élément au-delà duquel l'information <see cref="SharedElementManyRoomsCode"/> est écrite.</summary>
+    internal const int SharedElementRoomThreshold = 20;
+
+    /// <summary>Code de l'information de garde-fou sur les éléments répétés sous beaucoup de pièces.</summary>
+    internal const string SharedElementManyRoomsCode = "SHARED_ELEMENT_MANY_ROOMS";
 
     /// <summary>Information unique <c>LINK_MISSING</c> qui nomme tous les liens Revit absents (sans doublon, dans l'ordre) ; null s'il n'y en a pas.</summary>
     private static GenericWarning? MissingLinksNote(IReadOnlyList<AnomalyDto> anomalies)

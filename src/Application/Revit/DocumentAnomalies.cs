@@ -14,6 +14,23 @@ public static class DocumentAnomalies
         $"{rooms.ToString(System.Globalization.CultureInfo.InvariantCulture)} pièce(s) sans volume calculé : calcul des volumes désactivé dans le document (volumeM3 exporté à null ; mode preserve).";
 
     /// <summary>
+    /// Nombre de pièces de l'anomalie <c>VOLUME_NOT_COMPUTED</c> (<c>Details["roomsAffected"]</c>), seul calcul du nombre : le journal et
+    /// l'enveloppe generic le lisent ici et écrivent donc le même message. Null si l'anomalie est absente.
+    /// </summary>
+    public static int? VolumeNotComputedRooms(IEnumerable<AnomalyDto> anomalies)
+    {
+        var anomaly = anomalies.FirstOrDefault(a => a.Code == DocumentAnomalyCodes.VolumeNotComputed);
+        if (anomaly is null)
+        {
+            return null;
+        }
+
+        return anomaly.Details.TryGetValue("roomsAffected", out var count) && count is not null
+            ? Convert.ToInt32(count, System.Globalization.CultureInfo.InvariantCulture)
+            : 0;
+    }
+
+    /// <summary>
     /// Nom de fichier seul (après le dernier <c>/</c> ou <c>\</c>) : un chemin de lien n'est jamais écrit dans un résultat, il vient
     /// de la machine d'origine. Null ou vide : null.
     /// </summary>

@@ -788,10 +788,8 @@ public sealed class RoomExtractionService
         });
 
         // Comme les liens absents : un message lisible dans le journal (même texte que l'information de result.generic.json).
-        var volume = anomalies.FirstOrDefault(a => a.Code == DocumentAnomalyCodes.VolumeNotComputed);
-        if (volume is not null)
+        if (DocumentAnomalies.VolumeNotComputedRooms(anomalies) is { } affected)
         {
-            var affected = volume.Details.TryGetValue("roomsAffected", out var count) ? Convert.ToInt32(count, CultureInfo.InvariantCulture) : 0;
             _log.Info(LogEventCodes.VolumeNotComputed, Stages.Quality, DocumentAnomalies.VolumeNotComputedMessage(affected));
         }
     }
