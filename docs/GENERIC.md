@@ -8,7 +8,8 @@ Source de vérité : `docs/frontend-contract.md` et `src/envelope.ts` du backend
 Implémentation : `src/Contracts/Generic` (DTO), `src/Application/Generic/GenericMapper.cs` (conversion pure, sans Revit ni fichier),
 `GenericExportService.cs` (écriture), orchestration dans `src/Application/RoomExtractionService.cs`. Schéma : `docs/schema/generic.schema.json`.
 Exemples : `docs/examples/generic.example.json` (sortie), `docs/examples/settings.generic.example.json` (réglages). Tests :
-`GenericMapperTests`, `GenericSchemaTests`, `GenericExportTests`, sans Revit.
+`GenericMapperTests`, `GenericLevelTests`, `GenericGroupTests`, `GenericSharedElementTests`, `GenericVolumeInfoTests`, `GenericSchemaTests`,
+`GenericExportTests`, sans Revit.
 
 ## Réglage
 
@@ -45,7 +46,16 @@ Racine : `contractVersion` (`1.0`), `serviceId` (`pieces-roomtracker`), `status`
   **`VOLUME_NOT_COMPUTED`** (document dont le calcul des volumes est désactivé) suit la même règle : **une seule information**
   `{ "severity": "info", "code": "VOLUME_NOT_COMPUTED", "message": "N pièce(s) sans volume calculé : calcul des volumes désactivé dans le document (volumeM3 exporté à null ; mode preserve)." }`
   (N = pièces sans volume, `roomsAffected` de l'anomalie, le même nombre que le journal), jamais `partial`, aucun objet « Anomalie » ; le même texte est écrit dans `log.jsonl` (événement `VOLUME_NOT_COMPUTED`, après `ANOMALIES_DETECTED`).
-  `warnings[]` ne dépasse jamais 20 éléments : les informations sont toujours gardées, les avertissements en trop sont remplacés par un dernier avertissement « N autre(s) avertissement(s) non détaillé(s) ».
+  **`SHARED_ELEMENT_MANY_ROOMS`** (garde-fou de taille) : un élément étant répété sous chacune de ses pièces, un élément contenu dans **plus de
+  20 pièces** alourdit le fichier (un élément dans 200 pièces pèse environ 11 Mo). L'extracteur écrit alors **une seule information pour tout le
+  garde-fou**, quel que soit le nombre d'éléments concernés :
+  `{ "severity": "info", "code": "SHARED_ELEMENT_MANY_ROOMS", "message": "SHARED_ELEMENT_MANY_ROOMS : N élément(s) répété(s) sous plus de 20 pièces (seuil : 20 pièces par élément) ; chaque pièce garde son exemplaire, le fichier est plus volumineux." }`
+  (N = nombre d'éléments au-dessus du seuil). Elle ne rend jamais l'enveloppe `partial`, et **les répétitions ne sont pas limitées** : chaque pièce
+  garde tous ses éléments. Aucune information pour un élément dans 20 pièces ou moins.
+  **Plafond.** `warnings[]` ne dépasse jamais **20 éléments** (limite de la plateforme), avertissements et informations ensemble : toutes les
+  informations (`LINK_MISSING`, `VOLUME_NOT_COMPUTED`, `DESIGN_OPTIONS_EXCLUDED`, `SHARED_ELEMENT_MANY_ROOMS`) comptent dans les 20 et sont
+  toujours gardées ; les avertissements en trop sont remplacés par un dernier avertissement « N autre(s) avertissement(s) non détaillé(s) ».
+  Avec peu d'informations (4 au plus), il reste donc au moins 16 places pour les avertissements.
   Ce format demande que la plateforme (validation) et le site acceptent les objets dans `warnings[]` ; un texte seul reste valide.
 - **`models[]`** : `main` (le RVT principal, titre = nom du fichier sans extension) et `link-1`, `link-2`… pour les modèles liés dont un
   élément est exporté. `urn` est **vide** : le plugin ne connaît pas l'URN de conversion (voir « Écarts »).
@@ -71,11 +81,12 @@ anomalies de portée document restantes (ex. LINK_NOT_LOADED), puis « Fichiers 
 
 - **Niveau** : un objet par niveau Revit qui a au moins une pièce exportée. `id` = `level-{UniqueId}`, `name` = nom du niveau,
   `Category` = `Level`, `categorie_libelle` = `Niveau`, `altitude` (`number`, `m`, `Level.Elevation`) quand elle est connue. Tri par altitude
-  croissante ; un niveau sans altitude lisible vient après les niveaux avec altitude, puis « Sans niveau » (`level-none`, pour les pièces sans
-  niveau) est toujours le dernier. Une pièce est listée **une seule fois**, sous son niveau. L'altitude n'est pas écrite dans `result.json`.
+  croissante, converties de pieds en mètres (`Level.Elevation`) ; à altitude égale, tri par nom puis `ElementId`. Un niveau sans altitude lisible
+  (valeur absente ou non finie) vient après les niveaux avec altitude, puis « Sans niveau » (`level-none`, pour les pièces sans niveau) est toujours
+  le dernier. Une pièce est listée **une seule fois**, sous son niveau. L'altitude n'est pas écrite dans `result.json`.
 - **Pièces d'un niveau** : tri **naturel** du numéro (2 avant 10, `a2` avant `A10`, casse ignorée, nombres comparés comme des nombres) ; un
   numéro vide vient en dernier ; à numéro égal, tri par `ElementId`.
-- **Groupes** : objets de regroupement (`name` + `children`), `id` = `{id de la pièce}-portes`, `-equipements`, `-terminaux`, `Category` = `Group`,
+- **Groupes** : objets de regroupement (`name` + `children`), `id` = `{id de la pièce}-portes`, `-equipements`, `-terminaux` (suffixe `-2`, `-3`… si l'id existe déjà), `Category` = `Group`,
   `categorie_libelle` = `Portes` / `Équipements` / `Terminaux`, aucune autre propriété. Ordre fixe : Portes, Équipements, Terminaux ; un groupe
   vide est omis. Les terminaux ont leur propre groupe (décision). Enfants d'un groupe triés par nom (casse ignorée) puis `UniqueId`.
 - **Aucun code propre à RoomTracker** n'est nécessaire dans le backend ni le site : ce sont des objets génériques (nom, enfants, propriétés).
@@ -129,6 +140,8 @@ changent ni `result.json` ni le TRC.
 - **Objet partagé** : un élément contenu dans plusieurs pièces (une porte entre deux pièces, par exemple) est **répété sous chacune**, dans le
   groupe de sa famille : même `id` (`element-{UniqueId}`), contenu strictement identique (mêmes propriétés, mêmes `ref`). Le validateur de la
   plateforme accepte un `id` répété si le contenu est identique et ne parcourt le sous-arbre qu'une fois. `viewerId` = son `UniqueId`.
+  Les `ref` `room` d'un élément partagé sont triées de façon stable : id de pièce en tri naturel (`room-2` avant `room-10`), puis `UniqueId`,
+  quel que soit l'ordre d'entrée. Au-delà de 20 pièces par élément, voir l'information `SHARED_ELEMENT_MANY_ROOMS` plus haut.
 - L'objet pointe **toutes** ses pièces par des `ref` de clé `room` (répétée), la même liste sous chaque parent. Une porte ajoute `room_from` et
   `room_to` (côté `from` et `to` de la porte). Chaque pièce pointe tous ses éléments par des `ref` `contains`.
 - Un élément d'un modèle lié porte `modelKey` (`link-n`), `modele_lie` (`true`) et `lien` (nom du lien) ; sa `box` n'est pas exportée.
@@ -153,7 +166,7 @@ Les fichiers du résultat que le plugin sait désigner sont des propriétés `fi
    (`conversion.urn` du traitement) avant de valider, sinon l'enveloppe est refusée (`RESULT_INVALID`). Le plugin ne le connaît pas.
 2. **`ref` sans rôle.** Une propriété `ref` n'a que `value` (l'`id` cible) : le rôle est porté par la **clé** (`room`, `room_from`, `room_to`,
    `contains`).
-3. **Objet partagé.** Pas d'écart : comme le prévoit la spécification, l'objet identique (même `id`, même contenu) est répété sous chaque
+3. **Objet partagé.** Pas d'écart avec la spécification : comme le prévoit la spécification, l'objet identique (même `id`, même contenu) est répété sous chaque
    parent ; les `ref` `room`, `room_from`, `room_to`, `contains` restent en plus.
 4. **TRC et ZIP.** Avec `generic` seul, aucun TRC n'est écrit et le plugin ne connaît ni le nom ni l'URL du ZIP : ils ne sont pas des propriétés
    `file`. `GenericMapContext.ResultFiles` sait les lister si une option future écrit les deux.
@@ -161,4 +174,5 @@ Les fichiers du résultat que le plugin sait désigner sont des propriétés `fi
 
 ## Limites
 
-Non validé sur un vrai Revit ni dans Design Automation (aucun test APS payant dans cette étape).
+Non validé sur un vrai Revit ni dans Design Automation (aucun test APS payant dans cette étape). En particulier, la lecture réelle de
+`Level.Elevation` (pieds vers mètres) n'est testée qu'avec un convertisseur factice ; à vérifier à la main sur un vrai modèle.

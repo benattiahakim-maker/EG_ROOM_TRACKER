@@ -23,14 +23,16 @@ Le format s'inspire de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/).
 
 - **Docs `generic`** : `GENERIC.md` décrit l'arbre (Niveau → pièce → groupes Portes/Équipements/Terminaux → éléments, tri par altitude et tri
   naturel, « Sans niveau »), l'objet partagé répété identique (fin de l'ancien écart n°3) et `contains` ; `NOUVEAU-SERVICE.md` précise la règle
-  d'`id` répété. `generic.example.json` est déjà régénéré dans les PR du code ; `docs/recette/expected` (result.json) n'est pas concerné.
+  d'`id` répété, décrit l'information `SHARED_ELEMENT_MANY_ROOMS` (une seule, code, nombre d'éléments, seuil de 20 pièces par élément, comptée
+  dans le plafond de 20 de `warnings[]`) et le tri des niveaux (altitude égale : nom puis `ElementId`). `validate_examples.py` contrôle aussi `warnings[]`
+  (20 au plus, 400 caractères, code valide, une information par code). `generic.example.json` est déjà régénéré dans les PR du code ; `docs/recette/expected` (result.json) n'est pas concerné.
 - **Sortie `generic` : `VOLUME_NOT_COMPUTED` en une information** : l'anomalie (info, portée document) n'est plus un objet « Anomalie » ;
   elle devient une seule information `{severity: info, code: VOLUME_NOT_COMPUTED, message: "N pièce(s) sans volume calculé…"}` dans
   `warnings[]` (jamais `partial`), comme `LINK_MISSING`. Même message dans `log.jsonl` (événement `VOLUME_NOT_COMPUTED`). `warnings[]` est
   plafonné à 20 éléments au total (limite de la plateforme) : les informations (`VOLUME_NOT_COMPUTED`, `LINK_MISSING`,
   `DESIGN_OPTIONS_EXCLUDED`, `SHARED_ELEMENT_MANY_ROOMS`) comptent dans les 20 et sont toujours gardées ; les avertissements en trop sont
-  remplacés par un dernier avertissement qui les compte. Le nombre de pièces est calculé une seule fois (journal et enveloppe identiques). Les autres anomalies document (ex. `LINK_NOT_LOADED`) restent des objets racines, après
-  les objets « Niveau ». `result.json` (TRC) inchangé.
+  remplacés par un dernier avertissement qui les compte. Le nombre de pièces est calculé une seule fois (journal et enveloppe identiques). Les autres anomalies document (ex. `LINK_NOT_LOADED`) restent
+  des objets racines, après les objets « Niveau ». `result.json` (TRC) inchangé.
 - **Sortie `generic` : garde-fou sur les éléments très partagés** : un élément étant répété sous chacune de ses pièces, un élément contenu
   dans plus de 20 pièces alourdit le fichier. Une **seule** information `SHARED_ELEMENT_MANY_ROOMS` dans `warnings[]` (code, nombre
   d'éléments concernés, seuil de 20 pièces par élément), jamais `partial` ; les répétitions ne sont pas limitées. Les `ref` `room`
