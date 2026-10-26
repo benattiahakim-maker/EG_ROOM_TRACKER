@@ -48,7 +48,7 @@ Exemple :
 ## Événements minimaux
 
 `EXTRACTION_STARTED`, `CONFIGURATION_VALIDATED`, `DOCUMENT_ACCESSIBLE`, `COLLECTION_COMPLETED`, `ANOMALIES_DETECTED`
-(compteur agrégé par code), `EXPORT_COMPLETED`, `EXTRACTION_FAILED` (avec `data.errorCode`), `EXTRACTION_SUMMARY`
+(compteur agrégé par code), `VOLUME_NOT_COMPUTED` (seulement si le calcul des volumes est désactivé, même texte que l'enveloppe generic quand N > 0 ; voir plus bas), `EXPORT_COMPLETED`, `EXTRACTION_FAILED` (avec `data.errorCode`), `EXTRACTION_SUMMARY`
 (statut au format de `result.json`, par exemple `succeededWithWarnings`, compteurs, erreurs, durée). Dans `data`,
 `roomsCollected` est le nombre de pièces lues dans le document et `roomsExported` le nombre de pièces réellement présentes dans le résultat :
 en sortie `generic`, les pièces d'options de conception secondaires exclues (`includeSecondaryDesignOptions` : `false`) ne sont pas comptées
@@ -78,9 +78,13 @@ par le filtre de phase, filtre appliqué). Une phase demandée absente du docume
 
 Événement `VOLUME_NOT_COMPUTED` (Info, étape `quality`, au plus une ligne, juste après `ANOMALIES_DETECTED`) : le document a le calcul
 des volumes désactivé (mode `preserve`). Le message est `N pièce(s) sans volume calculé : calcul des volumes désactivé dans le document
-(volumeM3 exporté à null ; mode preserve).` ; il est **identique** à l'information `VOLUME_NOT_COMPUTED` de `warnings[]` dans
+(volumeM3 exporté à null ; mode preserve).` ; il est **identique quand N > 0** à l'information `VOLUME_NOT_COMPUTED` de `warnings[]` dans
 `result.generic.json` (même nombre N, lu une seule fois dans `roomsAffected` de l'anomalie document `VOLUME_NOT_COMPUTED`). Aucune ligne
 si le calcul est actif ou si le mode `compute` a échoué (c'est alors `VOLUME_COMPUTE_FAILED`). `result.json` garde l'anomalie document.
+
+Cas limite : N = 0. La ligne est écrite dès que l'anomalie document `VOLUME_NOT_COMPUTED` existe ; `roomsAffected` absent compte pour 0. Le
+journal écrit alors « 0 pièce(s) sans volume calculé… », alors que l'information de `result.generic.json` est omise quand N vaut 0. Comportement
+actuel, volontairement inchangé ici (ne pas écrire la ligne quand N = 0 est une décision à part).
 
 En échec, `EXTRACTION_FAILED` puis `EXTRACTION_SUMMARY` restent écrits et le
 journal est vidé : le rapport APS reste exploitable.

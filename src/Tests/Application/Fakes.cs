@@ -34,6 +34,9 @@ internal sealed class Pipeline
     public Exception? CloseException { get; set; }
     public bool ThrowOnErrorLog { get; set; }
     public bool ReverseQualityOrder { get; set; }
+
+    /// <summary>Détails de l'anomalie document VOLUME_NOT_COMPUTED produite par le faux contrôle qualité (null : aucun, comme avant).</summary>
+    public IReadOnlyDictionary<string, object?>? VolumeAnomalyDetails { get; set; }
     public ExtractionStatus QualityStatus { get; set; } = ExtractionStatus.Succeeded;
     public Exception? ExportException { get; set; }
     public IReadOnlyList<AnomalyDto> SharedParameterAnomalies { get; set; } = [];
@@ -133,6 +136,7 @@ internal sealed class Pipeline
                 Severity = AnomalySeverity.Info,
                 Scope = AnomalyScope.Document,
                 Message = "Volumes non calculés.",
+                Details = p.VolumeAnomalyDetails ?? new Dictionary<string, object?>(),
             };
             IReadOnlyList<RoomDto> ordered = p.ReverseQualityOrder ? rooms.Reverse().ToList() : rooms;
             return new QualityReport(ordered, [.. anomalies, documentAnomaly], p.QualityStatus);

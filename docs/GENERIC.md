@@ -45,7 +45,7 @@ Racine : `contractVersion` (`1.0`), `serviceId` (`pieces-roomtracker`), `status`
   un projet envoyé sans ses liens est `done`. Au-delà de 400 caractères, la liste est coupée sur un nom entier et finit par « … et K autre(s) ». Les liens absents ne produisent **aucun** objet « Anomalie » (`anomaly-N`) : seule cette information les dit. Les autres anomalies (par exemple `LINK_NOT_LOADED`) restent des objets.
   **`VOLUME_NOT_COMPUTED`** (document dont le calcul des volumes est désactivé) suit la même règle : **une seule information**
   `{ "severity": "info", "code": "VOLUME_NOT_COMPUTED", "message": "N pièce(s) sans volume calculé : calcul des volumes désactivé dans le document (volumeM3 exporté à null ; mode preserve)." }`
-  (N = pièces sans volume, `roomsAffected` de l'anomalie, le même nombre que le journal), jamais `partial`, aucun objet « Anomalie » ; le même texte est écrit dans `log.jsonl` (événement `VOLUME_NOT_COMPUTED`, après `ANOMALIES_DETECTED`).
+  (N = pièces sans volume, `roomsAffected` de l'anomalie, le même nombre que le journal), jamais `partial`, aucun objet « Anomalie » ; le même texte est écrit dans `log.jsonl` (événement `VOLUME_NOT_COMPUTED`, après `ANOMALIES_DETECTED`) quand N > 0 (cas limite N = 0 : voir `LOGS.md`).
   **`SHARED_ELEMENT_MANY_ROOMS`** (garde-fou de taille) : un élément étant répété sous chacune de ses pièces, un élément contenu dans **plus de
   20 pièces** alourdit le fichier (un élément dans 200 pièces pèse environ 11 Mo). L'extracteur écrit alors **une seule information pour tout le
   garde-fou**, quel que soit le nombre d'éléments concernés :
@@ -80,12 +80,13 @@ anomalies de portée document restantes (ex. LINK_NOT_LOADED), puis « Fichiers 
 ```
 
 - **Niveau** : un objet par niveau Revit qui a au moins une pièce exportée. `id` = `level-{UniqueId}`, `name` = nom du niveau,
-  `Category` = `Level`, `categorie_libelle` = `Niveau`, `altitude` (`number`, `m`, `Level.Elevation`) quand elle est connue. Tri par altitude
-  croissante, converties de pieds en mètres (`Level.Elevation`) ; à altitude égale, tri par nom puis `ElementId`. Un niveau sans altitude lisible
+  `Category` = `Level`, `categorie_libelle` = `Niveau`, `altitude` (`number`, en `m`) quand elle est connue ; elle vient de `Level.Elevation`,
+  convertie de pieds en mètres. Tri par altitude croissante ; à altitude égale, tri par nom (naturel) puis par `ElementId` (comparaison numérique :
+  9 avant 10). Un niveau sans altitude lisible
   (valeur absente ou non finie) vient après les niveaux avec altitude, puis « Sans niveau » (`level-none`, pour les pièces sans niveau) est toujours
   le dernier. Une pièce est listée **une seule fois**, sous son niveau. L'altitude n'est pas écrite dans `result.json`.
 - **Pièces d'un niveau** : tri **naturel** du numéro (2 avant 10, `a2` avant `A10`, casse ignorée, nombres comparés comme des nombres) ; un
-  numéro vide vient en dernier ; à numéro égal, tri par `ElementId`.
+  numéro vide vient en dernier ; à numéro égal, tri par `ElementId` (comparaison numérique : 9 avant 10).
 - **Groupes** : objets de regroupement (`name` + `children`), `id` = `{id de la pièce}-portes`, `-equipements`, `-terminaux` (suffixe `-2`, `-3`… si l'id existe déjà), `Category` = `Group`,
   `categorie_libelle` = `Portes` / `Équipements` / `Terminaux`, aucune autre propriété. Ordre fixe : Portes, Équipements, Terminaux ; un groupe
   vide est omis. Les terminaux ont leur propre groupe (décision). Enfants d'un groupe triés par nom (casse ignorée) puis `UniqueId`.
@@ -140,8 +141,8 @@ changent ni `result.json` ni le TRC.
 - **Objet partagé** : un élément contenu dans plusieurs pièces (une porte entre deux pièces, par exemple) est **répété sous chacune**, dans le
   groupe de sa famille : même `id` (`element-{UniqueId}`), contenu strictement identique (mêmes propriétés, mêmes `ref`). Le validateur de la
   plateforme accepte un `id` répété si le contenu est identique et ne parcourt le sous-arbre qu'une fois. `viewerId` = son `UniqueId`.
-  Les `ref` `room` d'un élément partagé sont triées de façon stable : id de pièce en tri naturel (`room-2` avant `room-10`), puis `UniqueId`,
-  quel que soit l'ordre d'entrée. Au-delà de 20 pièces par élément, voir l'information `SHARED_ELEMENT_MANY_ROOMS` plus haut.
+  Les `ref` `room` d'un élément partagé sont triées de façon stable : id de pièce en tri naturel (`room-2` avant `room-10`), indépendamment de l'ordre d'entrée.
+  Les ids de pièces sont uniques et deux ids naturellement égaux n'existent pas avec des `ElementId` Revit (entiers) : aucun autre départage. Au-delà de 20 pièces par élément, voir l'information `SHARED_ELEMENT_MANY_ROOMS` plus haut.
 - L'objet pointe **toutes** ses pièces par des `ref` de clé `room` (répétée), la même liste sous chaque parent. Une porte ajoute `room_from` et
   `room_to` (côté `from` et `to` de la porte). Chaque pièce pointe tous ses éléments par des `ref` `contains`.
 - Un élément d'un modèle lié porte `modelKey` (`link-n`), `modele_lie` (`true`) et `lien` (nom du lien) ; sa `box` n'est pas exportée.

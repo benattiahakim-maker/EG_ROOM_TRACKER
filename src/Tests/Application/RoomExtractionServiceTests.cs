@@ -48,6 +48,32 @@ public class RoomExtractionServiceTests
     }
 
     [Fact]
+    public void Run_VolumeNotComputed_LogMessageIsTheSameAsTheGenericInfo()
+    {
+        var pipeline = new Pipeline { VolumeAnomalyDetails = new Dictionary<string, object?> { ["roomsAffected"] = 4 } };
+
+        pipeline.CreateService().Run(Pipeline.Request);
+
+        var log = Assert.Single(pipeline.Logs, l => l.EventCode == LogEventCodes.VolumeNotComputed);
+        var info = Assert.Single(EgRoomTracker.Application.Generic.GenericMapper.Map(pipeline.Exported!).Warnings, w => w.Code == "VOLUME_NOT_COMPUTED");
+        Assert.StartsWith("4 pièce(s)", log.Message, StringComparison.Ordinal);
+        Assert.Equal(log.Message, info.Message);
+    }
+
+    [Fact]
+    public void Run_VolumeNotComputed_WithoutRoomsAffected_LogsZeroRooms_WhileTheEnvelopeHasNoInfo()
+    {
+        // Comportement actuel (inchangé) : roomsAffected absent compte pour 0 ; le journal écrit la ligne, l'enveloppe omet l'information.
+        var pipeline = new Pipeline();
+
+        pipeline.CreateService().Run(Pipeline.Request);
+
+        var log = Assert.Single(pipeline.Logs, l => l.EventCode == LogEventCodes.VolumeNotComputed);
+        Assert.StartsWith("0 pièce(s) sans volume calculé", log.Message, StringComparison.Ordinal);
+        Assert.DoesNotContain(EgRoomTracker.Application.Generic.GenericMapper.Map(pipeline.Exported!).Warnings, w => w.Code == "VOLUME_NOT_COMPUTED");
+    }
+
+    [Fact]
     public void Run_DuplicateWithUnknownOptionSet_LogsOneWarningLine()
     {
         AnomalyDto Duplicate(long id, bool unknown) => new()

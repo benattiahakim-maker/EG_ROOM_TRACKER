@@ -553,10 +553,10 @@ public static class GenericMapper
         AddText(p, "source_dimensions", "Source des dimensions", item.DimensionSource, GenericGroups.Dimensions);
 
         // Pièces : « room » pour chacune ; une porte précise aussi son côté (relation from / to de result.json). Ordre explicite et stable,
-        // indépendant de l'ordre des pièces dans l'entrée : id de pièce en tri naturel (room-2 avant room-10), puis UniqueId.
+        // indépendant de l'ordre des pièces dans l'entrée : id de pièce en tri naturel (room-2 avant room-10). Les ids de pièces sont uniques
+        // (Unique) ; deux ids naturellement égaux n'existent pas avec des ElementId Revit (entiers), donc aucun départage supplémentaire.
         var orderedRooms = element.Rooms
             .OrderBy(r => roomIds[r.Space], NaturalOrder.Instance)
-            .ThenBy(r => r.Space, StringComparer.Ordinal)
             .ToList();
         foreach (var (space, _) in orderedRooms)
         {
