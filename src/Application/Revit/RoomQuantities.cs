@@ -55,6 +55,12 @@ public static class RoomQuantities
             : new RoomQuantityValues(area, height, volume, VolumeStatus.Computed);
     }
 
+    /// <summary>
+    /// Altitude d'un niveau (<c>Level.Elevation</c>, unités internes = pieds) en mètres, sans arrondi ; null si la valeur n'est pas finie
+    /// (<c>UnitUtils</c> lève sur NaN ou l'infini) : le niveau est alors trié après ceux qui ont une altitude.
+    /// </summary>
+    public static double? LevelElevationM(double rawElevation, IUnitConversionService units) => ConvertFinite(rawElevation, units.ToMeters);
+
     /// <summary>Conversion d'une valeur finie ; null pour une valeur absente, NaN ou infinie (UnitUtils lève sur une valeur non finie).</summary>
     internal static double? ConvertFinite(double? raw, Func<double, double> convert)
     {

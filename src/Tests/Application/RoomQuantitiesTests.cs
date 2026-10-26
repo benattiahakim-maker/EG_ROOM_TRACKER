@@ -20,6 +20,20 @@ public class RoomQuantitiesTests
 
     private static readonly IUnitConversionService Units = new FeetUnits();
 
+    [Theory]
+    [InlineData(0.0, 0.0)]
+    [InlineData(10.0, 3.048)]
+    [InlineData(-10.0, -3.048)]
+    public void LevelElevation_ConvertsFeetToMeters_WithoutRounding(double feet, double meters) =>
+        Assert.Equal(meters, RoomQuantities.LevelElevationM(feet, Units)!.Value, 12);
+
+    [Theory]
+    [InlineData(double.NaN)]
+    [InlineData(double.PositiveInfinity)]
+    [InlineData(double.NegativeInfinity)]
+    public void LevelElevation_NotFinite_IsNull_WithoutCallingTheConverter(double raw) =>
+        Assert.Null(RoomQuantities.LevelElevationM(raw, new ThrowingUnits()));
+
     [Fact]
     public void Computed_ConvertsAllQuantitiesWithoutRounding()
     {

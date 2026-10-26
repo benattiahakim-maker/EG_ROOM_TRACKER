@@ -357,10 +357,12 @@ public static class GenericMapper
             .Select(g => (Level: g.First().Room.Level, Rooms: g.OrderBy(r => r.Room.Number, NaturalOrder.Instance)
                 .ThenBy(r => r.Room.ElementId, Comparer<string>.Create(NaturalOrder.CompareElementIds)).Select(r => r.Object).ToList()))
             .ToList();
+        // Ordre des niveaux : altitude croissante ; à altitude égale, nom (tri naturel) puis ElementId. Un niveau sans altitude lisible
+        // (null ou non finie) vient après tous ceux qui en ont une, mais avant « Sans niveau » (ajouté en dernier plus bas).
         var levels = groups
             .Where(g => g.Level is not null)
             .OrderBy(g => g.Level!.ElevationM is { } e && double.IsFinite(e) ? 0 : 1)
-            .ThenBy(g => g.Level!.ElevationM ?? 0)
+            .ThenBy(g => g.Level!.ElevationM is { } e && double.IsFinite(e) ? e : 0)
             .ThenBy(g => g.Level!.Name, NaturalOrder.Instance)
             .ThenBy(g => g.Level!.ElementId, Comparer<string>.Create(NaturalOrder.CompareElementIds))
             .Select(g => LevelObject(g.Level, g.Rooms, used))
