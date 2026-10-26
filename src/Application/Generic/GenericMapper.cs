@@ -216,6 +216,7 @@ public static class GenericMapper
 
         warnings.AddRange(AnomalyWarnings(result.Anomalies).Select(GenericWarning.Warning));
         var linkNote = MissingLinksNote(result.Anomalies);
+        var manyRoomsNote = SharedElementsNote(elements);
         if (warnings.Count == 0 && linkNote is null && result.Summary.Status == ExtractionStatus.SucceededWithWarnings)
         {
             warnings.Add(GenericWarning.Warning("Extraction terminée avec avertissements ; voir les anomalies."));
@@ -226,6 +227,11 @@ public static class GenericMapper
         if (linkNote is not null)
         {
             warnings.Add(linkNote);
+        }
+
+        if (manyRoomsNote is not null)
+        {
+            warnings.Add(manyRoomsNote);
         }
 
         if (excludedRooms > 0)
@@ -249,7 +255,7 @@ public static class GenericMapper
 
     /// <summary>
     /// Porte, équipement ou terminal, une seule fois (clé : UniqueId), avec ses pièces dans l'ordre des pièces du résultat et la
-    /// relation (<c>from</c>, <c>to</c>, <c>in</c>) de chacune. <see cref="Spaces"/> : UniqueId des pièces ; la première le range.
+    /// relation (<c>from</c>, <c>to</c>, <c>in</c>) de chacune. <see cref="Spaces"/> : UniqueId des pièces ; l'objet est répété sous chacune.
     /// </summary>
     private sealed record GenericElement(RoomElementDto Item, string Category, ElementKind Kind, List<(string Space, string Relation)> Rooms)
     {
@@ -536,15 +542,20 @@ public static class GenericMapper
         AddNumber(p, "hauteur", "Hauteur de passage libre", item.HeightM, "m", GenericGroups.Dimensions);
         AddText(p, "source_dimensions", "Source des dimensions", item.DimensionSource, GenericGroups.Dimensions);
 
-        // Pièces : « room » pour chacune ; une porte précise aussi son côté (relation from / to de result.json).
-        foreach (var space in element.Spaces)
+        // Pièces : « room » pour chacune ; une porte précise aussi son côté (relation from / to de result.json). Ordre explicite et stable,
+        // indépendant de l'ordre des pièces dans l'entrée : id de pièce en tri naturel (room-2 avant room-10), puis UniqueId.
+        var orderedRooms = element.Rooms
+            .OrderBy(r => roomIds[r.Space], NaturalOrder.Instance)
+            .ThenBy(r => r.Space, StringComparer.Ordinal)
+            .ToList();
+        foreach (var (space, _) in orderedRooms)
         {
             p.Add(Ref(GenericKeys.Room, "Pièce", roomIds[space], GenericGroups.Relations));
         }
 
         if (element.Category == TrcCategories.Door)
         {
-            foreach (var (space, relation) in element.Rooms)
+            foreach (var (space, relation) in orderedRooms)
             {
                 if (RelationKey(relation) is { } key)
                 {
@@ -605,6 +616,27 @@ public static class GenericMapper
             .Select(g => g.Count() == 1
                 ? $"{g.Key} : {g.First().Message}"
                 : $"{g.Key} : {g.Count().ToString(CultureInfo.InvariantCulture)} anomalies (ex. {g.First().Message})");
+
+    /// <summary>
+    /// Garde-fou de taille : un élément est répété sous chacune de ses pièces, donc un élément partagé par très nombreuses pièces alourdit le
+    /// fichier. Au-delà de <see cref="SharedElementRoomThreshold"/> pièces pour un élément, UNE seule information (code, nombre d'éléments
+    /// concernés, seuil) ; les répétitions ne sont jamais limitées. Null s'il n'y en a aucun.
+    /// </summary>
+    private static GenericWarning? SharedElementsNote(IReadOnlyList<GenericElement> elements)
+    {
+        var many = elements.Count(e => e.Rooms.Count > SharedElementRoomThreshold);
+        return many == 0
+            ? null
+            : GenericWarning.Info(
+                SharedElementManyRoomsCode,
+                $"{SharedElementManyRoomsCode} : {many.ToString(CultureInfo.InvariantCulture)} élément(s) répété(s) sous plus de {SharedElementRoomThreshold.ToString(CultureInfo.InvariantCulture)} pièces (seuil : {SharedElementRoomThreshold.ToString(CultureInfo.InvariantCulture)} pièces par élément) ; chaque pièce garde son exemplaire, le fichier est plus volumineux.");
+    }
+
+    /// <summary>Nombre de pièces par élément au-delà duquel l'information <see cref="SharedElementManyRoomsCode"/> est écrite.</summary>
+    internal const int SharedElementRoomThreshold = 20;
+
+    /// <summary>Code de l'information de garde-fou sur les éléments répétés sous beaucoup de pièces.</summary>
+    internal const string SharedElementManyRoomsCode = "SHARED_ELEMENT_MANY_ROOMS";
 
     /// <summary>Information unique <c>LINK_MISSING</c> qui nomme tous les liens Revit absents (sans doublon, dans l'ordre) ; null s'il n'y en a pas.</summary>
     private static GenericWarning? MissingLinksNote(IReadOnlyList<AnomalyDto> anomalies)

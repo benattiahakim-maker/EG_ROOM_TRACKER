@@ -21,6 +21,10 @@ Le format s'inspire de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/).
 
 ### Modifié
 
+- **Sortie `generic` : garde-fou sur les éléments très partagés** : un élément étant répété sous chacune de ses pièces, un élément contenu
+  dans plus de 20 pièces alourdit le fichier. Une **seule** information `SHARED_ELEMENT_MANY_ROOMS` dans `warnings[]` (code, nombre
+  d'éléments concernés, seuil de 20 pièces par élément), jamais `partial` ; les répétitions ne sont pas limitées. Les `ref` `room`
+  (et `room_from`, `room_to`) d'un élément partagé sont triés de façon explicite et stable (id de pièce en tri naturel).
 - **Sortie `generic` : éléments sous chaque local qui les contient** : une porte entre deux locaux, ou un élément contenu dans plusieurs
   locaux, est répété sous chacun (même `id`, contenu identique : objet partagé accepté par le validateur de la plateforme) au lieu
   d'être rangé sous le premier seul ; les `ref` `room`, `room_from`, `room_to` restent identiques et chaque local pointe tous ses
