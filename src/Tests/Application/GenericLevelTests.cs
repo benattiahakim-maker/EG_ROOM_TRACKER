@@ -75,6 +75,30 @@ public sealed class GenericLevelTests
     }
 
     [Fact]
+    public void LevelsWithTheSameNameAndElevation_AreTiedByNumericElementId_NineBeforeTen()
+    {
+        var result = With(
+            Room(1, "1", Level("10", "Étage", 3.0)),
+            Room(2, "2", Level("9", "Étage", 3.0)));
+
+        var roots = Envelope(result)["objects"]!.AsArray();
+
+        // Comparaison numérique (9 < 10) et non textuelle ("10" < "9").
+        Assert.Equal(["room-2", "room-1"], roots.Select(o => ChildIds(o!).Single()));
+    }
+
+    [Fact]
+    public void RoomsWithTheSameNumber_AreTiedByNumericElementId_NineBeforeTen()
+    {
+        var level = Level("1", "RDC", 0.0);
+        var result = With(Room(10, "5", level), Room(9, "5", level));
+
+        var root = Envelope(result)["objects"]!.AsArray().Single()!;
+
+        Assert.Equal(["room-9", "room-10"], ChildIds(root));
+    }
+
+    [Fact]
     public void LevelsWithoutAFiniteElevation_ComeAfterTheOthers_AndBeforeNoLevel()
     {
         var result = With(

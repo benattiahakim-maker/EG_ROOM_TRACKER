@@ -81,7 +81,7 @@ anomalies de portée document restantes (ex. LINK_NOT_LOADED), puis « Fichiers 
 
 - **Niveau** : un objet par niveau Revit qui a au moins une pièce exportée. `id` = `level-{UniqueId}`, `name` = nom du niveau,
   `Category` = `Level`, `categorie_libelle` = `Niveau`, `altitude` (`number`, `m`, `Level.Elevation`) quand elle est connue. Tri par altitude
-  croissante, converties de pieds en mètres (`Level.Elevation`) ; à altitude égale, tri par nom puis `ElementId`. Un niveau sans altitude lisible
+  croissante (altitude `Level.Elevation` convertie de pieds en mètres) ; à altitude égale, tri par nom puis `ElementId`. Un niveau sans altitude lisible
   (valeur absente ou non finie) vient après les niveaux avec altitude, puis « Sans niveau » (`level-none`, pour les pièces sans niveau) est toujours
   le dernier. Une pièce est listée **une seule fois**, sous son niveau. L'altitude n'est pas écrite dans `result.json`.
 - **Pièces d'un niveau** : tri **naturel** du numéro (2 avant 10, `a2` avant `A10`, casse ignorée, nombres comparés comme des nombres) ; un
@@ -140,7 +140,7 @@ changent ni `result.json` ni le TRC.
 - **Objet partagé** : un élément contenu dans plusieurs pièces (une porte entre deux pièces, par exemple) est **répété sous chacune**, dans le
   groupe de sa famille : même `id` (`element-{UniqueId}`), contenu strictement identique (mêmes propriétés, mêmes `ref`). Le validateur de la
   plateforme accepte un `id` répété si le contenu est identique et ne parcourt le sous-arbre qu'une fois. `viewerId` = son `UniqueId`.
-  Les `ref` `room` d'un élément partagé sont triées de façon stable : id de pièce en tri naturel (`room-2` avant `room-10`), puis `UniqueId`,
+  Les `ref` `room` d'un élément partagé sont triées de façon stable : id de pièce en tri naturel (`room-2` avant `room-10`), (unique par pièce),
   quel que soit l'ordre d'entrée. Au-delà de 20 pièces par élément, voir l'information `SHARED_ELEMENT_MANY_ROOMS` plus haut.
 - L'objet pointe **toutes** ses pièces par des `ref` de clé `room` (répétée), la même liste sous chaque parent. Une porte ajoute `room_from` et
   `room_to` (côté `from` et `to` de la porte). Chaque pièce pointe tous ses éléments par des `ref` `contains`.

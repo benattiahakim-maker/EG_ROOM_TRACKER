@@ -112,22 +112,55 @@ public sealed class GenericVolumeInfoTests
         Assert.Equal(["info", "info"], envelope.Warnings.TakeLast(2).Select(w => w.Severity));
     }
 
+    // La fixture porte déjà 1 avertissement (pièce sans boîte) ; on y ajoute N avertissements d'anomalie et 1 information (VOLUME_NOT_COMPUTED).
+    // Les anomalies de gravité info ne sont jamais écrites comme avertissements.
     [Theory]
-    [InlineData(18, false)] // 18 avertissements + 2 informations = 20 : rien n'est coupé
-    [InlineData(19, true)] // 19 + 2 = 21 : un avertissement de moins, remplacé par un résumé
-    public void Cap_IsExactlyTwenty_WithoutLosingInfos(int warnings, bool summarized)
+    [InlineData(18, 20, false)] // 1 + 18 avertissements + 1 information = 20 pile : rien n'est coupé (un « < 20 » casserait ce cas)
+    [InlineData(19, 20, true)] // 1 + 19 + 1 = 21 : un avertissement de moins, remplacé par un résumé « 2 autre(s) » ; le total reste 20
+    public void Cap_IsExactlyTwenty_WithoutLosingInfos(int anomalyWarnings, int expectedCount, bool summarized)
     {
-        var anomalies = Enumerable.Range(1, warnings)
+        var anomalies = Enumerable.Range(1, anomalyWarnings)
             .Select(i => Rooms.RoomAnomaly($"CODE_{i:00}", "101", AnomalySeverity.Warning))
             .Append(Rooms.VolumeNotComputed(3))
-            .Append(Rooms.RoomAnomaly("LINK_MISSING_X", "101", AnomalySeverity.Info))
             .ToList();
-        var result = GenericFixtures.Result(anomalies: anomalies);
 
-        var envelope = GenericMapper.Map(result);
+        var envelope = GenericMapper.Map(GenericFixtures.Result(anomalies: anomalies));
 
-        Assert.True(envelope.Warnings.Count <= GenericWarning.MaxItems);
+        Assert.Equal(expectedCount, envelope.Warnings.Count);
         Assert.Equal(summarized, envelope.Warnings.Any(w => w.Message.Contains("autre(s) avertissement(s) non détaillé(s)", StringComparison.Ordinal)));
-        Assert.Contains(envelope.Warnings, w => w.Code == "VOLUME_NOT_COMPUTED");
+        Assert.Equal("VOLUME_NOT_COMPUTED", envelope.Warnings[^1].Code);
+        if (summarized)
+        {
+            Assert.Equal("2 autre(s) avertissement(s) non détaillé(s) ; voir result.json.", envelope.Warnings[^2].Message);
+        }
+    }
+
+    [Fact]
+    public void OmittedWarnings_AreCountedInTheSummary_AndTheCountAddsUp()
+    {
+        const int anomalyWarnings = 30;
+        var anomalies = Enumerable.Range(1, anomalyWarnings)
+            .Select(i => Rooms.RoomAnomaly($"CODE_{i:00}", "101", AnomalySeverity.Warning))
+            .Append(Rooms.VolumeNotComputed(3))
+            .ToList();
+
+        var envelope = GenericMapper.Map(GenericFixtures.Result(anomalies: anomalies));
+
+        // 31 avertissements (30 + pièce sans boîte) ; 19 places (20 moins l'information) : 18 gardés + 1 résumé qui compte les 13 autres.
+        var detailed = envelope.Warnings.Count(w => w.Severity == "warning" && !w.Message.Contains("autre(s)", StringComparison.Ordinal));
+        var summary = Assert.Single(envelope.Warnings, w => w.Message.Contains("autre(s) avertissement(s) non détaillé(s)", StringComparison.Ordinal));
+        Assert.Equal(18, detailed);
+        Assert.Equal("13 autre(s) avertissement(s) non détaillé(s) ; voir result.json.", summary.Message);
+        Assert.Equal(anomalyWarnings + 1, detailed + 13);
+        Assert.Equal(GenericWarning.MaxItems, envelope.Warnings.Count);
+    }
+
+    [Fact]
+    public void RoomsAffectedAbsent_CountsZero_AndGivesNoInfoInTheEnvelope()
+    {
+        var anomaly = Rooms.VolumeNotComputed(3) with { Details = new Dictionary<string, object?> { ["volumeMode"] = "preserve" } };
+
+        Assert.Equal(0, DocumentAnomalies.VolumeNotComputedRooms([anomaly]));
+        Assert.DoesNotContain(GenericMapper.Map(GenericFixtures.Result(anomalies: [anomaly])).Warnings, w => w.Code == "VOLUME_NOT_COMPUTED");
     }
 }
