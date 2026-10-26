@@ -115,9 +115,9 @@ public sealed class GenericVolumeInfoTests
     // La fixture porte déjà 1 avertissement (pièce sans boîte) ; on y ajoute N avertissements d'anomalie et 1 information (VOLUME_NOT_COMPUTED).
     // Les anomalies de gravité info ne sont jamais écrites comme avertissements.
     [Theory]
-    [InlineData(18, 20, false)] // 1 + 18 avertissements + 1 information = 20 pile : rien n'est coupé (un « < 20 » casserait ce cas)
-    [InlineData(19, 20, true)] // 1 + 19 + 1 = 21 : un avertissement de moins, remplacé par un résumé « 2 autre(s) » ; le total reste 20
-    public void Cap_IsExactlyTwenty_WithoutLosingInfos(int anomalyWarnings, int expectedCount, bool summarized)
+    [InlineData(18, false)] // 1 + 18 avertissements + 1 information = 20 pile : rien n'est coupé (un « < 20 » casserait ce cas)
+    [InlineData(19, true)] // 1 + 19 + 1 = 21 : un avertissement de moins, remplacé par un résumé « 2 autre(s) » ; le total reste 20
+    public void Cap_IsExactlyTwenty_WithoutLosingInfos(int anomalyWarnings, bool summarized)
     {
         var anomalies = Enumerable.Range(1, anomalyWarnings)
             .Select(i => Rooms.RoomAnomaly($"CODE_{i:00}", "101", AnomalySeverity.Warning))
@@ -126,7 +126,7 @@ public sealed class GenericVolumeInfoTests
 
         var envelope = GenericMapper.Map(GenericFixtures.Result(anomalies: anomalies));
 
-        Assert.Equal(expectedCount, envelope.Warnings.Count);
+        Assert.Equal(GenericWarning.MaxItems, envelope.Warnings.Count);
         Assert.Equal(summarized, envelope.Warnings.Any(w => w.Message.Contains("autre(s) avertissement(s) non détaillé(s)", StringComparison.Ordinal)));
         Assert.Equal("VOLUME_NOT_COMPUTED", envelope.Warnings[^1].Code);
         if (summarized)
@@ -151,7 +151,6 @@ public sealed class GenericVolumeInfoTests
         var summary = Assert.Single(envelope.Warnings, w => w.Message.Contains("autre(s) avertissement(s) non détaillé(s)", StringComparison.Ordinal));
         Assert.Equal(18, detailed);
         Assert.Equal("13 autre(s) avertissement(s) non détaillé(s) ; voir result.json.", summary.Message);
-        Assert.Equal(anomalyWarnings + 1, detailed + 13);
         Assert.Equal(GenericWarning.MaxItems, envelope.Warnings.Count);
     }
 

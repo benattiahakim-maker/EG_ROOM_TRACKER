@@ -554,7 +554,7 @@ public static class GenericMapper
 
         // Pièces : « room » pour chacune ; une porte précise aussi son côté (relation from / to de result.json). Ordre explicite et stable,
         // indépendant de l'ordre des pièces dans l'entrée : id de pièce en tri naturel (room-2 avant room-10). Les ids de pièces sont uniques
-        // (Unique), donc deux pièces n'ont jamais le même id : aucun départage supplémentaire n'est possible.
+        // (Unique) ; deux ids naturellement égaux n'existent pas avec des ElementId Revit (entiers), donc aucun départage supplémentaire.
         var orderedRooms = element.Rooms
             .OrderBy(r => roomIds[r.Space], NaturalOrder.Instance)
             .ToList();
