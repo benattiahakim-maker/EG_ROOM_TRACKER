@@ -146,7 +146,7 @@ public sealed class GenericLevelTests
         var envelope = Envelope(result);
 
         GenericEnvelopeChecks.AssertValid(envelope);
-        Assert.Equal(3, GenericEnvelopeChecks.AllObjects(envelope).Count(o => Id(o).StartsWith("room-", StringComparison.Ordinal)));
+        Assert.Equal(3, GenericEnvelopeChecks.AllObjects(envelope).Count(o => System.Text.RegularExpressions.Regex.IsMatch(Id(o), "^room-[0-9]+$")));
         Assert.Equal("Niveau", envelope["objects"]!.AsArray().First()!["properties"]!.AsArray().Single(p => p!["key"]!.GetValue<string>() == "categorie_libelle")!["value"]!.GetValue<string>());
     }
 }

@@ -28,305 +28,349 @@
           "name": "001 Bureau",
           "children": [
             {
-              "id": "element-door-uid-5001",
-              "name": "Porte simple : 0915 x 2134",
-              "children": [],
+              "id": "room-100-portes",
+              "name": "Portes",
+              "children": [
+                {
+                  "id": "element-door-uid-5001",
+                  "name": "Porte simple : 0915 x 2134",
+                  "children": [],
+                  "properties": [
+                    {
+                      "key": "viewerId",
+                      "label": "Identifiant du viewer",
+                      "type": "text",
+                      "value": "door-uid-5001",
+                      "group": "Identification"
+                    },
+                    {
+                      "key": "unique_id",
+                      "label": "UniqueId Revit",
+                      "type": "text",
+                      "value": "door-uid-5001",
+                      "group": "Identification"
+                    },
+                    {
+                      "key": "id_revit",
+                      "label": "ElementId Revit",
+                      "type": "text",
+                      "value": "5001",
+                      "group": "Identification"
+                    },
+                    {
+                      "key": "Category",
+                      "label": "Catégorie",
+                      "type": "text",
+                      "value": "Door",
+                      "group": "Identification"
+                    },
+                    {
+                      "key": "categorie_libelle",
+                      "label": "Catégorie (libellé)",
+                      "type": "text",
+                      "value": "Porte",
+                      "group": "Identification"
+                    },
+                    {
+                      "key": "modelKey",
+                      "label": "Maquette",
+                      "type": "text",
+                      "value": "main",
+                      "group": "Identification"
+                    },
+                    {
+                      "key": "modele_lie",
+                      "label": "Élément d'un modèle lié",
+                      "type": "boolean",
+                      "value": false,
+                      "group": "Identification"
+                    },
+                    {
+                      "key": "categorie_revit",
+                      "label": "Catégorie Revit",
+                      "type": "text",
+                      "value": "Portes",
+                      "group": "Identification"
+                    },
+                    {
+                      "key": "famille",
+                      "label": "Famille",
+                      "type": "text",
+                      "value": "Porte simple",
+                      "group": "Identification"
+                    },
+                    {
+                      "key": "type",
+                      "label": "Type",
+                      "type": "text",
+                      "value": "0915 x 2134",
+                      "group": "Identification"
+                    },
+                    {
+                      "key": "repere",
+                      "label": "Repère",
+                      "type": "text",
+                      "value": "P01",
+                      "group": "Identification"
+                    },
+                    {
+                      "key": "numero",
+                      "label": "Numéro",
+                      "type": "text",
+                      "value": "1.02",
+                      "group": "Identification"
+                    },
+                    {
+                      "key": "niveau",
+                      "label": "Niveau",
+                      "type": "text",
+                      "value": "R+0",
+                      "group": "Identification"
+                    },
+                    {
+                      "key": "largeur",
+                      "label": "Largeur de passage libre",
+                      "type": "number",
+                      "value": 0.9,
+                      "unit": "m",
+                      "group": "Dimensions"
+                    },
+                    {
+                      "key": "hauteur",
+                      "label": "Hauteur de passage libre",
+                      "type": "number",
+                      "value": 2.04,
+                      "unit": "m",
+                      "group": "Dimensions"
+                    },
+                    {
+                      "key": "source_dimensions",
+                      "label": "Source des dimensions",
+                      "type": "text",
+                      "value": "geometry",
+                      "group": "Dimensions"
+                    },
+                    {
+                      "key": "room",
+                      "label": "Pièce",
+                      "type": "ref",
+                      "value": "room-100",
+                      "group": "Relations"
+                    },
+                    {
+                      "key": "room",
+                      "label": "Pièce",
+                      "type": "ref",
+                      "value": "room-101",
+                      "group": "Relations"
+                    },
+                    {
+                      "key": "room_from",
+                      "label": "Pièce de départ",
+                      "type": "ref",
+                      "value": "room-100",
+                      "group": "Relations"
+                    },
+                    {
+                      "key": "room_to",
+                      "label": "Pièce d'arrivée",
+                      "type": "ref",
+                      "value": "room-101",
+                      "group": "Relations"
+                    },
+                    {
+                      "key": "occurrence:Commentaires",
+                      "label": "Commentaires",
+                      "type": "text",
+                      "value": "Coupe-feu",
+                      "group": "Paramètres d'occurrence"
+                    },
+                    {
+                      "key": "occurrence:Marque",
+                      "label": "Marque",
+                      "type": "text",
+                      "value": "P01",
+                      "group": "Paramètres d'occurrence"
+                    },
+                    {
+                      "key": "type:Largeur",
+                      "label": "Largeur",
+                      "type": "number",
+                      "value": 0.9,
+                      "group": "Paramètres de type"
+                    },
+                    {
+                      "key": "type:Epaisseur",
+                      "label": "Epaisseur",
+                      "type": "number",
+                      "value": 40,
+                      "group": "Paramètres de type"
+                    }
+                  ]
+                }
+              ],
               "properties": [
-                {
-                  "key": "viewerId",
-                  "label": "Identifiant du viewer",
-                  "type": "text",
-                  "value": "door-uid-5001",
-                  "group": "Identification"
-                },
-                {
-                  "key": "unique_id",
-                  "label": "UniqueId Revit",
-                  "type": "text",
-                  "value": "door-uid-5001",
-                  "group": "Identification"
-                },
-                {
-                  "key": "id_revit",
-                  "label": "ElementId Revit",
-                  "type": "text",
-                  "value": "5001",
-                  "group": "Identification"
-                },
                 {
                   "key": "Category",
                   "label": "Catégorie",
                   "type": "text",
-                  "value": "Door",
+                  "value": "Group",
                   "group": "Identification"
                 },
                 {
                   "key": "categorie_libelle",
                   "label": "Catégorie (libellé)",
                   "type": "text",
-                  "value": "Porte",
-                  "group": "Identification"
-                },
-                {
-                  "key": "modelKey",
-                  "label": "Maquette",
-                  "type": "text",
-                  "value": "main",
-                  "group": "Identification"
-                },
-                {
-                  "key": "modele_lie",
-                  "label": "Élément d'un modèle lié",
-                  "type": "boolean",
-                  "value": false,
-                  "group": "Identification"
-                },
-                {
-                  "key": "categorie_revit",
-                  "label": "Catégorie Revit",
-                  "type": "text",
                   "value": "Portes",
                   "group": "Identification"
-                },
-                {
-                  "key": "famille",
-                  "label": "Famille",
-                  "type": "text",
-                  "value": "Porte simple",
-                  "group": "Identification"
-                },
-                {
-                  "key": "type",
-                  "label": "Type",
-                  "type": "text",
-                  "value": "0915 x 2134",
-                  "group": "Identification"
-                },
-                {
-                  "key": "repere",
-                  "label": "Repère",
-                  "type": "text",
-                  "value": "P01",
-                  "group": "Identification"
-                },
-                {
-                  "key": "numero",
-                  "label": "Numéro",
-                  "type": "text",
-                  "value": "1.02",
-                  "group": "Identification"
-                },
-                {
-                  "key": "niveau",
-                  "label": "Niveau",
-                  "type": "text",
-                  "value": "R+0",
-                  "group": "Identification"
-                },
-                {
-                  "key": "largeur",
-                  "label": "Largeur de passage libre",
-                  "type": "number",
-                  "value": 0.9,
-                  "unit": "m",
-                  "group": "Dimensions"
-                },
-                {
-                  "key": "hauteur",
-                  "label": "Hauteur de passage libre",
-                  "type": "number",
-                  "value": 2.04,
-                  "unit": "m",
-                  "group": "Dimensions"
-                },
-                {
-                  "key": "source_dimensions",
-                  "label": "Source des dimensions",
-                  "type": "text",
-                  "value": "geometry",
-                  "group": "Dimensions"
-                },
-                {
-                  "key": "room",
-                  "label": "Pièce",
-                  "type": "ref",
-                  "value": "room-100",
-                  "group": "Relations"
-                },
-                {
-                  "key": "room",
-                  "label": "Pièce",
-                  "type": "ref",
-                  "value": "room-101",
-                  "group": "Relations"
-                },
-                {
-                  "key": "room_from",
-                  "label": "Pièce de départ",
-                  "type": "ref",
-                  "value": "room-100",
-                  "group": "Relations"
-                },
-                {
-                  "key": "room_to",
-                  "label": "Pièce d'arrivée",
-                  "type": "ref",
-                  "value": "room-101",
-                  "group": "Relations"
-                },
-                {
-                  "key": "occurrence:Commentaires",
-                  "label": "Commentaires",
-                  "type": "text",
-                  "value": "Coupe-feu",
-                  "group": "Paramètres d'occurrence"
-                },
-                {
-                  "key": "occurrence:Marque",
-                  "label": "Marque",
-                  "type": "text",
-                  "value": "P01",
-                  "group": "Paramètres d'occurrence"
-                },
-                {
-                  "key": "type:Largeur",
-                  "label": "Largeur",
-                  "type": "number",
-                  "value": 0.9,
-                  "group": "Paramètres de type"
-                },
-                {
-                  "key": "type:Epaisseur",
-                  "label": "Epaisseur",
-                  "type": "number",
-                  "value": 40,
-                  "group": "Paramètres de type"
                 }
               ]
             },
             {
-              "id": "element-equip-uid-6001",
-              "name": "CTA : CTA 5000",
-              "children": [],
+              "id": "room-100-equipements",
+              "name": "Équipements",
+              "children": [
+                {
+                  "id": "element-equip-uid-6001",
+                  "name": "CTA : CTA 5000",
+                  "children": [],
+                  "properties": [
+                    {
+                      "key": "viewerId",
+                      "label": "Identifiant du viewer",
+                      "type": "text",
+                      "value": "equip-uid-6001",
+                      "group": "Identification"
+                    },
+                    {
+                      "key": "unique_id",
+                      "label": "UniqueId Revit",
+                      "type": "text",
+                      "value": "equip-uid-6001",
+                      "group": "Identification"
+                    },
+                    {
+                      "key": "id_revit",
+                      "label": "ElementId Revit",
+                      "type": "text",
+                      "value": "6001",
+                      "group": "Identification"
+                    },
+                    {
+                      "key": "Category",
+                      "label": "Catégorie",
+                      "type": "text",
+                      "value": "cvc equipement",
+                      "group": "Identification"
+                    },
+                    {
+                      "key": "categorie_libelle",
+                      "label": "Catégorie (libellé)",
+                      "type": "text",
+                      "value": "Équipement CVC",
+                      "group": "Identification"
+                    },
+                    {
+                      "key": "modelKey",
+                      "label": "Maquette",
+                      "type": "text",
+                      "value": "link-1",
+                      "group": "Identification"
+                    },
+                    {
+                      "key": "modele_lie",
+                      "label": "Élément d'un modèle lié",
+                      "type": "boolean",
+                      "value": true,
+                      "group": "Identification"
+                    },
+                    {
+                      "key": "lien",
+                      "label": "Modèle lié",
+                      "type": "text",
+                      "value": "CVC lien",
+                      "group": "Identification"
+                    },
+                    {
+                      "key": "categorie_revit",
+                      "label": "Catégorie Revit",
+                      "type": "text",
+                      "value": "Equipement de génie climatique",
+                      "group": "Identification"
+                    },
+                    {
+                      "key": "famille",
+                      "label": "Famille",
+                      "type": "text",
+                      "value": "CTA",
+                      "group": "Identification"
+                    },
+                    {
+                      "key": "type",
+                      "label": "Type",
+                      "type": "text",
+                      "value": "CTA 5000",
+                      "group": "Identification"
+                    },
+                    {
+                      "key": "niveau",
+                      "label": "Niveau",
+                      "type": "text",
+                      "value": "R+0",
+                      "group": "Identification"
+                    },
+                    {
+                      "key": "discipline",
+                      "label": "Discipline",
+                      "type": "text",
+                      "value": "cvc",
+                      "group": "Identification"
+                    },
+                    {
+                      "key": "room",
+                      "label": "Pièce",
+                      "type": "ref",
+                      "value": "room-100",
+                      "group": "Relations"
+                    },
+                    {
+                      "key": "occurrence:Puissance",
+                      "label": "Puissance",
+                      "type": "number",
+                      "value": 12.5,
+                      "group": "Paramètres d'occurrence"
+                    },
+                    {
+                      "key": "occurrence:Actif",
+                      "label": "Actif",
+                      "type": "boolean",
+                      "value": true,
+                      "group": "Paramètres d'occurrence"
+                    },
+                    {
+                      "key": "occurrence:Identifiant long",
+                      "label": "Identifiant long",
+                      "type": "text",
+                      "value": "9000000000000000000",
+                      "group": "Paramètres d'occurrence"
+                    }
+                  ]
+                }
+              ],
               "properties": [
-                {
-                  "key": "viewerId",
-                  "label": "Identifiant du viewer",
-                  "type": "text",
-                  "value": "equip-uid-6001",
-                  "group": "Identification"
-                },
-                {
-                  "key": "unique_id",
-                  "label": "UniqueId Revit",
-                  "type": "text",
-                  "value": "equip-uid-6001",
-                  "group": "Identification"
-                },
-                {
-                  "key": "id_revit",
-                  "label": "ElementId Revit",
-                  "type": "text",
-                  "value": "6001",
-                  "group": "Identification"
-                },
                 {
                   "key": "Category",
                   "label": "Catégorie",
                   "type": "text",
-                  "value": "cvc equipement",
+                  "value": "Group",
                   "group": "Identification"
                 },
                 {
                   "key": "categorie_libelle",
                   "label": "Catégorie (libellé)",
                   "type": "text",
-                  "value": "Équipement CVC",
+                  "value": "Équipements",
                   "group": "Identification"
-                },
-                {
-                  "key": "modelKey",
-                  "label": "Maquette",
-                  "type": "text",
-                  "value": "link-1",
-                  "group": "Identification"
-                },
-                {
-                  "key": "modele_lie",
-                  "label": "Élément d'un modèle lié",
-                  "type": "boolean",
-                  "value": true,
-                  "group": "Identification"
-                },
-                {
-                  "key": "lien",
-                  "label": "Modèle lié",
-                  "type": "text",
-                  "value": "CVC lien",
-                  "group": "Identification"
-                },
-                {
-                  "key": "categorie_revit",
-                  "label": "Catégorie Revit",
-                  "type": "text",
-                  "value": "Equipement de génie climatique",
-                  "group": "Identification"
-                },
-                {
-                  "key": "famille",
-                  "label": "Famille",
-                  "type": "text",
-                  "value": "CTA",
-                  "group": "Identification"
-                },
-                {
-                  "key": "type",
-                  "label": "Type",
-                  "type": "text",
-                  "value": "CTA 5000",
-                  "group": "Identification"
-                },
-                {
-                  "key": "niveau",
-                  "label": "Niveau",
-                  "type": "text",
-                  "value": "R+0",
-                  "group": "Identification"
-                },
-                {
-                  "key": "discipline",
-                  "label": "Discipline",
-                  "type": "text",
-                  "value": "cvc",
-                  "group": "Identification"
-                },
-                {
-                  "key": "room",
-                  "label": "Pièce",
-                  "type": "ref",
-                  "value": "room-100",
-                  "group": "Relations"
-                },
-                {
-                  "key": "occurrence:Puissance",
-                  "label": "Puissance",
-                  "type": "number",
-                  "value": 12.5,
-                  "group": "Paramètres d'occurrence"
-                },
-                {
-                  "key": "occurrence:Actif",
-                  "label": "Actif",
-                  "type": "boolean",
-                  "value": true,
-                  "group": "Paramètres d'occurrence"
-                },
-                {
-                  "key": "occurrence:Identifiant long",
-                  "label": "Identifiant long",
-                  "type": "text",
-                  "value": "9000000000000000000",
-                  "group": "Paramètres d'occurrence"
                 }
               ]
             }

@@ -21,6 +21,9 @@ Le format s'inspire de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/).
 
 ### Modifié
 
+- **Sortie `generic` : groupes dans chaque local** : les enfants d'un local sont les groupes « Portes », « Équipements » puis « Terminaux »
+  (`Category` = `Group`, `categorie_libelle` = libellé du groupe ; un groupe vide est omis), puis les anomalies du local. Enfants d'un
+  groupe triés par nom (casse ignorée) puis UniqueId. Terminaux dans un 3e groupe distinct. Autres formats inchangés.
 - **Sortie `generic` : niveaux à la racine** : l'arbre commence par un objet « Niveau » par niveau Revit ayant au moins un local exporté,
   trié par altitude croissante (propriété `altitude`, en m ; altitude inconnue après les autres, puis « Sans niveau » en dernier). Les locaux
   sont les enfants du niveau, en tri naturel du numéro (2 avant 10, casse ignorée, numéro vide en dernier, départage par ElementId).

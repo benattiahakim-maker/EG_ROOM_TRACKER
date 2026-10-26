@@ -44,8 +44,8 @@ public sealed class GenericMapperTests
         var first = Find(envelope, "room-100")!;
         var second = Find(envelope, "room-101")!;
 
-        Assert.Contains(first["children"]!.AsArray(), c => c!["id"]!.GetValue<string>() == "element-door-uid-5001");
-        Assert.DoesNotContain(second["children"]!.AsArray(), c => c!["id"]!.GetValue<string>() == "element-door-uid-5001");
+        Assert.Contains(Find(envelope, "room-100-portes")!["children"]!.AsArray(), c => c!["id"]!.GetValue<string>() == "element-door-uid-5001");
+        Assert.Null(Find(envelope, "room-101-portes"));
         Assert.Equal(["room-100", "room-101"], RefsOf(door!, "room"));
         Assert.Equal(["room-100"], RefsOf(door!, "room_from"));
         Assert.Equal(["room-101"], RefsOf(door!, "room_to"));
@@ -371,7 +371,7 @@ public sealed class GenericMapperTests
         var result = WithDesignOptions();
         result = result with { Rooms = [.. result.Rooms.Select(r => r with { DesignOptionIsPrimary = null })] };
 
-        Assert.Equal(3, GenericEnvelopeChecks.AllObjects(Envelope(result)).Count(o => o["id"]!.GetValue<string>().StartsWith("room-", StringComparison.Ordinal)));
+        Assert.Equal(3, GenericEnvelopeChecks.AllObjects(Envelope(result)).Count(o => System.Text.RegularExpressions.Regex.IsMatch(o["id"]!.GetValue<string>(), "^room-[0-9]+$")));
     }
 
     [Theory]
