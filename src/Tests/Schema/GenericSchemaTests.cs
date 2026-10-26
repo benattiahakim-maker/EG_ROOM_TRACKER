@@ -134,7 +134,7 @@ public class GenericSchemaTests
     public void Structure_RejectsDuplicateIds_UnresolvedRefs_DuplicateKeys_AndUnknownModelKeys()
     {
         var duplicateId = Example();
-        var rooms = GenericEnvelopeChecks.AllObjects(duplicateId).Where(o => o["id"]!.GetValue<string>().StartsWith("room-", StringComparison.Ordinal)).ToList();
+        var rooms = GenericEnvelopeChecks.AllObjects(duplicateId).Where(o => System.Text.RegularExpressions.Regex.IsMatch(o["id"]!.GetValue<string>(), "^room-[0-9]+$")).ToList();
         rooms[1]["id"] = rooms[0]["id"]!.GetValue<string>();
         Assert.NotEmpty(GenericEnvelopeChecks.StructureErrors(duplicateId));
 

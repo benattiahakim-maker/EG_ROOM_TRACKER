@@ -57,6 +57,9 @@ public static class GenericCategories
     public const string Anomaly = "Anomaly";
     public const string Files = "Files";
     public const string Level = "Level";
+
+    /// <summary>Objet de regroupement (« Portes », « Équipements », « Terminaux » d'une pièce) : un nom et des enfants, rien d'autre.</summary>
+    public const string Group = "Group";
 }
 
 /// <summary>Contexte de conversion : ce que l'extraction ne sait pas, parce que cela dépend des fichiers écrits.</summary>
@@ -146,12 +149,12 @@ public static class GenericMapper
         }
 
         // Éléments rangés sous leur première pièce ; les autres pièces les pointent par « contains ».
-        var childrenOf = new Dictionary<string, List<GenericObject>>(StringComparer.Ordinal);
+        var childrenOf = new Dictionary<string, List<(GenericElement Element, GenericObject Object)>>(StringComparer.Ordinal);
         var containsOf = new Dictionary<string, List<string>>(StringComparer.Ordinal);
         foreach (var element in elements)
         {
             var id = elementIds[element.Item.UniqueId];
-            Add(childrenOf, element.Rooms[0].Space, ElementObject(element, id, roomIds, linkKeys));
+            Add(childrenOf, element.Rooms[0].Space, (element, ElementObject(element, id, roomIds, linkKeys)));
             foreach (var other in element.Spaces.Skip(1))
             {
                 Add(containsOf, other, id);
@@ -191,7 +194,7 @@ public static class GenericMapper
             }
 
             var children = new List<GenericObject>();
-            children.AddRange(childrenOf.GetValueOrDefault(room.UniqueId) ?? []);
+            children.AddRange(ElementGroups(childrenOf.GetValueOrDefault(room.UniqueId) ?? [], roomIds[room.UniqueId], used));
             children.AddRange(roomAnomalies.GetValueOrDefault(room.ElementId) ?? []);
             roomObjects.Add((room, new GenericObject { Id = roomIds[room.UniqueId], Name = RoomName(room), Children = children, Properties = properties }));
         }
@@ -246,9 +249,49 @@ public static class GenericMapper
     /// Porte, équipement ou terminal, une seule fois (clé : UniqueId), avec ses pièces dans l'ordre des pièces du résultat et la
     /// relation (<c>from</c>, <c>to</c>, <c>in</c>) de chacune. <see cref="Spaces"/> : UniqueId des pièces ; la première le range.
     /// </summary>
-    private sealed record GenericElement(RoomElementDto Item, string Category, List<(string Space, string Relation)> Rooms)
+    private sealed record GenericElement(RoomElementDto Item, string Category, ElementKind Kind, List<(string Space, string Relation)> Rooms)
     {
         public IEnumerable<string> Spaces => Rooms.Select(r => r.Space);
+    }
+
+    /// <summary>Famille d'un élément : décide du groupe (« Portes », « Équipements », « Terminaux ») qui le range dans la pièce.</summary>
+    private enum ElementKind
+    {
+        Door,
+        Equipment,
+        Terminal,
+    }
+
+    /// <summary>
+    /// Groupes d'une pièce, dans l'ordre Portes, Équipements, Terminaux ; un groupe vide est omis. Enfants triés de façon stable : nom
+    /// (sans tenir compte de la casse), puis UniqueId.
+    /// </summary>
+    private static IEnumerable<GenericObject> ElementGroups(List<(GenericElement Element, GenericObject Object)> items, string roomId, HashSet<string> used)
+    {
+        foreach (var (kind, label, suffix) in new[] { (ElementKind.Door, "Portes", "portes"), (ElementKind.Equipment, "Équipements", "equipements"), (ElementKind.Terminal, "Terminaux", "terminaux") })
+        {
+            var members = items.Where(i => i.Element.Kind == kind)
+                .OrderBy(i => i.Object.Name, StringComparer.OrdinalIgnoreCase)
+                .ThenBy(i => i.Element.Item.UniqueId, StringComparer.Ordinal)
+                .Select(i => i.Object)
+                .ToList();
+            if (members.Count == 0)
+            {
+                continue;
+            }
+
+            yield return new GenericObject
+            {
+                Id = Unique($"{roomId}-{suffix}", used),
+                Name = label,
+                Children = members,
+                Properties =
+                [
+                    Text(GenericKeys.Category, "Catégorie", GenericCategories.Group, GenericGroups.Identification),
+                    Text(GenericKeys.CategoryLabel, "Catégorie (libellé)", label, GenericGroups.Identification),
+                ],
+            };
+        }
     }
 
     private static IReadOnlyList<GenericElement> Elements(IEnumerable<RoomDto> rooms)
@@ -257,14 +300,14 @@ public static class GenericMapper
         var byId = new Dictionary<string, GenericElement>(StringComparer.Ordinal);
         foreach (var room in rooms)
         {
-            var items = (room.Doors ?? []).Select(item => (item, Category: TrcCategories.Door))
-                .Concat((room.Equipment ?? []).Select(item => (item, Category: TrcCategories.Equipment(item.Discipline))))
-                .Concat((room.Terminals ?? []).Select(item => (item, Category: TrcCategories.Terminal(item.Discipline))));
-            foreach (var (item, category) in items)
+            var items = (room.Doors ?? []).Select(item => (item, Category: TrcCategories.Door, Kind: ElementKind.Door))
+                .Concat((room.Equipment ?? []).Select(item => (item, Category: TrcCategories.Equipment(item.Discipline), Kind: ElementKind.Equipment)))
+                .Concat((room.Terminals ?? []).Select(item => (item, Category: TrcCategories.Terminal(item.Discipline), Kind: ElementKind.Terminal)));
+            foreach (var (item, category, kind) in items)
             {
                 if (!byId.TryGetValue(item.UniqueId, out var entry))
                 {
-                    byId[item.UniqueId] = entry = new GenericElement(item, category, []);
+                    byId[item.UniqueId] = entry = new GenericElement(item, category, kind, []);
                     order.Add(entry);
                 }
 
