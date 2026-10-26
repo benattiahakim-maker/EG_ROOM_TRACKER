@@ -52,7 +52,10 @@ Exemple :
 (statut au format de `result.json`, par exemple `succeededWithWarnings`, compteurs, erreurs, durée). Dans `data`,
 `roomsCollected` est le nombre de pièces lues dans le document et `roomsExported` le nombre de pièces réellement présentes dans le résultat :
 en sortie `generic`, les pièces d'options de conception secondaires exclues (`includeSecondaryDesignOptions` : `false`) ne sont pas comptées
-(67 collectées, 10 exclues : `roomsExported` = 57). Les noms et le schéma du journal ne changent pas.
+(67 collectées, 10 exclues : `roomsExported` = 57). `roomsWithAnomalies` compte les pièces portant au moins un indicateur qualité
+(`qualityFlags` : `UNPLACED`, `ZERO_AREA`, `DUPLICATE_NUMBER`…), pas les anomalies : une anomalie de portée document comme
+`VOLUME_NOT_COMPUTED` ou `LINK_MISSING` n'est attachée à aucune pièce et n'y entre pas (12 pièces sans volume calculé : `roomsWithAnomalies`
+peut valoir 0). Même définition que `summary.counts.roomsWithAnomalies` de `result.json`. Les noms et le schéma du journal ne changent pas.
 `ROOM_EXTRACTION_FAILED` (niveau `Warning`, avec `roomElementId` et l'exception) signale une pièce exportée avec
 l'indicateur `EXTRACTION_ERROR`.
 
@@ -93,7 +96,9 @@ journal est vidé : le rapport APS reste exploitable.
 
 Les événements portant un `roomElementId` sont limités à 20 par `eventCode` ; au-delà, ils sont comptés et un
 événement `LOG_EVENTS_SUPPRESSED` (niveau `Warning`, compteurs par code dans `data`) est écrit au flush.
-Le détail des anomalies reste dans `result.json`.
+Le détail des anomalies reste dans le fichier de sortie, et la ligne `ANOMALIES_DETECTED` le nomme selon `outputFormat` :
+`détail dans result.json.` (`contract`, `both`), `détail dans result.generic.json.` (`generic`), `aucun fichier de détail avec le format trc.`
+(`trc` : `TRCValidationDict.json` ne contient que les données). Seul le texte du message change ; `data` (compteurs par code) est identique.
 
 ## Secrets
 
