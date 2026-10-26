@@ -54,9 +54,33 @@ Racine : `contractVersion` (`1.0`), `serviceId` (`pieces-roomtracker`), `status`
   `box`, `ref`, `file`. Les valeurs sont typées, jamais du texte arrondi ; une valeur inconnue est omise, jamais mise à zéro ; pas de limite
   de 255 caractères (la limite TRC ne s'applique pas ici).
 - **Aucun champ `kind` ni `category` sur l'objet.** `Category` est une propriété ordinaire (`Space`, `Door`, `cvc equipement`… comme le TRC ;
-  `Anomaly` et `Files` pour les objets d'anomalie).
+  `Level` pour un niveau, `Group` pour un groupe, `Anomaly` et `Files` pour les objets d'anomalie).
 
-### Pièce (objet racine)
+### Arbre des objets
+
+```
+Niveau (altitude croissante) ; « Sans niveau » en dernier
+└─ Pièce (tri naturel du numéro)
+   ├─ Portes          (groupe, seulement s'il contient des portes)
+   │   └─ porte…
+   ├─ Équipements     (groupe, seulement s'il n'est pas vide)
+   ├─ Terminaux       (groupe, seulement s'il n'est pas vide)
+   └─ anomalies de portée pièce
+anomalies de portée document restantes (ex. LINK_NOT_LOADED), puis « Fichiers du résultat »
+```
+
+- **Niveau** : un objet par niveau Revit qui a au moins une pièce exportée. `id` = `level-{UniqueId}`, `name` = nom du niveau,
+  `Category` = `Level`, `categorie_libelle` = `Niveau`, `altitude` (`number`, `m`, `Level.Elevation`) quand elle est connue. Tri par altitude
+  croissante ; un niveau sans altitude lisible vient après les niveaux avec altitude, puis « Sans niveau » (`level-none`, pour les pièces sans
+  niveau) est toujours le dernier. Une pièce est listée **une seule fois**, sous son niveau. L'altitude n'est pas écrite dans `result.json`.
+- **Pièces d'un niveau** : tri **naturel** du numéro (2 avant 10, `a2` avant `A10`, casse ignorée, nombres comparés comme des nombres) ; un
+  numéro vide vient en dernier ; à numéro égal, tri par `ElementId`.
+- **Groupes** : objets de regroupement (`name` + `children`), `id` = `{id de la pièce}-portes`, `-equipements`, `-terminaux`, `Category` = `Group`,
+  `categorie_libelle` = `Portes` / `Équipements` / `Terminaux`, aucune autre propriété. Ordre fixe : Portes, Équipements, Terminaux ; un groupe
+  vide est omis. Les terminaux ont leur propre groupe (décision). Enfants d'un groupe triés par nom (casse ignorée) puis `UniqueId`.
+- **Aucun code propre à RoomTracker** n'est nécessaire dans le backend ni le site : ce sont des objets génériques (nom, enfants, propriétés).
+
+### Pièce
 
 | Élément | Valeur |
 | --- | --- |
@@ -67,8 +91,8 @@ Racine : `contractVersion` (`1.0`), `serviceId` (`pieces-roomtracker`), `status`
 | `box` | boîte englobante (mm, repère du modèle principal) ; omise avec un avertissement si la pièce n'est pas placée |
 | `image` (type `file`) | vue 3D `/Images/{nom TRC}.jpg`, seulement si le fichier existe réellement |
 | surface, volume, hauteur, finitions, paramètres | nombres et textes typés, groupés (`group`) |
-| `contains` (`ref`, répétable) | éléments rangés sous une autre pièce mais contenus aussi dans celle-ci |
-| enfants | éléments rangés ici, puis anomalies de la pièce |
+| enfants | groupes Portes, Équipements, Terminaux (non vides), puis les anomalies de la pièce |
+| `contains` (`ref`, répétable) | tous les éléments contenus dans la pièce (ils sont aussi ses petits-enfants, dans les groupes) |
 
 **`Category` et `categorie_libelle`.** `Category` garde la valeur technique (`Space`, `Door`, `cvc equipement`, `Anomaly`, `Files`, comme le
 TRC). `categorie_libelle` (texte, groupe `Identification`) donne le libellé lisible : `Pièce`, `Porte`, `Équipement CVC`, `Terminal electricite`
@@ -102,10 +126,11 @@ changent ni `result.json` ni le TRC.
 
 ### Porte, équipement, terminal (objets)
 
-- **Un seul objet** par élément, rangé **une fois** sous la **première pièce** qui le contient (ordre des pièces du résultat, c'est-à-dire par
-  `ElementId`). `id` = `element-{UniqueId}`, `viewerId` = son `UniqueId`.
-- L'objet pointe **toutes** ses pièces par des `ref` de clé `room` (répétée). Une porte ajoute `room_from` et `room_to` (côté `from` et `to`
-  de la porte). Chaque autre pièce le pointe par un `ref` `contains`.
+- **Objet partagé** : un élément contenu dans plusieurs pièces (une porte entre deux pièces, par exemple) est **répété sous chacune**, dans le
+  groupe de sa famille : même `id` (`element-{UniqueId}`), contenu strictement identique (mêmes propriétés, mêmes `ref`). Le validateur de la
+  plateforme accepte un `id` répété si le contenu est identique et ne parcourt le sous-arbre qu'une fois. `viewerId` = son `UniqueId`.
+- L'objet pointe **toutes** ses pièces par des `ref` de clé `room` (répétée), la même liste sous chaque parent. Une porte ajoute `room_from` et
+  `room_to` (côté `from` et `to` de la porte). Chaque pièce pointe tous ses éléments par des `ref` `contains`.
 - Un élément d'un modèle lié porte `modelKey` (`link-n`), `modele_lie` (`true`) et `lien` (nom du lien) ; sa `box` n'est pas exportée.
 - Paramètres d'occurrence et de type : propriétés typées, groupes « Paramètres d'occurrence » et « Paramètres de type », clés préfixées
   `occurrence:` et `type:`. **Les valeurs sont celles de Revit, sans aucune conversion** : elles peuvent être en unités anglaises
@@ -128,8 +153,8 @@ Les fichiers du résultat que le plugin sait désigner sont des propriétés `fi
    (`conversion.urn` du traitement) avant de valider, sinon l'enveloppe est refusée (`RESULT_INVALID`). Le plugin ne le connaît pas.
 2. **`ref` sans rôle.** Une propriété `ref` n'a que `value` (l'`id` cible) : le rôle est porté par la **clé** (`room`, `room_from`, `room_to`,
    `contains`).
-3. **Objet partagé.** La spécification autorise un objet identique sous chaque parent ; ce plugin range l'objet **une fois** et utilise des
-   `ref` (décision de l'équipe), ce que le validateur accepte aussi.
+3. **Objet partagé.** Pas d'écart : comme le prévoit la spécification, l'objet identique (même `id`, même contenu) est répété sous chaque
+   parent ; les `ref` `room`, `room_from`, `room_to`, `contains` restent en plus.
 4. **TRC et ZIP.** Avec `generic` seul, aucun TRC n'est écrit et le plugin ne connaît ni le nom ni l'URL du ZIP : ils ne sont pas des propriétés
    `file`. `GenericMapContext.ResultFiles` sait les lister si une option future écrit les deux.
 5. **Échec.** Pas d'enveloppe pour une extraction en échec (voir plus haut).

@@ -21,6 +21,9 @@ Le format s'inspire de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/).
 
 ### Modifié
 
+- **Docs `generic`** : `GENERIC.md` décrit l'arbre (Niveau → pièce → groupes Portes/Équipements/Terminaux → éléments, tri par altitude et tri
+  naturel, « Sans niveau »), l'objet partagé répété identique (fin de l'ancien écart n°3) et `contains` ; `NOUVEAU-SERVICE.md` précise la règle
+  d'`id` répété. `generic.example.json` est déjà régénéré dans les PR du code ; `docs/recette/expected` (result.json) n'est pas concerné.
 - **Sortie `generic` : `VOLUME_NOT_COMPUTED` en une information** : l'anomalie (info, portée document) n'est plus un objet « Anomalie » ;
   elle devient une seule information `{severity: info, code: VOLUME_NOT_COMPUTED, message: "N pièce(s) sans volume calculé…"}` dans
   `warnings[]` (jamais `partial`), comme `LINK_MISSING`. Même message dans `log.jsonl` (événement `VOLUME_NOT_COMPUTED`). `warnings[]` est

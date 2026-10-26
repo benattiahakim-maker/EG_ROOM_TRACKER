@@ -216,7 +216,7 @@ Source de vérité : `docs/frontend-contract.md` du backend (en cas d'écart, la
 - **`models[]`** : `key` (`main`, puis `link-1`, `link-2`…), `title`, `urn`. **Le plugin laisse `urn` vide** : la plateforme le remplit avec
   `conversion.urn` (clé `main` = maquette principale, sinon même nom de fichier, sinon l'unique restant), puis valide. Un `urn` déjà rempli
   n'est jamais changé ; sans conversion correspondante, il reste vide et la validation répond 502 `RESULT_INVALID`.
-- **`objects[]`** : arbre `{ id, name, children[], properties[] }` ; `id` unique dans **tout** le fichier ; profondeur ≤ 64.
+- **`objects[]`** : arbre `{ id, name, children[], properties[] }` ; `id` unique dans **tout** le fichier, sauf un **objet partagé** : le même `id` peut être répété sous plusieurs parents si le contenu (propriétés et enfants) est **identique** (sinon « id en double … contenu différent ») ; profondeur ≤ 64. RoomTracker : niveaux → pièces → groupes → éléments, un élément multi-pièces étant répété identique sous chaque pièce ([`GENERIC.md`](GENERIC.md)).
 - **Propriété** : `{ key, label, type, value, unit?, group? }`.
   - `type` : `text`, `number` (fini ; `unit` facultatif), `boolean`, `date` (ISO 8601), `box` (`{min:[x,y,z], max:[x,y,z]}` en mm, repère du
     modèle principal), `ref` (`value` = `id` d'un objet de l'enveloppe, toujours résolu), `file` (`{name, mimeType, url}` ; `url` en
