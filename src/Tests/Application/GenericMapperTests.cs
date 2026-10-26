@@ -371,7 +371,7 @@ public sealed class GenericMapperTests
         var result = WithDesignOptions();
         result = result with { Rooms = [.. result.Rooms.Select(r => r with { DesignOptionIsPrimary = null })] };
 
-        Assert.Equal(3, Envelope(result)["objects"]!.AsArray().Count);
+        Assert.Equal(3, GenericEnvelopeChecks.AllObjects(Envelope(result)).Count(o => o["id"]!.GetValue<string>().StartsWith("room-", StringComparison.Ordinal)));
     }
 
     [Theory]

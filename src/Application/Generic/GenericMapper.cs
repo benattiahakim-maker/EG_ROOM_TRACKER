@@ -21,6 +21,7 @@ public static class GenericGroups
     public const string Type = "Paramètres de type";
     public const string Anomaly = "Anomalie";
     public const string Files = "Fichiers";
+    public const string Level = "Niveau";
 }
 
 /// <summary>Clés des propriétés de l'enveloppe (la propriété réservée <c>viewerId</c> est dans <see cref="GenericContract"/>).</summary>
@@ -55,6 +56,7 @@ public static class GenericCategories
 {
     public const string Anomaly = "Anomaly";
     public const string Files = "Files";
+    public const string Level = "Level";
 }
 
 /// <summary>Contexte de conversion : ce que l'extraction ne sait pas, parce que cela dépend des fichiers écrits.</summary>
@@ -179,7 +181,7 @@ public static class GenericMapper
         }
 
         var withoutBox = 0;
-        var objects = new List<GenericObject>(result.Rooms.Count + documentAnomalies.Count + 1);
+        var roomObjects = new List<(RoomDto Room, GenericObject Object)>(result.Rooms.Count);
         foreach (var room in result.Rooms)
         {
             var properties = RoomProperties(room, codeFile, context, ref withoutBox);
@@ -191,9 +193,11 @@ public static class GenericMapper
             var children = new List<GenericObject>();
             children.AddRange(childrenOf.GetValueOrDefault(room.UniqueId) ?? []);
             children.AddRange(roomAnomalies.GetValueOrDefault(room.ElementId) ?? []);
-            objects.Add(new GenericObject { Id = roomIds[room.UniqueId], Name = RoomName(room), Children = children, Properties = properties });
+            roomObjects.Add((room, new GenericObject { Id = roomIds[room.UniqueId], Name = RoomName(room), Children = children, Properties = properties }));
         }
 
+        var objects = new List<GenericObject>(roomObjects.Count + documentAnomalies.Count + 1);
+        objects.AddRange(LevelObjects(roomObjects, used));
         objects.AddRange(documentAnomalies);
         if (context.ResultFiles.Count > 0)
         {
@@ -293,6 +297,57 @@ public static class GenericMapper
         }
 
         return models;
+    }
+
+    // ---------------------------------------------------------------- niveaux
+
+    /// <summary>
+    /// Racine de l'arbre : un objet « Niveau » par niveau qui a au moins une pièce exportée, par altitude croissante (altitude inconnue après les
+    /// autres, par nom), puis « Sans niveau » en dernier. Ses enfants sont ses pièces, en tri naturel du numéro (départage : ElementId).
+    /// </summary>
+    private static List<GenericObject> LevelObjects(IReadOnlyList<(RoomDto Room, GenericObject Object)> rooms, HashSet<string> used)
+    {
+        var groups = rooms
+            .GroupBy(r => r.Room.Level is { } level ? (string.IsNullOrEmpty(level.UniqueId) ? "name:" + level.Name : level.UniqueId) : null, StringComparer.Ordinal)
+            .Select(g => (Level: g.First().Room.Level, Rooms: g.OrderBy(r => r.Room.Number, NaturalOrder.Instance)
+                .ThenBy(r => r.Room.ElementId, Comparer<string>.Create(NaturalOrder.CompareElementIds)).Select(r => r.Object).ToList()))
+            .ToList();
+        // Ordre des niveaux : altitude croissante ; à altitude égale, nom (tri naturel) puis ElementId. Un niveau sans altitude lisible
+        // (null ou non finie) vient après tous ceux qui en ont une, mais avant « Sans niveau » (ajouté en dernier plus bas).
+        var levels = groups
+            .Where(g => g.Level is not null)
+            .OrderBy(g => g.Level!.ElevationM is { } e && double.IsFinite(e) ? 0 : 1)
+            .ThenBy(g => g.Level!.ElevationM is { } e && double.IsFinite(e) ? e : 0)
+            .ThenBy(g => g.Level!.Name, NaturalOrder.Instance)
+            .ThenBy(g => g.Level!.ElementId, Comparer<string>.Create(NaturalOrder.CompareElementIds))
+            .Select(g => LevelObject(g.Level, g.Rooms, used))
+            .ToList();
+        var without = groups.FirstOrDefault(g => g.Level is null);
+        if (without.Rooms is not null)
+        {
+            levels.Add(LevelObject(null, without.Rooms, used));
+        }
+
+        return levels;
+    }
+
+    private static GenericObject LevelObject(LevelRef? level, List<GenericObject> rooms, HashSet<string> used)
+    {
+        var name = level is null ? "Sans niveau" : string.IsNullOrWhiteSpace(level.Name) ? $"Niveau {level.ElementId}" : level.Name;
+        var p = new List<GenericProperty>
+        {
+            Text(GenericKeys.Category, "Catégorie", GenericCategories.Level, GenericGroups.Identification),
+            Text(GenericKeys.CategoryLabel, "Catégorie (libellé)", CategoryLabel(GenericCategories.Level), GenericGroups.Identification),
+        };
+        if (level is not null)
+        {
+            AddText(p, GenericKeys.UniqueId, "UniqueId Revit", level.UniqueId, GenericGroups.Identification);
+            AddText(p, GenericKeys.RevitId, "ElementId Revit", level.ElementId, GenericGroups.Identification);
+            AddNumber(p, "altitude", "Altitude", level.ElevationM, "m", GenericGroups.Dimensions);
+        }
+
+        var id = Unique(level is null ? "level-none" : $"level-{(string.IsNullOrEmpty(level.UniqueId) ? level.ElementId : level.UniqueId)}", used);
+        return new GenericObject { Id = id, Name = name, Children = rooms, Properties = p };
     }
 
     // ---------------------------------------------------------------- pièces
@@ -675,6 +730,8 @@ public static class GenericMapper
                 return "Porte";
             case GenericCategories.Anomaly:
                 return "Anomalie";
+            case GenericCategories.Level:
+                return "Niveau";
             case GenericCategories.Files:
                 return "Fichiers";
         }
